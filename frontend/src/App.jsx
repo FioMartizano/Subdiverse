@@ -1,6 +1,10 @@
-import GuestNavbar from './components/GuestNavbar';
+/*COMPONENTS*/
 import Footer from './components/Footer';
+import GuestNavbar from './components/GuestNavbar';
+
+/*GUEST PAGE*/
 import GuestHomePage from './pages/Guest/GuestHomePage';
+
 
 function App() {
   return (

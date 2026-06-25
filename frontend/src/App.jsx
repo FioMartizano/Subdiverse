@@ -1,6 +1,6 @@
 import GuestNavbar from './components/GuestNavbar';
 import Footer from './components/Footer';
-import GuestHomePage from './pages/GuestHomePage';
+import GuestHomePage from './pages/Guest/GuestHomePage';
 
 function App() {
   return (

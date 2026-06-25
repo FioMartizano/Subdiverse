@@ -1,1 +1,35 @@
 @import "tailwindcss";
+
+:root {
+  --color-primary: #347433;
+  --color-secondary: #F98300;
+  --color-white: #FFFFFF;
+  --color-black: #1a1a1a;
+
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Poppins', sans-serif;
+
+  --radius-buttons: 0.5rem;
+  --radius-cards: 1rem;
+}
+
+body{
+  font-family: var(--font-body);
+  background-color: var(--color-white);
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  border-radius: var(--radius-buttons);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+}
+
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: var(--color-white);
+  border-radius: var(--radius-buttons);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+}

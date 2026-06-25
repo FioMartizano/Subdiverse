@@ -27,15 +27,15 @@ export default function GuestNavbar() {
 
             {openOffices && (
               <div className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
-                <Link to="/HOA" onClick={() => setOpenOffices(false)}className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">HOA</Link>
+                <Link to="/hoa" onClick={() => setOpenOffices(false)}className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">HOA</Link>
 
-                <Link to="/GrievanceCommittee" onClick={() => setOpenOffices(false)} className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">Grievance Committee</Link>
+                <Link to="/grievance" onClick={() => setOpenOffices(false)} className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">Grievance Committee</Link>
 
-                <Link to="/Elderly" onClick={() => setOpenOffices(false)}className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">Elderly</Link>
+                <Link to="/elderly" onClick={() => setOpenOffices(false)}className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">Elderly</Link>
 
-                <Link to="/Healthcare" onClick={() => setOpenOffices(false)} className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">Healthcare</Link>
+                <Link to="/healthcare" onClick={() => setOpenOffices(false)} className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">Healthcare</Link>
 
-                <Link to="/ParishChurch" onClick={() => setOpenOffices(false)}className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">Parish Church</Link>
+                <Link to="/parishChurch" onClick={() => setOpenOffices(false)}className="block px-5 py-3 hover:bg-[#347433] hover:text-white transition">Parish Church</Link>
 
               </div>
             )}

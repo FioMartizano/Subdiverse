@@ -81,7 +81,7 @@ function Footer() {
           </div>
 
           <p className="text-sm text-center">
-            © 2026 WWHS Portal. All rights reserved.
+            © 2026 <Subdiverse></Subdiverse>. All rights reserved.
           </p>
         </div>
       </div>

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -22,14 +23,18 @@ body{
   background-color: var(--color-primary);
   color: var(--color-white);
   border-radius: var(--radius-buttons);
-  padding: 0.5rem 1rem;
+  padding: 1rem 3rem;
   font-weight: 600;
+  font-size: 1.15rem;
 }
+
 
 .btn-secondary {
   background-color: var(--color-secondary);
   color: var(--color-white);
   border-radius: var(--radius-buttons);
-  padding: 0.5rem 1rem;
+  padding: 1rem 3rem;
   font-weight: 600;
+  font-size: 1.15rem;
 }
+

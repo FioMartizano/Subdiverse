@@ -8,9 +8,28 @@
 
   --font-heading: 'Poppins', sans-serif;
   --font-body: 'Poppins', sans-serif;
+
+  --radius-buttons: 0.5rem;
+  --radius-cards: 1rem;
 }
 
 body{
   font-family: var(--font-body);
   background-color: var(--color-white);
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  border-radius: var(--radius-buttons);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+}
+
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: var(--color-white);
+  border-radius: var(--radius-buttons);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
 }

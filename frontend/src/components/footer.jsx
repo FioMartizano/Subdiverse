@@ -81,9 +81,9 @@ function Footer() {
           </div>
 
           <p className="text-sm text-center">
-            © 2026 <Subdiverse></Subdiverse>. All rights reserved.
+            © 2026 Subdiverse. All rights reserved.
           </p>
-        </div>
+           </div>
       </div>
     </footer>
   );

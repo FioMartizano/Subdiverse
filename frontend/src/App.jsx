@@ -1,8 +1,12 @@
 
 import { Routes, Route } from 'react-router-dom';  
 
+/*COMPONENTS */
 import Footer from './components/Footer';
 import GuestNavbar from './components/GuestNavbar';
+import ResidentNavbar from './components/ResidentNavbar';
+
+
 /*GUEST PAGE*/
 import GuestHomePage from './pages/Guest/GuestHomePage';
 import AboutUs from './pages/Guest/AboutUs';

@@ -37,4 +37,11 @@ body{
   font-weight: 600;
   font-size: 1.15rem;
 }
+/*NAVBAR hover*/
+.hover-secondary-text:hover {
+  color: var(--color-secondary);
+}
 
+.hover-secondary-bg:hover {
+  background-color: var(--color-secondary);
+}

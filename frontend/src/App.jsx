@@ -6,7 +6,7 @@ import GuestNavbar from './components/GuestNavbar';
 /*GUEST PAGE*/
 import GuestHomePage from './pages/Guest/GuestHomePage';
 import AboutUs from './pages/Guest/AboutUs';
-
+import OfficesHOA from './pages/Guest/offices/officesHoa';
 function App() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -16,7 +16,7 @@ function App() {
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<GuestHomePage />} />
-          <Route path="/about" element={<AboutUs />} />
+          <Route path="/about" element={<AboutUs />} /> 
         </Routes>
       </main>
 

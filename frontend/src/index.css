@@ -45,3 +45,19 @@ body{
 .hover-secondary-bg:hover {
   background-color: var(--color-secondary);
 }
+
+/*RESIDENT*/
+
+/* RESERVATION BUTTON */
+.btn-reservation {
+  background-color: var(--color-secondary);
+  color: var(--color-white);
+  border-radius: var(--radius-buttons);
+  padding: 0.5rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: 0.3s ease;
+}
+.btn-reservation:hover {
+  opacity: 0.85;
+}

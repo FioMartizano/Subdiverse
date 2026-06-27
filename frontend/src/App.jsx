@@ -1,7 +1,36 @@
-import { useLocation } from "react-router-dom";
 import AppRoutes from "./AppRoutes";
 
 /* COMPONENTS */
+import Footer from "./components/Footer";
+import GuestNavbar from "./components/GuestNavbar";
+
+function App() {
+
+  return (
+    <div className="min-h-screen flex flex-col">
+
+      <GuestNavbar />
+
+      <main className="flex-grow">
+        <AppRoutes />
+      </main>
+
+      <Footer />
+
+    </div>
+  );
+}
+
+export default App;
+
+
+
+/*SOON (this would be used if may resident side na):
+
+import { useLocation } from "react-router-dom";
+import AppRoutes from "./AppRoutes";
+
+/* COMPONENTS 
 import Footer from "./components/Footer";
 import GuestNavbar from "./components/GuestNavbar";
 import ResidentNavbar from "./components/ResidentNavbar";
@@ -40,4 +69,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;*/

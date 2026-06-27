@@ -37,4 +37,29 @@ body{
   font-weight: 600;
   font-size: 1.15rem;
 }
+/*NAVBAR hover*/
+.hover-secondary-text:hover {
+  color: var(--color-secondary);
+}
 
+.hover-secondary-bg:hover {
+  background-color: var(--color-secondary);
+}
+
+/*RESIDENT*/
+
+/* RESERVATION BUTTON */
+.btn-reservation {
+  background-color: var(--color-secondary);
+  color: var(--color-white);
+  border-radius: var(--radius-buttons);
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: 0.3s ease;
+}
+
+.btn-reservation:hover {
+  background-color: #df7100;
+  transform: translateY(-2px);
+}

@@ -69,7 +69,6 @@ function GuestHOA() {
         }
     ];
     return (
-        /* Base wrapper without horizontal padding to prevent outer spacing */
         <div className="bg-white min-h-screen w-full flex flex-col">
             
             {/* Full-width Hero Card Container */}
@@ -79,7 +78,7 @@ function GuestHOA() {
                     backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${guestHOAbg})` 
                 }}
             >
-                {/* Content Box with left margin spacing */}
+              
                 <div className="ml-12 md:ml-24 max-w-2xl text-left z-10">
                     <span className="text-white text-lg md:text-xl font-medium tracking-wide block mb-1">
                         Welcome to the

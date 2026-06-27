@@ -10,7 +10,7 @@ import ResidentNavbar from './components/ResidentNavbar';
 /*GUEST PAGE*/
 import GuestHomePage from './pages/Guest/GuestHomePage';
 import AboutUs from './pages/Guest/AboutUs';
-import OfficesHOA from './pages/Guest/offices/officesHoa';
+
 function App() {
   return (
     <div className="min-h-screen flex flex-col">

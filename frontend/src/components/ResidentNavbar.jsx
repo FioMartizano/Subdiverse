@@ -26,7 +26,7 @@ export default function ResidentNavbar() {
         <div className="flex items-center gap-10">
 
           <Link
-            to="/resident"
+            to="/resident-home"
             className="text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
           >
             Home
@@ -162,10 +162,8 @@ export default function ResidentNavbar() {
 
                     </div>
                   )}
-
                 </div>
-
-                <Link
+                                <Link
                   to="/vehicleSticker"
                   onClick={() => setOpenServices(false)}
                   className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
@@ -192,7 +190,8 @@ export default function ResidentNavbar() {
               </div>
             )}
           </div>
-                    <Link
+
+          <Link
             to="/businesshub"
             className="text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
           >
@@ -235,7 +234,6 @@ export default function ResidentNavbar() {
               </div>
             )}
           </div>
-
         </div>
       </div>
     </nav>

@@ -10,7 +10,7 @@ function Clubhouse() {
 
       <div className="pt-20">
 
-        <section className="relative h-[85vh] bg-cover bg-center flex items-center" style={{ backgroundImage: `url(${clubhouseHome})` }}>
+        <section className="relative h-[60vh] bg-cover bg-center flex items-center" style={{ backgroundImage: `url(${clubhouseHome})` }}>
 
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent"></div>
           <div className="ml-10 lg:ml-24 max-w-3xl relative z-10">

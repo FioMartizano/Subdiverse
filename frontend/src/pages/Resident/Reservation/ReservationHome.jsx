@@ -36,7 +36,7 @@ function ReservationHome() {
 
       {/* HERO SECTION */}
       <div className="pt-20">
-        <section className="h-[85vh] bg-cover bg-center flex items-center relative" style={{ backgroundImage: `url(${reservationImage})` }}>
+        <section className="h-[60vh] bg-cover bg-center flex items-center relative" style={{ backgroundImage: `url(${reservationImage})` }}>
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent"></div>
 
           <div className="ml-20 -translate-y-6 max-w-3xl relative z-10">

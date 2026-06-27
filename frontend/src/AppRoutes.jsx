@@ -8,7 +8,7 @@ import AboutUs from "./pages/Guest/AboutUs";
 import ReservationHome from "./pages/Resident/Reservation/ReservationHome";
 import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
-
+import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
 /*
 import Contact from "./pages/Guest/Contact";
 import Login from "./pages/Guest/Login";
@@ -62,15 +62,15 @@ function AppRoutes() {
 
       {/* GUEST ROUTING */}
 
-      <Route path="/" element={<GuestHomePage />} />
+        <Route path="/" element={<GuestHomePage />} />
 
-      <Route path="/about" element={<AboutUs />} />
+        <Route path="/about" element={<AboutUs />} />
 
-      {/*try*/}
-      <Route path="/reservation" element={<ReservationHome />} />
-      <Route path="/reservation/court" element={<BasketballCourt />} />
-      <Route path="/reservation/clubhouse" element={<Clubhouse />} />
-
+        {/*try*/}
+        <Route path="/reservation" element={<ReservationHome />} />
+        <Route path="/reservation/court" element={<BasketballCourt />} />
+        <Route path="/reservation/clubhouse" element={<Clubhouse />} />
+        <Route path="/reservation/pool" element={<SwimmingPool />} />
 
       {/*
       <Route path="/guest_hoa" element={<GuestHOA />} />

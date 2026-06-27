@@ -8,7 +8,16 @@ import AboutUs from "./pages/Guest/AboutUs";
 import ReservationHome from "./pages/Resident/Reservation/ReservationHome";
 import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
+
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
+
+
+import GuestHOA from "./pages/Guest/Offices/GuestHOA";
+import GuestGrievance from "./pages/Guest/Offices/GuestGrievance";
+import GuestElderly from "./pages/Guest/Offices/GuestElderly";
+import GuestHealthcare from "./pages/Guest/Offices/GuestHealthcare";
+import GuestParish from "./pages/Guest/Offices/GuestParish";
+
 /*
 import Contact from "./pages/Guest/Contact";
 import Login from "./pages/Guest/Login";
@@ -19,7 +28,6 @@ import SignUp from "./pages/Guest/SignUp";
 /*GUEST/OFFICES*/
 /*
 import GuestHOA from "./pages/Guest/Offices/GuestHOA";
-import GuestGrievance from "./pages/Guest/Offices/GuestGrievance";
 import GuestElderly from "./pages/Guest/Offices/GuestElderly";
 import GuestHealthcare from "./pages/Guest/Offices/GuestHealthcare";
 import GuestParishChurch from "./pages/Guest/Offices/GuestParishChurch";
@@ -66,11 +74,19 @@ function AppRoutes() {
 
         <Route path="/about" element={<AboutUs />} />
 
+
         {/*try*/}
         <Route path="/reservation" element={<ReservationHome />} />
         <Route path="/reservation/court" element={<BasketballCourt />} />
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
         <Route path="/reservation/pool" element={<SwimmingPool />} />
+
+      <Route path="/guest_hoa" element={<GuestHOA />} />
+      <Route path="/guest_grievance" element={<GuestGrievance />} />
+      <Route path="/guest_elderly" element={<GuestElderly />} />
+      <Route path="/guest_healthcare" element={<GuestHealthcare />} />
+      <Route path="/guest_parishchurch" element={<GuestParish />} />
+
 
       {/*
       <Route path="/guest_hoa" element={<GuestHOA />} />

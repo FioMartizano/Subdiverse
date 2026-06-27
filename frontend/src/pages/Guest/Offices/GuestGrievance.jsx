@@ -21,7 +21,7 @@ const officersData = [
 ];
 
 
-function GuestHOA() {
+function GuestGrievance() {
 
    
     const [hoveredTile, setHoveredTile] = useState(null);
@@ -85,7 +85,7 @@ function GuestHOA() {
                     </span>
                     
                     <h1 className="text-white text-4xl md:text-6xl font-bold leading-tight">
-                        Homeowner's <br /> Association Office
+                        WWHS <br /> <span className="whitespace-nowrap">Grievance Committee</span>
                     </h1>
 
                     <p className="text-gray-200 text-sm md:text-base mt-4 max-w-xl leading-relaxed">
@@ -219,4 +219,4 @@ function GuestHOA() {
     );
 }
 
-export default GuestHOA;
+export default GuestGrievance;

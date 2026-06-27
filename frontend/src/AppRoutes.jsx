@@ -10,6 +10,10 @@ import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
 
 import GuestHOA from "./pages/Guest/Offices/GuestHOA";
+import GuestGrievance from "./pages/Guest/Offices/GuestGrievance";
+import GuestElderly from "./pages/Guest/Offices/GuestElderly";
+import GuestHealthcare from "./pages/Guest/Offices/GuestHealthcare";
+import GuestParish from "./pages/Guest/Offices/GuestParish";
 
 /*
 import Contact from "./pages/Guest/Contact";
@@ -21,7 +25,6 @@ import SignUp from "./pages/Guest/SignUp";
 /*GUEST/OFFICES*/
 /*
 import GuestHOA from "./pages/Guest/Offices/GuestHOA";
-import GuestGrievance from "./pages/Guest/Offices/GuestGrievance";
 import GuestElderly from "./pages/Guest/Offices/GuestElderly";
 import GuestHealthcare from "./pages/Guest/Offices/GuestHealthcare";
 import GuestParishChurch from "./pages/Guest/Offices/GuestParishChurch";
@@ -74,6 +77,10 @@ function AppRoutes() {
       <Route path="/reservation/clubhouse" element={<Clubhouse />} />
 
       <Route path="/guest_hoa" element={<GuestHOA />} />
+      <Route path="/guest_grievance" element={<GuestGrievance />} />
+      <Route path="/guest_elderly" element={<GuestElderly />} />
+      <Route path="/guest_healthcare" element={<GuestHealthcare />} />
+      <Route path="/guest_parishchurch" element={<GuestParish />} />
 
 
       {/*

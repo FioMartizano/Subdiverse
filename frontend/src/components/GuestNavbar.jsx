@@ -82,7 +82,7 @@ export default function GuestNavbar() {
                 </Link>
 
                 <Link
-                  to="/guest_parishChurch"
+                  to="/guest_parishchurch"
                   onClick={() => setOpenOffices(false)}
                   className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
                 >

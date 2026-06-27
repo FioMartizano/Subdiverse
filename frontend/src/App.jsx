@@ -1,27 +1,38 @@
+import { useLocation } from "react-router-dom";
+import AppRoutes from "./AppRoutes";
 
-import { Routes, Route } from 'react-router-dom';  
+/* COMPONENTS */
+import Footer from "./components/Footer";
+import GuestNavbar from "./components/GuestNavbar";
+import ResidentNavbar from "./components/ResidentNavbar";
 
-/*COMPONENTS */
-import Footer from './components/Footer';
-import GuestNavbar from './components/GuestNavbar';
-import ResidentNavbar from './components/ResidentNavbar';
-
-
-/*GUEST PAGE*/
-import GuestHomePage from './pages/Guest/GuestHomePage';
-import AboutUs from './pages/Guest/AboutUs';
-import OfficesHOA from './pages/Guest/offices/officesHoa';
 function App() {
+  const location = useLocation();
+
+  const residentPages = [
+    "/resident-home",
+    "/hoa",
+    "/grievance",
+    "/elderly",
+    "/healthcare",
+    "/parishchurch",
+    "/community",
+    "/businesshub",
+    "/reservation",
+    "/vehicleSticker",
+    "/parkingReservation",
+    "/monthlyDues",
+  ];
+
+  const isResident =
+    residentPages.some((path) => location.pathname.startsWith(path));
+
   return (
     <div className="min-h-screen flex flex-col">
-      <GuestNavbar />
-
+      {isResident ? <ResidentNavbar /> : <GuestNavbar />}
 
       <main className="flex-grow">
-        <Routes>
-          <Route path="/" element={<GuestHomePage />} />
-          <Route path="/about" element={<AboutUs />} /> 
-        </Routes>
+        <AppRoutes />
       </main>
 
       <Footer />

@@ -93,7 +93,7 @@ export default function GuestNavbar() {
           </div>
 
           <Link
-            to="/Contact"
+            to="/contact"
             className="text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
           >
             Contact Us

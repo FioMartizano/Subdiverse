@@ -8,7 +8,6 @@ import AboutUs from "./pages/Guest/AboutUs";
 import ReservationHome from "./pages/Resident/Reservation/ReservationHome";
 import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
-
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
 
 

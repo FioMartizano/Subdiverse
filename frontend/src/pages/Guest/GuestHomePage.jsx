@@ -47,6 +47,15 @@ function GuestHomePage() {
                     </div>
 
             </section>
+
+            {/*About Section*/}
+            <section
+                className="bg-primary min-h-screen flex flex-items-center"
+                style={{
+                    backgroundColor: "var(--color-primary)"
+                }}>
+
+            </section>
         </>
     );
 }

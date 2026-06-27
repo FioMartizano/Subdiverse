@@ -27,7 +27,7 @@ function GuestHomePage() {
             {/*Logo Carousel Section*/}
             <section 
                 className="bg-white py-15">
-                    <div className="flex flex-row items-center justify-center gap-35 mt-8">
+                    <div className="flex flex-row items-center justify-center gap-16 mt-8">
 
                         <h1 className="text-6xl font-bold text-gray-800">Logo</h1>
 

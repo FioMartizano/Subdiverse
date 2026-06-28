@@ -2,6 +2,12 @@ import homeImage from "../../assets/home.jpg";
 import wwhsLogo from "../../assets/wwhs-logo.png";
 import filinvestLogo from "../../assets/filinvest-logo.png";
 import abHome from "../../assets/aboutUsHome.jpg";
+import hoaGuest from "../../assets/hoaGuest.jpg";
+import seniorGuest from "../../assets/seniorGuest.jpg";
+import healthGuest from "../../assets/healthCareGuest.jpg";
+import churchGuest from "../../assets/churchGuest.jpg";
+import AnimatedShape from "../../components/AnimatedShape";
+
 
 const logos = [wwhsLogo, filinvestLogo];
 const repeated = Array(5).fill(logos).flat();
@@ -89,9 +95,73 @@ function GuestHomePage() {
                         </p>
                     </div>
                 </div>
-                
-
+            
             </section>
+
+            {/*Offices Section*/}
+
+            <div className="relative bg-white overflow-hidden">
+                <AnimatedShape
+                    className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -right-[104px] md:-right-[143px] lg:-right-[192px] top-125"
+                    range={[0, -30]}
+                />
+
+               <section className="relative z-10 min-h-screen py-20">
+                    {/* Office Section */}
+                    <div className="mx-auto max-w-4xl px-6 text-center mt-20">
+                        <h1 className="text-primary text-4xl md:text-6xl lg:text-7xl font-bold">
+                            Windward Hills Offices
+                        </h1>
+
+                        <p className="text-secondary mt-6 text-lg md:text-xl lg:text-2xl leading-relaxed">
+                            - Windward Hills Subdivision, Burol 1 -
+                        </p>
+                    </div>
+
+                    {/* Office Cards */}
+                    <div className="mx-auto mt-16 max-w-7xl px-6">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                            <div className="overflow-hidden rounded-2xl shadow-lg">
+                                <img
+                                    src={hoaGuest}
+                                    alt="HOA Office"
+                                    className="aspect-[2/3] w-full object-cover"
+                                />
+                            </div>
+
+                            <div className="overflow-hidden rounded-2xl shadow-lg">
+                                <img
+                                    src={seniorGuest}
+                                    alt="Senior Office"
+                                    className="aspect-[2/3] w-full object-cover"
+                                />
+                            </div>
+
+                            <div className="overflow-hidden rounded-2xl shadow-lg">
+                                <img
+                                    src={healthGuest}
+                                    alt="Health Office"
+                                    className="aspect-[2/3] w-full object-cover"
+                                />
+                            </div>
+
+                            <div className="overflow-hidden rounded-2xl shadow-lg">
+                                <img
+                                    src={churchGuest}
+                                    alt="Church Office"
+                                    className="aspect-[2/3] w-full object-cover"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="relative z-10 py-20">
+                    {/* contact content */}
+                </section>
+            </div>
+
+
         </>
     );
 }

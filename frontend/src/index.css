@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-:root {
+@theme {
   --color-primary: #347433;
   --color-secondary: #F98300;
   --color-white: #FFFFFF;
@@ -13,6 +13,7 @@
   --radius-buttons: 0.5rem;
   --radius-cards: 1rem;
 }
+
 
 body{
   font-family: var(--font-body);

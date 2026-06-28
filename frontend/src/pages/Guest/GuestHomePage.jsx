@@ -1,6 +1,7 @@
 import homeImage from "../../assets/home.jpg";
 import wwhsLogo from "../../assets/wwhs-logo.png";
 import filinvestLogo from "../../assets/filinvest-logo.png";
+import abHome from "../../assets/aboutUsHome.jpg";
 
 const logos = [wwhsLogo, filinvestLogo];
 const repeated = Array(5).fill(logos).flat();
@@ -60,10 +61,35 @@ function GuestHomePage() {
 
             {/*About Section*/}
             <section
-                className="bg-primary min-h-screen flex flex-items-center"
-                style={{
-                    backgroundColor: "var(--color-primary)"
-                }}>
+                className="min-h-screen flex items-center bg-primary">
+
+                <div className="max-w-6xl mx-auto px-6 lg:px-12 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+
+                    <div className="w-full lg:w-3/5">
+                        <img src={abHome} alt="About Us" className="w-full h-64 md:h-80 lg:h-[680px] object-cover rounded-2xl shadow-lg" />
+                    </div>
+
+                    
+                    <div className="w-full lg:w-1/2 text-white">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="rounded-full bg-secondary px-6 py-2 shadow-lg">
+
+                            </div>
+                        <p className="text-white text-lg md:text-xl lg:text-2xl font-semibold mb-2 ">
+                            Windward Hills Subdivision
+                        </p>
+                        </div>
+
+                        <h2 className="text-secondary text-4xl md:text-5xl lg:text-8xl font-bold drop-shadow-lg">
+                                About Us
+                            </h2>
+
+                        <p className="mt-6 text-2xl leading-relaxed">
+                            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                        </p>
+                    </div>
+                </div>
+                
 
             </section>
         </>

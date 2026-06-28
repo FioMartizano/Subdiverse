@@ -1,4 +1,10 @@
 import homeImage from "../../assets/home.jpg";
+import wwhsLogo from "../../assets/wwhs-logo.png";
+import filinvestLogo from "../../assets/filinvest-logo.png";
+
+const logos = [wwhsLogo, filinvestLogo];
+const repeated = Array(5).fill(logos).flat();
+
 function GuestHomePage() {
     return (
         <>
@@ -26,24 +32,28 @@ function GuestHomePage() {
 
             {/*Logo Carousel Section*/}
             <section 
-                className="bg-white py-15">
-                    <div className="flex flex-row items-center justify-center gap-16 mt-8">
+                className="bg-white py-10 md:py-15 overflow-hidden">
+                    <style>{`
+                        @keyframes logo-scroll {
+                        from {transform: translateX(0);}
+                        to {transform: translateX(-50%);}
+                        }
+                        .logo-track {
+                            animation: logo-scroll 20s linear infinite;
+                        }
+                        .logo-track:hover {
+                            animation-play-state: paused;
+                        }
+                        @media (prefers-reduced-motion: reduce) {
+                        .logo-track{animation: none;}
+                        }
+                        `}</style>
 
-                        <h1 className="text-6xl font-bold text-gray-800">Logo</h1>
 
-                        <h1 className="text-6xl font-bold text-gray-800">Logo</h1>
-
-                        <h1 className="text-6xl font-bold text-gray-800">Logo</h1>
-
-                        <h1 className="text-6xl font-bold text-gray-800">Logo</h1>
-
-                        <h1 className="text-6xl font-bold text-gray-800">Logo</h1>
-
-                        <h1 className="text-6xl font-bold text-gray-800">Logo</h1>
-
-                        <h1 className="text-6xl font-bold text-gray-800">Logo</h1>
-
-
+                    <div className="logo-track flex items-center gap-8 md:gap-12 lg:gap-16">
+                        {[...repeated, ...repeated].map((logo, i) => (
+                            <img key={i} src={logo} alt={`Logo ${i}`} className="h-10 md:h-16 lg:h-45 w-auto flex-none" />
+                        ))}
                     </div>
 
             </section>

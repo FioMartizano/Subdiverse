@@ -5,6 +5,9 @@ import GuestHomePage from "./pages/Guest/GuestHomePage";
 import AboutUs from "./pages/Guest/AboutUs";
 
 /*try*/
+
+import ResidentHomePage from "./pages/Resident/ResidentHomePage";
+
 import ReservationHome from "./pages/Resident/Reservation/ReservationHome";
 import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
@@ -77,6 +80,8 @@ function AppRoutes() {
 
 
         {/*try*/}
+        <Route path="/resident-home" element={<ResidentHomePage />} />
+        
         <Route path="/reservation" element={<ReservationHome />} />
         <Route path="/reservation/court" element={<BasketballCourt />} />
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />

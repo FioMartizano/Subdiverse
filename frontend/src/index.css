@@ -1,44 +1,163 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ===========================
+   SUBDIVERSE THEME
+=========================== */
 
 @theme {
   --color-primary: #347433;
   --color-secondary: #F98300;
   --color-white: #FFFFFF;
-  --color-black: #1a1a1a;
+  --color-black: #1A1A1A;
 
-  --font-heading: 'Poppins', sans-serif;
-  --font-body: 'Poppins', sans-serif;
+  --font-heading: "Poppins", sans-serif;
+  --font-body: "Poppins", sans-serif;
 
   --radius-buttons: 0.5rem;
   --radius-cards: 1rem;
 }
 
+/* ===========================
+   SHADCN / MAPCN VARIABLES
+=========================== */
 
-body{
+@theme inline {
+  --font-sans: "Poppins", sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: calc(var(--radius) * 0.9);
+  --radius-lg: var(--radius);
+}
+
+/* ===========================
+   LIGHT THEME
+=========================== */
+
+:root {
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+
+  --primary: #347433;
+  --primary-foreground: #ffffff;
+
+  --secondary: #F98300;
+  --secondary-foreground: #ffffff;
+
+  --muted: #f5f5f5;
+  --muted-foreground: #6b7280;
+
+  --accent: #edf7ed;
+  --accent-foreground: #347433;
+
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #347433;
+
+  --radius: 0.75rem;
+}
+
+/* ===========================
+   GLOBAL
+=========================== */
+
+html {
+  font-family: "Poppins", sans-serif;
+  scroll-behavior: smooth;
+}
+
+body {
   font-family: var(--font-body);
   background-color: var(--color-white);
+  color: var(--color-black);
 }
+
+/* ===========================
+   BUTTONS
+=========================== */
 
 .btn-primary {
   background-color: var(--color-primary);
-  color: var(--color-white);
+  color: white;
   border-radius: var(--radius-buttons);
   padding: 1rem 3rem;
   font-weight: 600;
   font-size: 1.15rem;
+  transition: 0.3s ease;
 }
 
+.btn-primary:hover {
+  filter: brightness(0.95);
+}
 
 .btn-secondary {
   background-color: var(--color-secondary);
-  color: var(--color-white);
+  color: white;
   border-radius: var(--radius-buttons);
   padding: 1rem 3rem;
   font-weight: 600;
   font-size: 1.15rem;
+  transition: 0.3s ease;
 }
-/*NAVBAR hover*/
+
+.btn-secondary:hover {
+  background-color: #df7100;
+}
+
+.btn-reservation {
+  background-color: var(--color-secondary);
+  color: white;
+  border-radius: var(--radius-buttons);
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+  transition: 0.3s ease;
+}
+
+.btn-reservation:hover {
+  background-color: #df7100;
+  transform: translateY(-2px);
+}
+
+/* ===========================
+   HOVERS
+=========================== */
+
 .hover-secondary-text:hover {
   color: var(--color-secondary);
 }
@@ -47,20 +166,20 @@ body{
   background-color: var(--color-secondary);
 }
 
-/*RESIDENT*/
+/* ===========================
+   SHADCN / MAPCN
+=========================== */
 
-/* RESERVATION BUTTON */
-.btn-reservation {
-  background-color: var(--color-secondary);
-  color: var(--color-white);
-  border-radius: var(--radius-buttons);
-  padding: 0.75rem 2rem;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: 0.3s ease;
-}
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
 
-.btn-reservation:hover {
-  background-color: #df7100;
-  transform: translateY(-2px);
+  .maplibregl-popup-content {
+    @apply bg-transparent shadow-none p-0 rounded-none;
+  }
+
+  .maplibregl-popup-tip {
+    display: none;
+  }
 }

@@ -102,8 +102,12 @@ function GuestHomePage() {
 
             <div className="relative bg-white overflow-hidden">
                 <AnimatedShape
-                    className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -right-[104px] md:-right-[143px] lg:-right-[192px] top-125"
-                    range={[0, -30]}
+                    className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -right-[104px] md:-right-[143px] lg:-right-[192px] top-150"
+                    range={[0, -400]}
+                />
+                <AnimatedShape
+                    className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -left-[104px] md:-left-[143px] lg:-left-[192px] top-280 !bg-primary"
+                    range={[0, -400]}
                 />
 
                <section className="relative z-10 min-h-screen py-20">
@@ -158,6 +162,30 @@ function GuestHomePage() {
 
                 <section className="relative z-10 py-20">
                     {/* contact content */}
+                    <div className="max-w-4xl pl-30">
+                        <p className="text-2xl text-primary py-3">Contact Us</p>
+                        <h1 className="text-secondary text-2xl md:text-4xl lg:text-7xl font-bold">
+                            Get in Touch
+                        </h1>
+                    </div>
+
+                    <div className="max-w-4xl pl-60 py-15 mt-6 space-y-2">
+                        <h2 className="text-primary text-base md:text-lg lg:text-xl font-semibold">
+                            Contact Number
+                        </h2>
+                        <p className="text-secondary">Email: hoa@example.com</p>
+                        <h2 className="text-primary text-base md:text-lg lg:text-xl font-semibold">
+                            Email Address
+                        </h2>
+                        <p className="text-secondary">Phone: (123) 456-7890</p>
+
+                        <h2 className="text-primary text-base md:text-lg lg:text-xl font-semibold">
+                            Address
+                        </h2>
+                        <p className="text-secondary">Address: 123 Windward Hills, Burol 1, City, Country</p>
+                    </div>
+
+                    
                 </section>
             </div>
 

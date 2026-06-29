@@ -17,6 +17,8 @@ import GuestElderly from "./pages/Guest/Offices/GuestElderly";
 import GuestHealthcare from "./pages/Guest/Offices/GuestHealthcare";
 import GuestParish from "./pages/Guest/Offices/GuestParish";
 
+import BusinessHub from "./pages/Resident/BusinessHub";
+
 /*
 import Contact from "./pages/Guest/Contact";
 import Login from "./pages/Guest/Login";
@@ -37,7 +39,7 @@ import GuestParishChurch from "./pages/Guest/Offices/GuestParishChurch";
 /*
 import ResidentHomePage from "./pages/Resident/ResidentHomePage";
 import Community from "./pages/Resident/Community";
-import BusinessHub from "./pages/Resident/BusinessHub";
+
 import VehicleSticker from "./pages/Resident/VehicleSticker";
 import ParkingReservation from "./pages/Resident/ParkingReservation";
 import MonthlyDues from "./pages/Resident/MonthlyDues";
@@ -85,6 +87,10 @@ function AppRoutes() {
       <Route path="/guest_elderly" element={<GuestElderly />} />
       <Route path="/guest_healthcare" element={<GuestHealthcare />} />
       <Route path="/guest_parishchurch" element={<GuestParish />} />
+
+      <Route path="/businesshub" element={<BusinessHub />} />
+
+      
 
 
       {/*

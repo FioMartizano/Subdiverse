@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 /*GUEST PAGES*/
 import GuestHomePage from "./pages/Guest/GuestHomePage";
 import AboutUs from "./pages/Guest/AboutUs";
+import Contact from "./pages/Guest/Contact";
 
 /*try*/
 
@@ -77,6 +78,8 @@ function AppRoutes() {
         <Route path="/" element={<GuestHomePage />} />
 
         <Route path="/about" element={<AboutUs />} />
+
+        <Route path="/contact" element={<Contact />} />
 
 
         {/*try*/}

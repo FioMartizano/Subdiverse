@@ -123,13 +123,30 @@ function ResidentHomePage(){
                     <div className="-mt-2 flex justify-center">
                         <ResidentCalendar />
                     </div>
-                        
-                            
-                       
-
-                    
+   
                 </div>
             </section>
+
+            {/*Divider*/}
+            <div className="w-297 h-3 bg-primary rounded-full ml-15 mr-3 mt-2"></div>
+
+            {/*Latest News Section*/}
+            <section className="min-h-[60vh] py-15">
+                <div className="px-20 grid grid-cols-1 lg:grid-cols-3 gap-0">
+
+                <div className="lg:col-span-2 flex items-start mb-10">
+                        <div className="w-2.5 h-13 bg-secondary rounded-full mr-3 mt-2"></div>
+                        <div>
+                            <h2 className="text-secondary text-4xl font-bold">Latest News</h2>
+                            <p className="text-primary font-bold">Stay Updated</p>
+                    </div>
+                    {/*Cards */}
+                </div>
+                </div>
+
+            </section>
+
+
         </>
     )
 }

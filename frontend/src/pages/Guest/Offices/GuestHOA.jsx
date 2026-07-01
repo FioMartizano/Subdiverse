@@ -1,9 +1,9 @@
 import React from "react";
 import { motion } from "framer-motion";
-import hoaGuest from "../../../assets/hoaGuest.jpg"; // Your HOA asset
+import hoaGuest from "../../../assets/hoaGuest.jpg"; 
 
 function GuestHOA() {
-  // Ultra-premium ease-out curve for a fluid, tactile presentation fluid glide
+
   const smoothCurve = { duration: 1.2, ease: [0.25, 1, 0.5, 1] };
 
   return (
@@ -21,7 +21,7 @@ function GuestHOA() {
         {/* LEFT COLUMN: Typography Content & Call to Actions */}
         <div className="lg:col-span-6 space-y-6 order-2 lg:order-1">
           
-          {/* Badge indicator */}S
+          {/* Badge indicator */}
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -59,7 +59,17 @@ function GuestHOA() {
             to preserving community harmony and building a safe, beautiful environment to thrive in.
           </motion.p>
 
-          
+          {/* Learn More Button - Now positioned below the description */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ ...smoothCurve, delay: 0.3 }}
+          >
+            <button className="px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-medium text-sm rounded-full shadow-lg shadow-amber-500/20 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/30">
+              Learn More
+            </button>
+          </motion.div>
 
         </div>
 
@@ -89,13 +99,14 @@ function GuestHOA() {
               className="w-full h-full object-cover object-center scale-105 hover:scale-100 transition-transform duration-700 ease-out"
             />
           </motion.div>
-          
+
           {/* Floating Minimalist Detail Element from layout */}
           <div className="absolute bottom-8 left-8 w-6 h-12 border-2 border-slate-300 rounded-full hidden md:flex items-center justify-center backdrop-blur-sm bg-white/10">
             <div className="w-1.5 h-3 bg-amber-500 rounded-full animate-bounce" />
           </div>
 
         </div>
+
       </div>
     </section>
   );

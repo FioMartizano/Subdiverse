@@ -14,12 +14,8 @@ import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
 
-import OfficesAll from  "./pages/Guest/Offices/OfficesAll";
-import GuestHOA from "./pages/Guest/Offices/GuestHOA";
-import GuestGrievance from "./pages/Guest/Offices/GuestGrievance";
-import GuestElderly from "./pages/Guest/Offices/GuestElderly";
-import GuestHealthcare from "./pages/Guest/Offices/GuestHealthcare";
-import GuestParish from "./pages/Guest/Offices/GuestParish";
+import OfficesAll from "./pages/Guest/Offices/OfficesAll";
+
 
 import BusinessHub from "./pages/Resident/BusinessHub";
 
@@ -87,6 +83,9 @@ function AppRoutes() {
 
         <Route path="/contact" element={<Contact />} />
 
+        <Route path="/guest_offices" element={<OfficesAll />} />
+
+
 
         {/*try*/}
         <Route path="/resident-home" element={<ResidentHomePage />} />
@@ -96,13 +95,6 @@ function AppRoutes() {
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
         <Route path="/reservation/pool" element={<SwimmingPool />} />
 
-      <Route path="/guest_hoa" element={<GuestHOA />} />
-      <Route path="/guest_grievance" element={<GuestGrievance />} />
-      <Route path="/guest_elderly" element={<GuestElderly />} />
-      <Route path="/guest_healthcare" element={<GuestHealthcare />} />
-      <Route path="/guest_parishchurch" element={<GuestParish />} />
-       <Route path="/guest_offices" element={<OfficesAll />} />
-      
 
       <Route path="/businesshub" element={<BusinessHub />} />
 

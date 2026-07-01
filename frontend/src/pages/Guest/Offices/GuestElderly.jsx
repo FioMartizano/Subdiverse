@@ -1,49 +1,111 @@
 import React from "react";
 import { motion } from "framer-motion";
-import factoryImage from "../../../assets/guestHOA_bg.jpg"; // Update path
+import seniorGuest from "../../../assets/guestHOA_bg.jpg"; 
 
 function GuestElderly() {
+
+  const smoothCurve = { duration: 1.2, ease: [0.25, 1, 0.5, 1] };
+
   return (
-    <section
-      id="progressive-architecture"
-      className="relative w-full h-screen overflow-hidden"
-    >
-      {/* Full-screen background image: ultra-smooth ease in from the right */}
-      <motion.img
-        src={factoryImage}
-        alt="Progressive Architecture"
-        initial={{ opacity: 0, scale: 1.1, x: 60 }}
-        whileInView={{ opacity: 1, scale: 1, x: 0 }}
-        transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1] }}
-        viewport={{ once: true, amount: 0.3 }}
-        className="absolute inset-0 w-full h-full object-cover"
-      />
+    <section className="relative w-full min-h-screen bg-white overflow-hidden py-20 px-6 md:px-12 lg:px-24 flex items-center">
+      
+      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+        <span className="absolute -bottom-10 right-1/4 text-[14rem] font-bold text-slate-100/70 font-heading whitespace-nowrap tracking-tighter select-none">
+          SENIOR
+        </span>
+      </div>
 
-      {/* Optional dark gradient for legibility behind the text panel */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center relative z-10">
+        
+        <div className="lg:col-span-6 space-y-6 order-2 lg:order-1">
+          
+          {/* Badge indicator */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-indigo-600"
+          >
+            <span>04</span>
+            <span className="h-px w-12 bg-indigo-500/50 inline-block" />
+            <span>Support & Wellness</span>
+          </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 150 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{
-          opacity: { duration: 0.8, ease: "easeOut" },
-          y: { duration: 1.1, ease: [0.25, 1, 0.5, 1] },
-        }}
-        viewport={{ once: true, amount: 0.3 }}
-        className="absolute bottom-0 right-0 w-[100%] sm:w-[80%] md:w-[45%] lg:w-[38%] rounded-tl-[3.5rem] md:rounded-tl-[5rem] overflow-hidden shadow-2xl"
-      >
-        <div className="bg-white/95 backdrop-blur-sm px-8 py-12 md:px-12 md:py-16 space-y-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground font-heading leading-tight">
-            Guest Elderly Services
-          </h2>
-          <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-            A former factory is being transformed into a compact urban
-            neighborhood with unique conditions for working and living.
-          </p>
+          {/* Main Headline */}
+          <motion.h2 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ ...smoothCurve, delay: 0.1 }}
+            className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 font-heading leading-[1.1]"
+          >
+            Senior Citizen <br />
+            <span className="text-indigo-600">Services.</span>
+          </motion.h2>
 
-          <button className="btn-primary">Learn More</button>
+          {/* Body Narrative */}
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ ...smoothCurve, delay: 0.2 }}
+            className="text-slate-600 text-base md:text-lg leading-relaxed max-w-xl"
+          >
+            Providing dedicated support, accessible social activities, and localized administrative 
+            care right here in Windward Hills. We are deeply committed to ensuring our elder 
+            residents enjoy an active, fulfilling, and connected community environment.
+          </motion.p>
+
+          {/* Learn More Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ ...smoothCurve, delay: 0.3 }}
+          >
+            <button className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-full shadow-lg shadow-indigo-600/20 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-indigo-600/30">
+              View Programs
+            </button>
+          </motion.div>
+
         </div>
-      </motion.div>
+
+        {/* RIGHT COLUMN: Large Sweeping Asymmetric Curved Image Panel */}
+        <div className="lg:col-span-6 relative flex justify-center lg:justify-end order-1 lg:order-2 h-[450px] md:h-[600px] w-full">
+          
+          {/* Indigo Tracking Accent Trim Frame */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, x: 20 }}
+            whileInView={{ opacity: 1, scale: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ ...smoothCurve, delay: 0.15 }}
+            className="absolute inset-0 right-0 top-0 w-full h-full border-l-2 border-b-2 border-indigo-500/50 rounded-bl-[10rem] md:rounded-bl-[16rem] pointer-events-none translate-x-[-12px] translate-y-[12px]"
+          />
+
+          {/* Main Visual Component container */}
+          <motion.div 
+            initial={{ opacity: 0, x: 60, scale: 1.03 }}
+            whileInView={{ opacity: 1, x: 0, scale: 1 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={smoothCurve}
+            className="relative w-full h-full overflow-hidden rounded-bl-[10rem] md:rounded-bl-[16rem] shadow-2xl bg-slate-100"
+          >
+            <img 
+              src={seniorGuest}
+              alt="Windward Hills Senior Services Hub" 
+              className="w-full h-full object-cover object-center scale-105 hover:scale-100 transition-transform duration-700 ease-out"
+            />
+          </motion.div>
+
+          {/* Floating Minimalist Detail Element */}
+          <div className="absolute bottom-8 left-8 w-6 h-12 border-2 border-slate-300 rounded-full hidden md:flex items-center justify-center backdrop-blur-sm bg-white/10">
+            <div className="w-1.5 h-3 bg-indigo-600 rounded-full animate-bounce" />
+          </div>
+
+        </div>
+
+      </div>
     </section>
   );
 }

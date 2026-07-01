@@ -31,73 +31,73 @@ export default function GuestNavbar() {
             About Us
           </Link>
 
-          {/*DROPDOWN LIST*/}
-          <div className="relative">
-            <button
-              onClick={() => setOpenOffices(!openOffices)}
-              className="flex items-center gap-2 text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
-            >
-              Offices
-              <span
-                className={`transition-transform duration-300 ${
-                  openOffices ? "rotate-180" : ""
-                }`}
-              >
-                ▼
-              </span>
-            </button>
+    {/*DROPDOWN LIST*/}
+    <div className="relative">
+      <button
+        onClick={() => setOpenOffices(!openOffices)}
+        className="flex items-center gap-2 text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
+      >
+        Offices
+        <span
+          className={`transition-transform duration-300 ${
+            openOffices ? "rotate-180" : ""
+          }`}
+        >
+          ▼
+        </span>
+      </button>
 
-            {openOffices && (
-              <div className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
-                <Link
-                  to="/guest_hoa"
-                  onClick={() => setOpenOffices(false)}
-                  className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
-                >
-                  HOA
-                </Link>
-
-                <Link
-                  to="/guest_grievance"
-                  onClick={() => setOpenOffices(false)}
-                  className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
-                >
-                  Grievance Committee
-                </Link>
-
-                <Link
-                  to="/guest_elderly"
-                  onClick={() => setOpenOffices(false)}
-                  className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
-                >
-                  Elderly
-                </Link>
-
-                <Link
-                  to="/guest_healthcare"
-                  onClick={() => setOpenOffices(false)}
-                  className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
-                >
-                  Healthcare
-                </Link>
-
-                <Link
-                  to="/guest_parishchurch"
-                  onClick={() => setOpenOffices(false)}
-                  className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
-                >
-                  Parish Church
-                </Link>
-              </div>
-            )}
-          </div>
+      {openOffices && (
+        <div className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+          <Link
+            to="/guest_offices?section=hoa"
+            onClick={() => setOpenOffices(false)}
+            className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
+          >
+            HOA
+          </Link>
 
           <Link
-            to="/contact"
-            className="text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
+            to="/guest_offices?section=grievance"
+            onClick={() => setOpenOffices(false)}
+            className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
           >
-            Contact Us
+            Grievance Committee
           </Link>
+
+          <Link
+            to="/guest_offices?section=elderly"
+            onClick={() => setOpenOffices(false)}
+            className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
+          >
+            Elderly
+          </Link>
+
+          <Link
+            to="/guest_offices?section=healthcare"
+            onClick={() => setOpenOffices(false)}
+            className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
+          >
+            Healthcare
+          </Link>
+
+          <Link
+            to="/guest_offices?section=parish"
+            onClick={() => setOpenOffices(false)}
+            className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
+          >
+            Parish Church
+          </Link>
+        </div>
+      )}
+    </div>
+
+    <Link
+      to="/contact"
+      className="text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
+    >
+      Contact Us
+    </Link>
 
           {/*ICON*/}
           <div className="relative">

@@ -1,36 +1,47 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import OffiesGP from "../../../assets/officesGP.jpg";
-import hoaGuest from "../../../assets/hoaGuest.jpg";
-import seniorGuest from "../../../assets/seniorGuest.jpg";
-import healthGuest from "../../../assets/healthCareGuest.jpg";
-import churchGuest from "../../../assets/churchGuest.jpg";
 import GuestElderly from "./GuestElderly"; 
 import GuestHealthcare from "./GuestHealthcare"; 
+import GuestGrievance from "./GuestGrievance"; 
 import GuestHOA from "./GuestHOA"; 
+import GuestParish from "./GuestParish";
 
-// Assuming AnimatedShape is in a components folder
-import AnimatedShape from "../../../components/AnimatedShape"; 
 
-const offices = [
-    { img: hoaGuest, title: "HOA Office", desc: "Handles community concerns and homeowner assistance." },
-    { img: seniorGuest, title: "Senior Citizen Office", desc: "Support and services for senior residents." },
-    { img: healthGuest, title: "Health Office", desc: "Basic healthcare and wellness assistance." },
-    { img: churchGuest, title: "Church Office", desc: "Coordinates parish events and services." },
-];
-
-// Added animation variants
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.2 } }
-};
-
-const staggerItem = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 }
-};
 
 function OfficesAll() {
+  const location = useLocation();
+ 
+  const hoaRef = useRef(null);
+  const grievanceRef = useRef(null);
+  const elderlyRef = useRef(null);
+  const healthcareRef = useRef(null);
+  const parishRef = useRef(null);
+
+  const sectionRefs = {
+    hoa: hoaRef,
+    grievance: grievanceRef,
+    elderly: elderlyRef,
+    healthcare: healthcareRef,
+    parish: parishRef,
+  };
+
+  useEffect(() => {
+
+    const params = new URLSearchParams(location.search);
+    const section = params.get("section");
+    
+    if (section && sectionRefs[section]?.current) {
+      setTimeout(() => {
+        sectionRefs[section].current.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "start" 
+        });
+      }, 100);
+    }
+  }, [location]);
+
   return (
     <div className="w-full">
       {/* HERO */}
@@ -48,7 +59,7 @@ function OfficesAll() {
             closer to home.
           </h1>
           <p className="text-white/80 mb-6 max-w-sm">
-            Providing accessible support, wellness, and administrative services right here in our neighborhood. We’re here to help you thrive.
+            Providing accessible support, wellness, and administrative services right here in our neighborhood. We're here to help you thrive.
           </p>
         </div>
         <div className="absolute -bottom-px left-0 right-0 overflow-hidden leading-none pointer-events-none">
@@ -58,7 +69,7 @@ function OfficesAll() {
         </div>
       </section>
 
-      {/* Title Section - Spacing Fixed */}
+      {/* Title Section */}
       <div className="relative bg-white overflow-hidden">
         <section className="relative z-10 py-12 md:py-20">
             <motion.div
@@ -77,17 +88,26 @@ function OfficesAll() {
             </motion.div>
         </section>
       </div>
-
       
-      {/* Guest Healthcare Display Section */}
-      <div className="w-full">
-        <GuestHOA/>
+  
+      <div id="section-hoa" ref={hoaRef} className="w-full scroll-mt-20">
+        <GuestHOA />
       </div>
 
+      <div id="section-grievance" ref={grievanceRef} className="w-full scroll-mt-20">
+        <GuestGrievance />
+      </div>
 
-      {/* Guest Healthcare Display Section */}
-      <div className="w-full">
+      <div id="section-elderly" ref={elderlyRef} className="w-full scroll-mt-20">
+        <GuestElderly />
+      </div>
+
+      <div id="section-healthcare" ref={healthcareRef} className="w-full scroll-mt-20">
         <GuestHealthcare />
+      </div>
+
+      <div id="section-parish" ref={parishRef} className="w-full scroll-mt-20">
+        <GuestParish />
       </div>
 
       <style>{`

@@ -1,139 +1,156 @@
+import React from "react";
+import { motion } from "framer-motion";
 import aboutus_bg from "../../assets/aboutus_bg.jpg";
+import AnimatedShape from "../../components/AnimatedShape";
+import WindwardMap from "../../components/WindwardMap";
 
 function AboutUs() {
-    return (
-        <>
-            {/* Hero Section */}
-            <section
-                className="relative min-h-screen bg-cover bg-center flex items-center justify-center text-center px-4 pt-20 overflow-x-hidden"
-                style={{ backgroundImage: `url(${aboutus_bg})` }}
+  // Cohesive premium deceleration curve for organic movement
+  const smoothCurve = { duration: 1.2, ease: [0.25, 1, 0.5, 1] };
+
+  return (
+    <>
+      {/* Hero Section */}
+      <section
+        className="relative min-h-screen bg-cover bg-center flex items-center justify-center text-center px-4 pt-20 overflow-x-hidden"
+        style={{ backgroundImage: `url(${aboutus_bg})` }}
+      >
+        <div className="absolute inset-0 bg-black/40 z-5" />
+
+        <div className="max-w-3xl z-10 -mt-64 space-y-4">
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={smoothCurve}
+            className="text-white text-3xl md:text-5xl font-bold drop-shadow-lg tracking-tight"
+          >
+            Discover <br /> 
+            <span className="whitespace-nowrap">Windward Hills Subdivision</span>
+          </motion.h1>
+
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ ...smoothCurve, delay: 0.15 }}
+            className="text-white text-sm md:text-base max-w-xl mx-auto opacity-90 drop-shadow-md font-medium leading-relaxed"
+          >
+            Know our offices, member officials, and the history of your community, your home.
+          </motion.p>
+        </div>
+
+        {/* Dynamic Wave Mask SVG */}
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] z-20">
+          <svg 
+            className="relative block w-full h-[25vh] md:h-[30vh]" 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 1440 320" 
+            preserveAspectRatio="none"
+          >
+            <path fill="#ffffff" fillOpacity="1" d="M0,192L34.3,176C68.6,160,137,128,206,133.3C274.3,139,343,181,411,186.7C480,192,549,160,617,128C685.7,96,754,64,823,80C891.4,96,960,160,1029,165.3C1097.1,171,1166,117,1234,128C1302.9,139,1371,213,1406,250.7L1440,288L1440,320L1405.7,320C1371.4,320,1303,320,1234,320C1165.7,320,1097,320,1029,320C960,320,891,320,823,320C754.3,320,686,320,617,320C548.6,320,480,320,411,320C342.9,320,274,320,206,320C137.1,320,69,320,34,320L0,320Z"></path>
+          </svg>
+        </div>
+      </section>
+
+      {/* Main Content Section */}
+      <section className="relative bg-white pt-28 pb-24 px-4 overflow-visible md:overflow-x-hidden select-none">
+        
+        {/* Dynamic Animated Shapes - Using GuestHomePage pattern */}
+        <AnimatedShape
+          className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -left-[104px] md:-left-[143px] lg:-left-[192px] top-50 !bg-primary"
+          xRange={[0, 80]}
+          yRange={[0, -500]}
+          rotateRange={[0, 12]}
+          scaleRange={[1, 1.1]}
+        />
+        
+        <AnimatedShape
+          className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -right-[104px] md:-right-[143px] lg:-right-[192px] bottom-20 !bg-secondary"
+          xRange={[0, -80]}
+          yRange={[0, -400]}
+          rotateRange={[0, -15]}
+          scaleRange={[0.9, 1.05]}
+        />
+
+        <div className="max-w-6xl mx-auto relative z-10">
+          
+          {/* ====== TOP SECTION (Orange Info Card + Interactive Map Component) ====== */}
+          <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-6 md:gap-0">
+            
+            {/* Left Content Card */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={smoothCurve}
+              className="
+                md:col-span-5
+                bg-[var(--color-secondary)]
+                rounded-2xl
+                p-8
+                text-white
+                shadow-xl
+                relative
+                z-20
+                md:translate-x-8
+                lg:translate-x-16
+              "
             >
-                <div className="absolute inset-0 bg-black/40 z-5"></div>
+              <h2 className="text-3xl font-bold mb-2">Our Territory</h2> 
+              <div className="w-12 h-1 bg-emerald-800 rounded mb-5" />
+              <p className="leading-8">
+                Explore the bounds of Windward Hills. Our integrated community layout 
+                is purposefully designed to provide safe pathways, organized zoning, 
+                and unified residential setups to secure comfort across the community territory.
+              </p>
+            </motion.div>
 
-                <div className="max-w-3xl z-10 -mt-64">
-                    <h1 className="text-white text-3xl md:text-5xl font-bold drop-shadow-lg tracking-tight">
-                        Discover <br /> 
-                        <span className="whitespace-nowrap">Windward Hills Subdivision</span>
-                    </h1>
+            {/* Interactive Map Wrapper */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={smoothCurve}
+              className="
+                md:col-span-7
+                h-[400px]
+                bg-gray-50
+                rounded-2xl
+                shadow-lg
+                overflow-hidden
+                relative
+                z-10
+              "
+            >
+              <WindwardMap />
+            </motion.div>
 
-                    <p className="text-white text-sm md:text-base mt-4 max-w-xl mx-auto opacity-90 drop-shadow-md font-medium leading-relaxed">
-                        Know our offices, member officials, and the history of your community, your home.
-                    </p>
-                </div>
+          </div>
 
-                <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] z-20">
-                    <svg 
-                        className="relative block w-full h-[25vh] md:h-[30vh]" 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        viewBox="0 0 1440 320" 
-                        preserveAspectRatio="none"
-                    >
-                       <path fill="#ffffff" fill-opacity="1" d="M0,192L34.3,176C68.6,160,137,128,206,133.3C274.3,139,343,181,411,186.7C480,192,549,160,617,128C685.7,96,754,64,823,80C891.4,96,960,160,1029,165.3C1097.1,171,1166,117,1234,128C1302.9,139,1371,213,1406,250.7L1440,288L1440,320L1405.7,320C1371.4,320,1303,320,1234,320C1165.7,320,1097,320,1029,320C960,320,891,320,823,320C754.3,320,686,320,617,320C548.6,320,480,320,411,320C342.9,320,274,320,206,320C137.1,320,69,320,34,320L0,320Z"></path>
-                    </svg>
-                </div>
-            </section>
+          {/* ====== BOTTOM SECTION (History Panel Showcase) ====== */}
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={smoothCurve}
+            className="max-w-10xl mx-auto mt-48 relative z-20"
+          >
+            <div className="bg-[var(--color-primary)] rounded-3xl text-center text-white px-12 py-24 md:px-20 md:py-36 shadow-2xl">
+              <h2 className="text-5xl font-bold mb-6">Our History</h2>
+              <p className="max-w-2xl mx-auto text-lg leading-8 opacity-90">
+                Established with a vision for harmonious living, Windward Hills has grown 
+                from a small development plan into a vibrant neighborhood. For years, we 
+                have fostered safety, unity, and a beautiful space that families are proud 
+                to call home.
+              </p>
+            </div>
+          </motion.div>
 
-            {/* ADDED overflow-x-hidden to prevent horizontal scroll */}
-            <section className="relative bg-white pt-28 pb-24 px-4 overflow-visible md:overflow-x-hidden select-none">
-                {/* Green Circle */}
-                <div
-                    className="
-                        absolute
-                        top-5
-                        -left-80
-                        w-[460px]
-                        h-[470px]
-                        rounded-full
-                        bg-[var(--color-primary)]
-                        hidden
-                        md:block
-                        z-0
-                    "
-                />
-
-                {/* Orange Circle */}
-                <div
-                    className="
-                        absolute
-                        bottom-60
-                        -right-20
-                        w-[330px]
-                        h-[360px]
-                        rounded-full
-                        bg-[var(--color-secondary)]
-                        hidden
-                        md:block
-                        z-0
-                    "
-                />
-
-                <div className="max-w-6xl mx-auto relative z-10">
-                    {/* ====== TOP SECTION (Orange Container + Map) ====== */}
-                    <div className="grid md:grid-cols-12 items-center gap-6 md:gap-0">
-                        <div
-                            className="
-                                md:col-span-5
-                                bg-[var(--color-secondary)]
-                                rounded-2xl
-                                p-8
-                                text-white
-                                shadow-xl
-                                relative
-                                z-20
-                                md:translate-x-8
-                                lg:translate-x-16
-                            "
-                        >
-                            <h2 className="text-3xl font-bold mb-2">
-                                Lorem Ipsum
-                            </h2>
-
-                            <div className="w-12 h-1 bg-emerald-800 rounded mb-5"></div>
-
-                            <p className="leading-8">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-                                sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-                            </p>
-                        </div>
-
-                        {/* Map */}
-                        <div
-                            className="
-                                md:col-span-7
-                                h-72
-                                bg-gray-100
-                                rounded-2xl
-                                shadow-lg
-                                overflow-hidden
-                                relative
-                            "
-                        >
-                            <div
-                                className="w-full h-full bg-cover bg-center"
-                                style={{
-                                    backgroundImage:
-                                        "url('https://placehold.co/900x600')",
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="max-w-10xl mx-auto mt-48 relative z-20">
-                        <div className="bg-[var(--color-primary)] rounded-3xl text-center text-white px-12 py-36 md:px-20 md:py-36 shadow-5xl">
-                            <h2 className="text-5xl font-bold mb-6">
-                                Our History
-                            </h2>
-
-                            <p className="max-w-2xl mx-auto text-lg leading-8 opacity-90">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-                                sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </>
-    );
+        </div>
+      </section>
+    </>
+  );
 }
 
 export default AboutUs;

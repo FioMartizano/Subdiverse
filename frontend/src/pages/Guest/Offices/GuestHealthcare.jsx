@@ -1,222 +1,142 @@
-import guestHOAbg from "../../../assets/guestHOA_bg.jpg";
-import { useState } from "react";
-import { Contact, HeartPulse, UserRound } from "lucide-react";
-
-import hoaOfficer1 from "../../../assets/hoaOfficer.jpg";
-import hoaOfficer2 from "../../../assets/hoaOfficer2.jpg";
-import hoaOfficer3 from "../../../assets/hoaOfficer3.jpg";
-import hoaOfficer4 from "../../../assets/hoaOfficer4.jpg";
-import hoaService1 from "../../../assets/hoaService1.jpg";
-import hoaService2 from "../../../assets/hoaService2.jpg";
-import hoaService3 from "../../../assets/hoaService3.jpg";
-
-
-
-// Mock data array for the officers grid
-const officersData = [
-    { id: 1, name: "Lorem Ipsum", position: "Position", image: hoaOfficer1 },
-    { id: 2, name: "Lorem Ipsum", position: "Position", image: hoaOfficer2 },
-    { id: 3, name: "Lorem Ipsum", position: "Position", image: hoaOfficer3 },
-    { id: 4, name: "Lorem Ipsum", position: "Position", image: hoaOfficer4 },
-];
-
+import React from "react";
+import { motion } from "framer-motion";
+import healthGuest from "../../../assets/healthCareGuest.jpg"; 
+// Note: You can reuse other assets (like seniorGuest or hoaGuest) for the smaller top/bottom accent slots
+import seniorGuest from "../../../assets/guestHOA_bg.jpg";
+import churchGuest from "../../../assets/guestHOA_bg.jpg";
 
 function GuestHealthcare() {
+  // Premium animation curve matching our smooth cinematic feel
+  const smoothTransition = { duration: 1.2, ease: [0.25, 1, 0.5, 1] };
 
-   
-    const [hoveredTile, setHoveredTile] = useState(null);
+  return (
+    <section className="relative w-full min-h-screen bg-slate-50/50 overflow-hidden py-24 px-6 md:px-12 lg:px-24 flex items-center">
+      
+      {/* BACKGROUND WATERMARKS (As seen in image_65afb6.png) */}
+      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+        <span className="absolute -top-10 left-1/3 text-[12rem] font-bold text-slate-200/30 font-heading whitespace-nowrap tracking-tighter">
+          Healthcare
+        </span>
+        <span className="absolute -bottom-16 left-10 text-[12rem] font-bold text-slate-200/20 font-heading whitespace-nowrap tracking-tighter">
+          We Care
+        </span>
+      </div>
 
-    // Dynamic dataset containing icons, text data, and images
-    const tilesData = [
-        {
-            id: 1,
-            type: "interactive",
-            icon: <Contact className="text-white w-16 h-16 stroke-[1.5]" />,
-            title: "ID Assistance",
-            description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt"
-        },
-        {
-            id: 2,
-            type: "image",
-            src: hoaService2,
-            alt: "Community Activity"
-        },
-        {
-            id: 3,
-            type: "interactive",
-            icon: <HeartPulse className="text-white w-16 h-16 stroke-[1.5]" />,
-            title: "Health Programs",
-            description: "Scheduled medical checks, active wellness monitoring, and healthcare resource coordination."
-        },
-        {
-            id: 4,
-            type: "image",
-            src: hoaService3,
-            alt: "Services Documentation"
-        },
-        {
-            id: 5,
-            type: "interactive",
-            icon: <UserRound className="text-white w-16 h-16 stroke-[1.5]" />,
-            title: "Senior Care",
-            description: "Dedicated assistance networks and community initiatives specialized for elder residents."
-        },
-        {
-            id: 6,
-            type: "image",
-            src: hoaService1,
-            alt: "Medical Care Programs"
-        }
-    ];
-    return (
-        <div className="bg-white min-h-screen w-full flex flex-col">
-            
-            {/* HERO */}
-            <section
-                className="w-full h-[500px] md:h-[600px] bg-cover bg-center flex items-center relative overflow-hidden"
-                style={{ 
-                    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${guestHOAbg})` 
-                }}
-            >
-              
-                <div className="ml-12 md:ml-24 max-w-2xl text-left z-10">
-                    <span className="text-white text-lg md:text-xl font-medium tracking-wide block mb-1">
-                        Welcome to the
-                    </span>
-                    
-                    <h1 className="text-white text-4xl md:text-6xl font-bold leading-tight">
-                        WWHS <br /> <span className="whitespace-nowrap">Healthcare Office</span>
-                    </h1>
+      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center relative z-10">
+        
+        {/* LEFT COLUMN: Main Curved Image & Accent Frame */}
+        <div className="lg:col-span-5 relative flex justify-center lg:justify-start">
+          {/* Gold Offset Accent Outline */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, x: -20 }}
+            whileInView={{ opacity: 1, scale: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ ...smoothTransition, delay: 0.2 }}
+            className="absolute top-4 left-4 w-full h-[450px] md:h-[550px] border-2 border-amber-500/60 rounded-br-[8rem] md:rounded-br-[12rem] pointer-events-none"
+          />
 
-                    <p className="text-gray-200 text-sm md:text-base mt-4 max-w-xl leading-relaxed">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin scelerisque tincidunt elit ornare maximus.
-                    </p>
-
-                    <div className="mt-6">
-                        <button className="bg-[var(--color-secondary)] hover:bg-[var(--color-primary)] text-white font-semibold py-3 px-8 rounded-full shadow-md transition duration-200 text-sm md:text-base">
-                            Stay Updated
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-              {/* 2. OFFICERS SECTION */}
-            <section className="bg-[var(--color-secondary)] w-full py-16 px-4 md:px-12 flex flex-col items-center">
-                
-                {/* Main Heading */}
-                <h2 className="text-white text-5xl md:text-6xl font-bold tracking-tight mb-12 text-center">
-                    Officers
-                </h2>
-
-                {/* Grid Layout Container */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl w-full px-4">
-                    {officersData.map((officer) => (
-                        <div key={officer.id} className="flex flex-col items-center">
-                            
-                            {/* Card Image Container with rounded corners and shadow */}
-                            <div className="w-full aspect-square rounded-3xl overflow-hidden shadow-lg bg-zinc-800">
-                                <img 
-                                    src={officer.image} 
-                                    alt={officer.name} 
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-
-                            {/* Info Text */}
-                            <div className="mt-4 text-center">
-                                <h3 className="text-white text-xl font-bold leading-tight">
-                                    {officer.name}
-                                </h3>
-                                <p className="text-white text-base italic font-light opacity-90 mt-0.5">
-                                    {officer.position}
-                                </p>
-                            </div>
-
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-
-        {/* 3. SERVICES WE OFFER SECTION */}
-       <section className="bg-white w-full py-16 px-6 md:px-24 flex justify-center rounded-t-[40px] shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.05)] relative z-20 -mt-8">
-            <div className="max-w-6xl w-full">
-                
-                <div className="flex items-center gap-4 mb-10">
-                    <div className="w-[8px] h-[36px] bg-[var(--color-primary)] rounded-full"></div>
-                    <h2 className="text-[var(--color-secondary)] text-3xl md:text-4xl font-bold tracking-wide">
-                        Services We Offer
-                    </h2>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-                    
-                    {/* 2x3 Grid Dashboard Wrapper */}
-                    <div className="lg:col-span-3 grid grid-cols-3 gap-4">
-                        {tilesData.map((tile) => {
-                            // Render standard image block
-                            if (tile.type === "image") {
-                                return (
-                                    <div key={tile.id} className="aspect-square rounded-2xl overflow-hidden shadow-sm">
-                                        <img 
-                                            src={tile.src} 
-                                            alt={tile.alt} 
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                );
-                            }
-
-                            // Render interactive tile with mouse event triggers
-                            const isHovered = hoveredTile === tile.id;
-
-                            return (
-                                <div
-                                    key={tile.id}
-                                    onMouseEnter={() => setHoveredTile(tile.id)}
-                                    onMouseLeave={() => setHoveredTile(null)}
-                                    className={`aspect-square rounded-2xl flex flex-col p-5 transition-all duration-300 select-none ${
-                                        isHovered 
-                                            ? "bg-white border-2 border-transparent justify-start items-start text-left" 
-                                            : "bg-[var(--color-secondary)] justify-center items-center text-center cursor-pointer"
-                                    }`}
-                                >
-                                    {isHovered ? (
-                                        /* HOVER STATE: Custom text copy layout matching the image */
-                                        <div className="animate-fadeIn">
-                                            <h3 className="text-[var(--color-secondary)] text-base md:text-lg font-bold tracking-wide mb-1 md:mb-2">
-                                                {tile.title}
-                                            </h3>
-                                            <p className="text-zinc-600 text-[11px] sm:text-xs md:text-sm font-medium leading-relaxed max-h-[85%] overflow-hidden">
-                                                {tile.description}
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        /* DEFAULT STATE: Large minimal icon design */
-                                        <div className="transition-transform duration-200 transform scale-100">
-                                            {tile.icon}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Right Hand Description Side Column */}
-                    <div className="lg:col-span-1 pt-2">
-                        <p className="text-[var(--color-primary)] text-lg md:text-xl font-medium leading-relaxed">
-                            Services are available through scheduled visits, health programs, and community initiatives.
-                        </p>
-                    </div>
-
-                </div>
-            </div>
-        </section>
-            
-        <p><a href="https://www.magnific.com/free-photo/close-up-beautiful-smiley-woman_18168017.htm">Image by freepik</a></p>
-            
+          {/* Main Image Wrapper */}
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={smoothTransition}
+            className="relative w-full h-[450px] md:h-[550px] overflow-hidden rounded-br-[8rem] md:rounded-br-[12rem] shadow-xl bg-slate-200"
+          >
+            <img 
+              src={healthGuest} 
+              alt="Health Office Facility" 
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
         </div>
-    );
+
+        {/* CENTER COLUMN: Core Typography and Action Items */}
+        <div className="lg:col-span-4 space-y-6 lg:px-6 relative">
+          
+          {/* Section Indicator Counter */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-amber-600"
+          >
+            <span>01</span>
+            <span className="h-px w-12 bg-amber-500/50 inline-block" />
+            <span>Health Office</span>
+          </motion.div>
+
+          {/* Main Headline */}
+          <motion.h2 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ ...smoothTransition, delay: 0.1 }}
+            className="text-4xl md:text-5xl font-bold text-slate-900 font-heading leading-tight"
+          >
+            Your Wellness, <br />
+            Our Priority.
+          </motion.h2>
+
+          {/* Body Paragraph */}
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ ...smoothTransition, delay: 0.2 }}
+            className="text-slate-600 text-base md:text-lg leading-relaxed font-normal"
+          >
+            The Windward Hills Health Office offers readily accessible basic healthcare services, preventative wellness assessments, and localized medical administration directly within your neighborhood vicinity.
+          </motion.p>
+
+          {/* Action Pill Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ ...smoothTransition, delay: 0.3 }}
+            className="pt-4"
+          >
+            <button className="px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-medium text-sm rounded-full shadow-lg shadow-amber-500/20 transition-all duration-300 transform hover:-translate-y-0.5">
+              Learn More
+            </button>
+          </motion.div>
+        </div>
+
+        {/* RIGHT COLUMN: Secondary Decorative Framing Panels */}
+        <div className="lg:col-span-3 h-full relative hidden lg:flex flex-col justify-between py-12 min-h-[500px]">
+          
+          {/* Top-Right Organic Crop Image Panel */}
+          <motion.div 
+            initial={{ opacity: 0, x: 50, y: -30 }}
+            whileInView={{ opacity: 1, x: 0, y: 0 }}
+            viewport={{ once: true }}
+            transition={smoothTransition}
+            className="w-48 h-48 rounded-bl-[6rem] border-l-2 border-b-2 border-amber-500/40 p-2 self-end"
+          >
+            <div className="w-full h-full rounded-bl-[5.5rem] overflow-hidden bg-slate-200 shadow-md">
+              <img src={seniorGuest} alt="Senior Care Segment" className="w-full h-full object-cover" />
+            </div>
+          </motion.div>
+
+          {/* Bottom-Right Straight Corner Segment */}
+          <motion.div 
+            initial={{ opacity: 0, x: 50, y: 30 }}
+            whileInView={{ opacity: 1, x: 0, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ ...smoothTransition, delay: 0.15 }}
+            className="w-56 h-36 border-t-2 border-l-2 border-amber-500/40 pt-2 pl-2 self-end"
+          >
+            <div className="w-full h-full overflow-hidden bg-slate-200 shadow-md">
+              <img src={churchGuest} alt="Community Wellness Context" className="w-full h-full object-cover" />
+            </div>
+          </motion.div>
+
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default GuestHealthcare;

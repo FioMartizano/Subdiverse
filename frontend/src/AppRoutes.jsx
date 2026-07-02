@@ -1,5 +1,9 @@
 import { Routes, Route } from "react-router-dom";
 
+/*Login and SignUp*/
+import Login from "./pages/Auth/Login";
+import SignUp from "./pages/Auth/SignUp";
+
 /*GUEST PAGES*/
 import GuestHomePage from "./pages/Guest/GuestHomePage";
 import AboutUs from "./pages/Guest/AboutUs";
@@ -27,8 +31,8 @@ import Healthcare from "./pages/Resident/ResiOffices/Healthcare";
 import ParishChurch from "./pages/Resident/ResiOffices/ParishChurch";
 /*
 import Contact from "./pages/Guest/Contact";
-import Login from "./pages/Guest/Login";
-import SignUp from "./pages/Guest/SignUp";
+import Login from "./pages/Auth/Login";
+import SignUp from "./pages/Auth/SignUp";
 */
 
 
@@ -74,6 +78,10 @@ import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 function AppRoutes() {
   return (
     <Routes>
+
+        <Route path="/login" element={<Login />} />
+
+        <Route path="/signup" element={<SignUp />} />
 
       {/* GUEST ROUTING */}
 

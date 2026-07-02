@@ -1,36 +1,7 @@
-import AppRoutes from "./AppRoutes";
-
-/* COMPONENTS */
-import Footer from "./components/Footer";
-import GuestNavbar from "./components/GuestNavbar";
-
-function App() {
-
-  return (
-    <div className="min-h-screen flex flex-col">
-
-      <GuestNavbar />
-
-      <main className="flex-grow">
-        <AppRoutes />
-      </main>
-
-      <Footer />
-
-    </div>
-  );
-}
-
-export default App;
-
-
-
-/*SOON (this would be used if may resident side na):
-
 import { useLocation } from "react-router-dom";
 import AppRoutes from "./AppRoutes";
 
-/* COMPONENTS 
+/* COMPONENTS */
 import Footer from "./components/Footer";
 import GuestNavbar from "./components/GuestNavbar";
 import ResidentNavbar from "./components/ResidentNavbar";
@@ -38,29 +9,33 @@ import ResidentNavbar from "./components/ResidentNavbar";
 function App() {
   const location = useLocation();
 
-  const residentPages = [
+  const authPages = ["/login", "/signup"];
+  const isAuthPage = authPages.includes(location.pathname);
+
+  const residentPrefixes = [
     "/resident-home",
+    "/reservation",
+    "/businesshub",
     "/hoa",
     "/grievance",
     "/elderly",
     "/healthcare",
     "/parishchurch",
     "/community",
-    "/businesshub",
-    "/reservation",
     "/vehicleSticker",
     "/parkingReservation",
-    "/monthlyDues",
+    "/monthlyDues"
   ];
-
-  const isResident =
-    residentPages.some((path) => location.pathname.startsWith(path));
+  
+  const isResident = residentPrefixes.some((prefix) => 
+    location.pathname === prefix || location.pathname.startsWith(prefix + "/")
+  );
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {isResident ? <ResidentNavbar /> : <GuestNavbar />}
+    <div className="min-h-screen flex flex-col bg-background text-foreground antialiased">
+      <GuestNavbar />
 
-      <main className="flex-grow pt-20">
+      <main className={`flex-grow ${isAuthPage ? "pt-0" : "pt-20"}`}>
         <AppRoutes />
       </main>
 
@@ -69,4 +44,4 @@ function App() {
   );
 }
 
-export default App;*/
+export default App;

@@ -18,6 +18,8 @@ import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
 
+import VehicleSticker from "./pages/Resident/VehicleSticker";
+
 import OfficesAll from "./pages/Guest/Offices/OfficesAll";
 
 
@@ -29,6 +31,8 @@ import Grievance from "./pages/Resident/ResiOffices/Grievance";
 import Elderly from "./pages/Resident/ResiOffices/Elderly";
 import Healthcare from "./pages/Resident/ResiOffices/Healthcare";
 import ParishChurch from "./pages/Resident/ResiOffices/ParishChurch";
+
+import ParkingReservation from "./pages/Resident/ParkingReservation";
 /*
 import Contact from "./pages/Guest/Contact";
 import Login from "./pages/Auth/Login";
@@ -103,6 +107,8 @@ function AppRoutes() {
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
         <Route path="/reservation/pool" element={<SwimmingPool />} />
 
+        <Route path="/vehicleSticker" element={<VehicleSticker />} />
+
 
       <Route path="/businesshub" element={<BusinessHub />} />
 
@@ -116,6 +122,8 @@ function AppRoutes() {
       <Route path="/healthcare" element={<Healthcare />} />
 
       <Route path="/parishchurch" element={<ParishChurch />} />
+
+      <Route path="/parkingReservation" element={<ParkingReservation />} />
 
       
 

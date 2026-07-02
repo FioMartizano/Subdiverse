@@ -1,62 +1,230 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, User, Phone, MapPin, Lock, Eye, EyeOff, Calendar, ShieldCheck, CreditCard, Image } from "lucide-react";
+import { Mail, User, Phone, MapPin, Lock, Eye, EyeOff, Calendar, ShieldCheck, CreditCard, Image, Users, Upload, FileText } from "lucide-react";
+import { auth, db, storage } from "../../firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import signUpImage from "../../assets/signUp.jpg";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
 
 function SignUp() {
-    const [userType, setUserType] = useState("owner"); // "owner" or "renter"
+    const [userType, setUserType] = useState("owner"); // "owner", "renter", or "household"
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [idFile, setIdFile] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [passwordStrength, setPasswordStrength] = useState("Weak");
+    const [passwordScore, setPasswordScore] = useState(0);
+
 
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",
         email: "",
         contactNumber: "",
-        address: "",
+        block: "",
+        lot: "",
+        street: "",
+        phase: "",
         ownerFullName: "",
         leaseStart: "",
         leaseEnd: "",
+        homeownerName: "",
+        relationshipToHomeowner: "",
+        otherRelationship: "",
         password: "",
         confirmPassword: "",
         idType: "",
+        otherIdType: "", // Added to store manual input for "Other ID"
         idNumber: "",
     });
 
-    const handleInputChange = (e) => {
-        const { id, value } = e.target;
-        setFormData((prev) => ({ ...prev, [id]: value }));
+    const checkPasswordStrength = (password) => {
+        let score = 0;
+
+        if (password.length >= 6) score++; // Firebase minimum
+        if (/[A-Z]/.test(password)) score++;
+        if (/[a-z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+
+        if (score <= 2) {
+            setPasswordStrength("Weak");
+            setPasswordScore(33);
+        } else if (score <= 4) {
+            setPasswordStrength("Medium");
+            setPasswordScore(66);
+        } else {
+            setPasswordStrength("Strong");
+            setPasswordScore(100);
+        }
     };
 
-    const handleSubmit = (e) => {
+    const handleInputChange = (e) => {
+        const { id, value } = e.target;
+
+        // Contact Number
+        if (id === "contactNumber") {
+            const numbersOnly = value.replace(/\D/g, "");
+
+            setFormData((prev) => ({
+                ...prev,
+                contactNumber: numbersOnly.slice(0, 11),
+            }));
+
+            return;
+        }
+
+        setFormData((prev) => ({
+            ...prev,
+            [id]: value,
+        }));
+
+        if (id === "password") {
+            checkPasswordStrength(value);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setIdFile(e.target.files[0]);
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Submitting registration for:", userType, formData);
+
+        if (formData.contactNumber.length !== 11) {
+            alert("Contact number must contain exactly 11 digits.");
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            alert("Password must be at least 6 characters.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(formData.email)) {
+            alert("Please enter a valid email.");
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            alert("Passwords do not match.");
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            // Step 1: Create the user authentication account
+            const userCredential = await createUserWithEmailAndPassword(
+                auth,
+                formData.email,
+                formData.password
+            );
+            const userId = userCredential.user.uid;
+
+            // Step 2: wala muna storage since kelangan upgrade sa firebase if storage is used :/
+            let uploadedIdUrl = "";
+
+            // Step 3A: Save to the "users" collection
+            await setDoc(doc(db, "users", userId), {
+                email: formData.email,
+                role: "resident",
+                status: "pending",
+                residentId: userId,
+                createdAt: new Date().toISOString()
+            });
+
+            // Step 3B: Save to the "residents" collection
+            await setDoc(doc(db, "residents", userId), {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                contactNumber: formData.contactNumber,
+                email: formData.email,
+                block: formData.block,
+                lot: formData.lot,
+                street: formData.street,
+                phase: formData.phase,
+                residentCategory: userType,
+
+                ...(userType === "renter" && {
+                    leaseStart: formData.leaseStart,
+                    leaseEnd: formData.leaseEnd,
+                    propertyOwnerName: formData.ownerFullName
+                }),
+
+                ...(userType === "household" && {
+                    homeownerName: formData.homeownerName,
+                    relationshipToHomeowner: formData.relationshipToHomeowner,
+                    otherRelationship: formData.relationshipToHomeowner === "Other" ? formData.otherRelationship : ""
+                }),
+
+                idType: formData.idType === "Other" ? formData.otherIdType : formData.idType,
+                idNumber: formData.idNumber,
+                idImageUrl: uploadedIdUrl,
+                verificationStatus: "unverified",
+                createdAt: new Date().toISOString()
+            });
+
+            alert("Registration successful! Your account has been submitted for admin approval.");
+
+        } catch (error) {
+            console.error(error);
+
+            if (error.code === "auth/email-already-in-use") {
+                alert("This email address is already in use. Please try a different email or log in.");
+            } else {
+                alert("Registration failed: " + error.message);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+    const getAccountTypeLabel = () => {
+        if (userType === "owner") return "Property Owner Account";
+        if (userType === "renter") return "Renter Account";
+        return "Household Member Account";
     };
 
     return (
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 min-h-screen bg-white">
-
-            {/* Left Column*/}
-            <div className="hidden md:block p-4 bg-white h-full min-h-[800px]">
+        <div className="w-full h-screen min-h-screen bg-white grid grid-cols-1 md:grid-cols-12 overflow-hidden">
+            {/* Left Column */}
+            <div className="hidden md:block md:col-span-5 lg:col-span-5 p-4 bg-white h-full">
                 <motion.div
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={{ opacity: 0, x: -30 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="w-full h-full rounded-[24px] bg-gray-50 border border-gray-100 p-10 flex flex-col justify-between relative overflow-hidden"
+                    whileHover={{ scale: 1.005 }}
+                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                    className="w-full h-full rounded-[24px] bg-slate-900 border border-slate-100 p-12 flex flex-col justify-between relative overflow-hidden shadow-lg group"
                 >
-                    <div className="relative z-10 flex items-center justify-between">
-                        <span className="text-gray-400 text-4xl font-light select-none">✳</span>
-                    </div>
+                    {/* Background Image */}
+                    <div
+                        className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                        style={{
+                            backgroundImage: `url(${signUpImage})`,
+                        }}
+                    />
 
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-[0.15]">
-                        <Image className="w-16 h-16 text-gray-900 stroke-[1.25]" />
-                        <span className="text-xs font-mono tracking-widest uppercase mt-2 text-gray-900">
-                            Subdivision Photo Placeholder
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20"></div>
+
+                    <div className="relative z-10 flex items-center justify-between">
+                        <span className="text-white/40 text-3xl font-light select-none transition-transform duration-500 group-hover:rotate-45">
+                            ✳
                         </span>
                     </div>
 
-                    <div className="relative z-10 text-gray-800 space-y-2 max-w-sm mb-16">
-                        <p className="text-sm font-medium text-gray-400 tracking-wide">Join the community</p>
-                        <h2 className="text-3xl lg:text-4xl font-bold tracking-tight leading-tight text-gray-900">
+                    <div className="relative z-10 space-y-3 max-w-sm mb-6">
+                        <span className="inline-block text-xs font-semibold uppercase tracking-widest bg-white/10 px-2.5 py-1 rounded-md text-white/90">
+                            Join the community
+                        </span>
+                        <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight leading-tight text-white drop-shadow-md">
                             Discover a seamless way to manage community connections
                         </h2>
                     </div>
@@ -64,9 +232,15 @@ function SignUp() {
             </div>
 
             {/* Right Column*/}
-            <div className="flex flex-col justify-start mt-16 px-6 py-8 sm:px-16 md:px-16 lg:px-20 bg-white h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden">
+            <div className="col-span-1 md:col-span-7 lg:col-span-7 flex flex-col justify-center items-center px-6 pt-24 pb-12 sm:px-16 sm:pt-28 md:px-16 lg:px-24 bg-white h-full overflow-hidden">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="max-w-2xl w-full mx-auto"
+                ></motion.div>
 
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 w-full text-left max-w-xl mx-auto pl-1">
                     <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-secondary font-heading">
                         Sign Up
                     </h1>
@@ -75,29 +249,38 @@ function SignUp() {
                     </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-4 max-w-md w-full flex-shrink-0">
+                <div className="grid grid-cols-3 gap-3 mb-4 max-w-xl w-full flex-shrink-0">
                     <button
                         type="button"
                         onClick={() => setUserType("owner")}
-                        className={`py-2.5 px-4 rounded-[var(--radius-buttons)] font-bold text-sm tracking-wide border uppercase transition-all duration-200 cursor-pointer ${userType === "owner"
+                        className={`py-2.5 px-2 rounded-[var(--radius-buttons)] font-bold text-xs sm:text-sm tracking-wide border uppercase transition-all duration-200 cursor-pointer ${userType === "owner"
                             ? "bg-secondary text-white border-secondary shadow-md"
                             : "bg-white text-primary border-gray-300 hover:bg-gray-50"
                             }`}
                     >
-                        Property Owner
+                        Owner
                     </button>
                     <button
                         type="button"
                         onClick={() => setUserType("renter")}
-                        className={`py-2.5 px-4 rounded-[var(--radius-buttons)] font-bold text-sm tracking-wide border uppercase transition-all duration-200 cursor-pointer ${userType === "renter"
+                        className={`py-2.5 px-2 rounded-[var(--radius-buttons)] font-bold text-xs sm:text-sm tracking-wide border uppercase transition-all duration-200 cursor-pointer ${userType === "renter"
                             ? "bg-secondary text-white border-secondary shadow-md"
                             : "bg-white text-primary border-gray-300 hover:bg-gray-50"
                             }`}
                     >
                         Renter
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setUserType("household")}
+                        className={`py-2.5 px-2 rounded-[var(--radius-buttons)] font-bold text-xs sm:text-sm tracking-wide border uppercase transition-all duration-200 cursor-pointer ${userType === "household"
+                            ? "bg-secondary text-white border-secondary shadow-md"
+                            : "bg-white text-primary border-gray-300 hover:bg-gray-50"
+                            }`}
+                    >
+                        Household
+                    </button>
                 </div>
-
 
                 <form
                     onSubmit={handleSubmit}
@@ -119,12 +302,12 @@ function SignUp() {
                             border-radius: 20px;
                         }
                         form::-webkit-scrollbar-thumb {
-                            background: #fb923c; /* Light orange default */
+                            background: #fb923c;
                             border-radius: 20px;
                             transition: background 0.3s ease;
                         }
                         form::-webkit-scrollbar-thumb:hover {
-                            background: #ea580c; /* High-intensity darker orange on hover */
+                            background: #ea580c;
                         }
                         form:hover::-webkit-scrollbar-thumb {
                             animation: pulseScrollbar 1.5s ease-in-out infinite alternate;
@@ -137,7 +320,7 @@ function SignUp() {
 
                     <div className="pt-2">
                         <span className="bg-gray-100 text-primary text-xs font-bold tracking-wider uppercase px-3 py-1.5 rounded">
-                            {userType === "owner" ? "Property Owner Account" : "Renter Account"}
+                            {getAccountTypeLabel()}
                         </span>
                     </div>
 
@@ -180,20 +363,36 @@ function SignUp() {
                                         <input id="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="example@gmail.com" className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
                                     </div>
                                 </div>
-
                                 <div className="flex flex-col gap-1.5">
                                     <label htmlFor="contactNumber" className="text-xs font-semibold text-gray-600">Contact Number</label>
                                     <div className="relative">
                                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        <input id="contactNumber" value={formData.contactNumber} onChange={handleInputChange} type="text" placeholder="+63 XXX XXX XXXX" className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
+                                        <input id="contactNumber" value={formData.contactNumber} onChange={handleInputChange} type="tel" inputMode="numeric" maxLength={11} placeholder="+63 XXX XXX XXXX" className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col gap-1.5">
-                                    <label htmlFor="address" className="text-xs font-semibold text-gray-600">Address</label>
-                                    <div className="relative">
-                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        <input id="address" value={formData.address} onChange={handleInputChange} type="text" placeholder="e.g. Block 4, Lot 9" className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
+                                {/* Address Grid (Dissected Fields) */}
+                                <div className="space-y-3">
+                                    <label className="text-xs font-semibold text-gray-600 flex items-center gap-1">
+                                        <MapPin className="w-3.5 h-3.5 text-gray-400" /> Address Location
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex flex-col gap-1">
+                                            <input id="block" value={formData.block} onChange={handleInputChange} type="text" placeholder="(Block 1)" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <input id="lot" value={formData.lot} onChange={handleInputChange} type="text" placeholder="(Lot 9)" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+
+                                        <div className="flex flex-col gap-1">
+                                            <input id="phase" value={formData.phase} onChange={handleInputChange} type="text" placeholder="Phase 1" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <input id="street" value={formData.street} onChange={handleInputChange} type="text" placeholder="Example Street" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -232,6 +431,66 @@ function SignUp() {
                                 </div>
                             )}
 
+                            {/* --- SECTION 2.5: HOUSEHOLD MEMBER SPECIFIC PROPERTY --- */}
+                            {userType === "household" && (
+                                <div className="space-y-4 pt-2 border-t border-gray-100">
+                                    <h3 className="text-xs font-bold tracking-wider text-secondary uppercase">
+                                        Household Association
+                                    </h3>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <label htmlFor="homeownerName" className="text-xs font-semibold text-gray-600">Homeowner Name</label>
+                                        <div className="relative">
+                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                            <input id="homeownerName" value={formData.homeownerName} onChange={handleInputChange} type="text" placeholder="Enter the primary homeowner's name" className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <label htmlFor="relationshipToHomeowner" className="text-xs font-semibold text-gray-600">Relationship to Homeowner</label>
+                                        <div className="relative">
+                                            <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                            <select
+                                                id="relationshipToHomeowner"
+                                                value={formData.relationshipToHomeowner}
+                                                onChange={handleInputChange}
+                                                className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary appearance-none cursor-pointer"
+                                            >
+                                                <option value="">Select Relationship</option>
+                                                <option value="Spouse">Spouse</option>
+                                                <option value="Father">Father</option>
+                                                <option value="Mother">Mother</option>
+                                                <option value="Brother">Brother</option>
+                                                <option value="Sister">Sister</option>
+                                                <option value="Son">Son</option>
+                                                <option value="Daughter">Daughter</option>
+                                                <option value="Grandparent">Grandparent</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-500 w-0 h-0"></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Animated field for Custom Relationship Types */}
+                                    <AnimatePresence>
+                                        {formData.relationshipToHomeowner === "Other" && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                className="flex flex-col gap-1.5 overflow-hidden"
+                                            >
+                                                <label htmlFor="otherRelationship" className="text-xs font-semibold text-gray-600">Please Specify Relationship</label>
+                                                <div className="relative">
+                                                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                    <input id="otherRelationship" value={formData.otherRelationship} onChange={handleInputChange} type="text" placeholder="e.g. Cousin, Aunt, Guardian" className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+
                             {/* --- SECTION 3: ACCOUNT SECURITY --- */}
                             <div className="space-y-4 pt-2 border-t border-gray-100">
                                 <h3 className="text-xs font-bold tracking-wider text-secondary uppercase">
@@ -254,6 +513,56 @@ function SignUp() {
                                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                         </button>
                                     </div>
+
+                                    <div className="mt-2">
+                                        <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
+                                            <div
+                                                className={`h-full transition-all duration-300 ${passwordStrength === "Weak"
+                                                    ? "bg-red-500"
+                                                    : passwordStrength === "Medium"
+                                                        ? "bg-yellow-500"
+                                                        : "bg-green-500"
+                                                    }`}
+                                                style={{ width: `${passwordScore}%` }}
+                                            />
+                                        </div>
+
+                                        <p
+                                            className={`text-xs mt-1 font-medium ${passwordStrength === "Weak"
+                                                ? "text-red-500"
+                                                : passwordStrength === "Medium"
+                                                    ? "text-yellow-600"
+                                                    : "text-green-600"
+                                                }`}
+                                        >
+                                            Password Strength: {passwordStrength}
+                                        </p>
+                                    </div>
+
+                                    <div className="text-xs mt-2 space-y-1">
+                                        <p className={formData.password.length >= 6 ? "text-green-600" : "text-gray-500"}>
+                                            ✓ At least 6 characters
+                                        </p>
+
+                                        <p className={/[A-Z]/.test(formData.password) ? "text-green-600" : "text-gray-500"}>
+                                            ✓ One uppercase letter
+                                        </p>
+
+                                        <p className={/[a-z]/.test(formData.password) ? "text-green-600" : "text-gray-500"}>
+                                            ✓ One lowercase letter
+                                        </p>
+
+                                        <p className={/[0-9]/.test(formData.password) ? "text-green-600" : "text-gray-500"}>
+                                            ✓ One number
+                                        </p>
+
+                                        <p className={/[^A-Za-z0-9]/.test(formData.password) ? "text-green-600" : "text-gray-500"}>
+                                            ✓ One special character
+                                        </p>
+                                    </div>
+
+
+
                                 </div>
 
                                 <div className="flex flex-col gap-1.5">
@@ -272,8 +581,22 @@ function SignUp() {
                                             {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                         </button>
                                     </div>
+
+                                    {formData.confirmPassword && (
+                                        <p
+                                            className={`text-xs mt-2 font-medium ${formData.password === formData.confirmPassword
+                                                ? "text-green-600"
+                                                : "text-red-500"
+                                                }`}
+                                        >
+                                            {formData.password === formData.confirmPassword
+                                                ? "✓ Passwords match"
+                                                : "✗ Passwords do not match"}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
+
 
                             {/* --- SECTION 4: IDENTITY VERIFICATION --- */}
                             <div className="space-y-4 pt-2 border-t border-gray-100">
@@ -282,7 +605,7 @@ function SignUp() {
                                 </h3>
 
                                 <div className="flex flex-col gap-1.5">
-                                    <label htmlFor="idType" className="text-xs font-semibold text-gray-600">Government ID Type</label>
+                                    <label htmlFor="idType" className="text-xs font-semibold text-gray-600">Valid ID Type</label>
                                     <div className="relative">
                                         <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                         <select
@@ -291,14 +614,42 @@ function SignUp() {
                                             onChange={handleInputChange}
                                             className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary appearance-none cursor-pointer"
                                         >
-                                            <option value="">Select ID</option>
+                                            <option value="">Select Valid ID</option>
+
+                                            {/* Subdivision Specific WWHS IDs */}
+                                            {userType === "owner" && <option value="wwhs-owner">Homeowners - Green WWHS ID</option>}
+                                            {userType === "renter" && <option value="wwhs-renter">Renter - Yellow WWHS ID</option>}
+                                            {userType === "household" && <option value="wwhs-household">Occupant/Household Member - White WWHS ID</option>}
+
+                                            {/* General Government Standard ID Options */}
                                             <option value="passport">Passport</option>
                                             <option value="drivers">Driver's License</option>
                                             <option value="national">National ID / UMID</option>
+
+                                            {/* New "Other" Option */}
+                                            <option value="Other">Other (Please specify)</option>
                                         </select>
                                         <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-500 w-0 h-0"></div>
                                     </div>
                                 </div>
+
+                                {/* Animated field for Custom/Other Valid ID types */}
+                                <AnimatePresence>
+                                    {formData.idType === "Other" && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: "auto" }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="flex flex-col gap-1.5 overflow-hidden"
+                                        >
+                                            <label htmlFor="otherIdType" className="text-xs font-semibold text-gray-600">Please Specify ID Type</label>
+                                            <div className="relative">
+                                                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                <input id="otherIdType" value={formData.otherIdType} onChange={handleInputChange} type="text" placeholder="e.g. SSS, TIN, Company ID" className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
                                 <div className="flex flex-col gap-1.5">
                                     <label htmlFor="idNumber" className="text-xs font-semibold text-gray-600">ID Number</label>
@@ -306,6 +657,24 @@ function SignUp() {
                                         <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                         <input id="idNumber" value={formData.idNumber} onChange={handleInputChange} type="text" placeholder="Enter ID Number" className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary" />
                                     </div>
+                                </div>
+
+                                {/* Shared Upload ID Dropbox */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-semibold text-gray-600">Upload ID Copy</label>
+                                    <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center gap-2 bg-gray-50/50 hover:bg-gray-50 cursor-pointer transition-colors duration-200">
+                                        <input
+                                            type="file"
+                                            accept="image/*,.pdf"
+                                            onChange={handleFileChange}
+                                            className="hidden"
+                                        />
+                                        <Upload className="w-5 h-5 text-gray-400" />
+                                        <span className="text-xs text-gray-600 font-medium">
+                                            {idFile ? idFile.name : "Click to upload or drag image/PDF"}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400">Max size: 5MB</span>
+                                    </label>
                                 </div>
 
                                 <p className="text-[11px] text-gray-500 italic mt-1">
@@ -316,10 +685,15 @@ function SignUp() {
                             <div className="pt-2 pb-6">
                                 <button
                                     type="submit"
-                                    className="w-full bg-primary hover:brightness-110 text-white font-semibold py-3 rounded-full shadow-sm transition-all duration-200 cursor-pointer"
+                                    disabled={isLoading}
+                                    className={`w-full text-white font-semibold py-3 rounded-full shadow-sm transition-all duration-200 cursor-pointer ${isLoading
+                                        ? "bg-gray-400 cursor-not-allowed"
+                                        : "bg-primary hover:brightness-110"
+                                        }`}
                                 >
-                                    Register
+                                    {isLoading ? "Registering..." : "Register"}
                                 </button>
+
                                 <p className="text-center text-[11px] text-gray-500 mt-3">
                                     By signing up you agree to our <span className="text-blue-600 underline cursor-pointer hover:text-blue-800">Terms of Use</span> and <span className="text-blue-600 underline cursor-pointer hover:text-blue-800">Privacy Policy</span>.
                                 </p>
@@ -330,7 +704,7 @@ function SignUp() {
                 </form>
 
             </div>
-        </div>
+        </div >
     );
 }
 

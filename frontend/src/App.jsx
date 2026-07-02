@@ -1,16 +1,12 @@
 import { useLocation } from "react-router-dom";
 import AppRoutes from "./AppRoutes";
 
-/* COMPONENTS */
 import Footer from "./components/Footer";
 import GuestNavbar from "./components/GuestNavbar";
 import ResidentNavbar from "./components/ResidentNavbar";
 
 function App() {
   const location = useLocation();
-
-  const authPages = ["/login", "/signup"];
-  const isAuthPage = authPages.includes(location.pathname);
 
   const residentPrefixes = [
     "/resident-home",
@@ -33,9 +29,11 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased">
-      <GuestNavbar />
 
-      <main className={`flex-grow ${isAuthPage ? "pt-0" : "pt-20"}`}>
+      {isResident ? <ResidentNavbar /> : <GuestNavbar />}
+
+      
+      <main className="flex-grow pt-0">
         <AppRoutes />
       </main>
 

@@ -18,6 +18,8 @@ import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
 
+import VehicleSticker from "./pages/Resident/VehicleSticker";
+
 import OfficesAll from "./pages/Guest/Offices/OfficesAll";
 
 
@@ -102,6 +104,8 @@ function AppRoutes() {
         <Route path="/reservation/court" element={<BasketballCourt />} />
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
         <Route path="/reservation/pool" element={<SwimmingPool />} />
+
+        <Route path="/vehicleSticker" element={<VehicleSticker />} />
 
 
       <Route path="/businesshub" element={<BusinessHub />} />

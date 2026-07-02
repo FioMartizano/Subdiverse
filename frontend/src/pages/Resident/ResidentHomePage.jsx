@@ -10,6 +10,7 @@ import tapwaterImage from "../../assets/tapwater.jpg";
 import treePlantingImage from "../../assets/treeplanting.jpg";  
 import hoaMeetingImage from "../../assets/hoameeting.jpg";
 import bingoImage from "../../assets/bingo.avif";
+import VenueCarousel from "../../components/VenueCarousel";
 
 /*const quickLinks = [
     { label: "Reservations", icon: CalendarCheck, to: "/reservation" },
@@ -205,21 +206,26 @@ function ResidentHomePage() {
             </section>
 
         {/*Venue Reservations CTA*/}
-        <section className="min-h-[70vh] py-15">
-            <div className="flex items-start justify-between gap-10 px-20">
+        <section className="min-h-[70vh] py-15 ">
+            <div className="flex items-center justify-between gap-10 px-20 min-h-[70vh]">
 
                     <div className="max-w-md">
-                        <h2 className="text-secondary text-5xl font-bold text-left mb-3">
-                            Looking for a Venue?
+                        <h2 className="text-secondary text-5xl font-bold text-left -mb-1 leading-tight">
+                            <span className="-mb-3 block">Looking for</span>
+                            <span className="block">a Venue?</span>
                         </h2>
+                        
                         <p className="text-primary font-bold text-left">
                             Reserve our community facilities quickly and easily through our WWHS Portal.
                         </p>
+                        <button className="bg-secondary text-white font-bold py-2 px-4 rounded-full hover:bg-green-700 transition-colors duration-300">
+                            Reserve
+                    </button>
                     </div>
 
                     {/* Right: Carousel */}
-                    <div className="flex-1">
-                        {/* your carousel/image slider goes here */}
+                    <div className="flex-1 flex justify-end">
+                        <VenueCarousel />
                     </div>
 
 

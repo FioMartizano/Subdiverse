@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import seniorGuest from "../../../assets/guestHOA_bg.jpg"; 
+import seniorGuest from "../../../assets/guestHOA_bg.jpg";  
 
 function GuestElderly() {
 
@@ -64,7 +64,7 @@ function GuestElderly() {
             viewport={{ once: true }}
             transition={{ ...smoothCurve, delay: 0.3 }}
           >
-            <button className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-full shadow-lg shadow-indigo-600/20 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-indigo-600/30">
+            <button className="btn-glow">
               View Programs
             </button>
           </motion.div>

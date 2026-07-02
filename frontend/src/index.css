@@ -154,6 +154,23 @@ body {
   transform: translateY(-2px);
 }
 
+.btn-glow {
+  padding: 0.875rem 2rem;
+  background-color: #f59e0b;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  box-shadow: 0 10px 15px -3px rgb(255 165 0 / 0.2);
+  transition: all 0.3s ease;
+}
+
+.btn-glow:hover {
+  background-color: #df7100;
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgb(255 165 0 / 0.3);
+}
+
 /* ===========================
    HOVERS
 =========================== */

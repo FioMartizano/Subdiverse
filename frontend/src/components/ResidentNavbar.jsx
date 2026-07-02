@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState , useEffect } from "react";
 import { Link } from "react-router-dom";
+import { Bell } from "lucide-react";
 import heroImg from "../assets/hero.png"; /*temporary, for logo*/
 
 export default function ResidentNavbar() {
@@ -7,9 +8,28 @@ export default function ResidentNavbar() {
   const [openServices, setOpenServices] = useState(false);
   const [openReservation, setOpenReservation] = useState(false);
   const [openUser, setOpenUser] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const notificationCount = 0; // Temporary
+
+useEffect(() => {
+  const handleScroll = () => {
+    setScrolled(window.scrollY > 50);
+  };
+
+  window.addEventListener("scroll", handleScroll);
+
+  return () => {
+    window.removeEventListener("scroll", handleScroll);
+  };
+}, []);
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-transparent">
+    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+    scrolled
+      ? "bg-white/90 backdrop-blur-md shadow-md"
+      : "bg-transparent"
+  }`}
+>
       <div className="flex items-center justify-between px-12 py-2">
 
         {/*Logo natin here*/}
@@ -197,6 +217,19 @@ export default function ResidentNavbar() {
           >
             BusinessHub
           </Link>
+
+          {/*NOTIFICATION*/}
+          <button
+            className="relative ml-6 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover-secondary-bg hover:text-white transition-all duration-300"
+          >
+            <Bell size={20} />
+
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-semibold">
+                {notificationCount}
+              </span>
+            )}
+          </button>
 
           {/*ICON*/}
           <div className="relative">

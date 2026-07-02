@@ -1,6 +1,6 @@
 function Footer() {
   return (
-        <footer className="bg-green-800 text-white rounded-t-3xl px-8 md:px-12 py-10 mt-10">
+        <footer className="relative z-10 bg-green-800 text-white rounded-t-3xl px-8 md:px-12 py-10">
       <div className="max-w-7xl mx-auto">
         
         {/* Top Section */}

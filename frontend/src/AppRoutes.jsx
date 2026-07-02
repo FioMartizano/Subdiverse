@@ -31,6 +31,8 @@ import Grievance from "./pages/Resident/ResiOffices/Grievance";
 import Elderly from "./pages/Resident/ResiOffices/Elderly";
 import Healthcare from "./pages/Resident/ResiOffices/Healthcare";
 import ParishChurch from "./pages/Resident/ResiOffices/ParishChurch";
+
+import ParkingReservation from "./pages/Resident/ParkingReservation";
 /*
 import Contact from "./pages/Guest/Contact";
 import Login from "./pages/Auth/Login";
@@ -120,6 +122,8 @@ function AppRoutes() {
       <Route path="/healthcare" element={<Healthcare />} />
 
       <Route path="/parishchurch" element={<ParishChurch />} />
+
+      <Route path="/parkingReservation" element={<ParkingReservation />} />
 
       
 

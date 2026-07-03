@@ -9,15 +9,36 @@ import healthGuest from "../../assets/healthCareGuest.jpg";
 import churchGuest from "../../assets/churchGuest.jpg";
 import AnimatedShape from "../../components/AnimatedShape";
 import WindwardMap from "../../components/WindwardMap";
+import { Link } from "react-router-dom";
 
 const logos = [wwhsLogo, filinvestLogo];
 const repeated = Array(5).fill(logos).flat();
 
 const offices = [
-    { img: hoaGuest, title: "HOA Office", desc: "Handles community concerns and homeowner assistance." },
-    { img: seniorGuest, title: "Senior Citizen Office", desc: "Support and services for senior residents." },
-    { img: healthGuest, title: "Health Office", desc: "Basic healthcare and wellness assistance." },
-    { img: churchGuest, title: "Church Office", desc: "Coordinates parish events and services." },
+    {
+        img: hoaGuest,
+        title: "HOA Office",
+        desc: "Handles community concerns and homeowner assistance.",
+        link: "/guest_offices?section=hoa",
+    },
+    {
+        img: seniorGuest,
+        title: "Senior Citizen Office",
+        desc: "Support and services for senior residents.",
+        link: "/guest_offices?section=elderly",
+    },
+    {
+        img: healthGuest,
+        title: "Health Office",
+        desc: "Basic healthcare and wellness assistance.",
+        link: "/guest_offices?section=healthcare",
+    },
+    {
+        img: churchGuest,
+        title: "Church Office",
+        desc: "Coordinates parish events and services.",
+        link: "/guest_offices?section=parish",
+    },
 ];
 
 const staggerContainer = {
@@ -191,24 +212,25 @@ function GuestHomePage() {
                             variants={staggerContainer}
                         >
                             {offices.map((office, i) => (
-                                <motion.div
-                                    key={i}
-                                    variants={staggerItem}
-                                    className="group relative flex-1 md:hover:flex-[2.2] transition-all duration-500 ease-in-out overflow-hidden rounded-2xl shadow-lg cursor-pointer"
-                                >
-                                    <img
-                                        src={office.img}
-                                        alt={office.title}
-                                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                    />
+                                <Link key={i} to={office.link} className="flex-1">
+                                    <motion.div
+                                        variants={staggerItem}
+                                        className="group relative h-full md:hover:flex-[2.2] transition-all duration-500 ease-in-out overflow-hidden rounded-2xl shadow-lg cursor-pointer"
+                                    >
+                                        <img
+                                            src={office.img}
+                                            alt={office.title}
+                                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        />
 
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                                    <div className="absolute bottom-0 left-0 p-5 text-white opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
-                                        <h3 className="text-lg md:text-xl font-bold">{office.title}</h3>
-                                        <p className="text-xs md:text-sm mt-1 text-white/90">{office.desc}</p>
-                                    </div>
-                                </motion.div>
+                                        <div className="absolute bottom-0 left-0 p-5 text-white opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
+                                            <h3 className="text-lg md:text-xl font-bold">{office.title}</h3>
+                                            <p className="text-xs md:text-sm mt-1 text-white/90">{office.desc}</p>
+                                        </div>
+                                    </motion.div>
+                                </Link>
                             ))}
                         </motion.div>
                     </div>

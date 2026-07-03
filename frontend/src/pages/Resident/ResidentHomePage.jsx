@@ -15,13 +15,15 @@ import { ChevronRight, Globe2, Store } from "lucide-react";
 import foodImage from "../../assets/food.png";
 import communityImage from "../../assets/community.jpg";
 
+import { Link } from "react-router-dom";
+
 const quickLinks = [
-    { label: "Reservations", icon: CalendarCheck },
-    { label: "Complaints", icon: AlertTriangle },
-    { label: "Community", icon: Users },
-    { label: "Vehicle Stickers", icon: Car },
-    { label: "Monthly Dues", icon: Wallet },
-    { label: "Parking", icon: ParkingSquare },
+    { label: "Reservations", icon: CalendarCheck, link: "/reservation" },
+    { label: "Complaints", icon: AlertTriangle, link: "/grievance" },
+    { label: "Community", icon: Users, link: "/community" }, // if you have this page
+    { label: "Vehicle Stickers", icon: Car, link: "/vehicleSticker" },
+    { label: "Monthly Dues", icon: Wallet, link: "/monthlyDues" }, // if you have this page
+    { label: "Parking", icon: ParkingSquare, link: "/parkingReservation" },
 ];
 
 const latestNews = [
@@ -116,8 +118,8 @@ function ResidentHomePage() {
             {/*Get Started Section*/}
             <section className="min-h-[80vh] py-15 overflow-hidden">
                 <div className="px-20 grid grid-cols-1 lg:grid-cols-3 gap-0">
-                    
-                    <motion.div 
+
+                    <motion.div
                         initial={{ opacity: 0, x: -30 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true, margin: "-100px" }}
@@ -131,7 +133,7 @@ function ResidentHomePage() {
                         </div>
                     </motion.div>
 
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, x: 30 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true, margin: "-100px" }}
@@ -146,30 +148,32 @@ function ResidentHomePage() {
                     </motion.div>
 
                     {/* Quick links */}
+
                     <div className="lg:col-span-2 grid grid-cols-[repeat(3,auto)] gap-x-8 gap-y-5 justify-start">
-                        {quickLinks.map(({ label, icon: Icon }, index) => (
-                            <motion.div
-                                key={label}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.4, delay: index * 0.08 }}
-                                className={`flex flex-col items-center gap-3 cursor-pointer group ${
-                                    index >= 3 ? "-mt-30" : ""
-                                }`}
-                            >
-                                <div className="w-20 h-20 bg-secondary hover:bg-primary rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md group-hover:-translate-y-1 transition-all duration-300">
-                                    <Icon className="text-white text-3xl" />
-                                </div>
-                                <span className="text-primary font-semibold text-sm text-center">
-                                    {label}
-                                </span>
-                            </motion.div>
+                        {quickLinks.map(({ label, icon: Icon, link }, index) => (
+                            <Link key={label} to={link}>
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ duration: 0.4, delay: index * 0.08 }}
+                                    className={`flex flex-col items-center gap-3 cursor-pointer group ${index >= 3 ? "-mt-30" : ""
+                                        }`}
+                                >
+                                    <div className="w-20 h-20 bg-secondary hover:bg-primary rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md group-hover:-translate-y-1 transition-all duration-300">
+                                        <Icon className="text-white text-3xl" />
+                                    </div>
+
+                                    <span className="text-primary font-semibold text-sm text-center">
+                                        {label}
+                                    </span>
+                                </motion.div>
+                            </Link>
                         ))}
                     </div>
 
                     {/*Calendar*/}
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         whileInView={{ opacity: 1, scale: 1 }}
                         viewport={{ once: true }}
@@ -188,7 +192,7 @@ function ResidentHomePage() {
             {/*Latest News Section*/}
             <section className="relative min-h-[105vh] py-15 overflow-hidden">
                 <div className="px-20 grid grid-cols-1 lg:grid-cols-3 gap-0">
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, y: 25 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
@@ -230,7 +234,7 @@ function ResidentHomePage() {
                 <div className="flex flex-col lg:flex-row items-center justify-between gap-12 px-8 md:px-20">
 
                     {/* Left content block */}
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, x: -40 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true, margin: "-50px" }}
@@ -268,7 +272,7 @@ function ResidentHomePage() {
                     </motion.div>
 
                     {/* Right aligned carousel block */}
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, x: 40 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true, margin: "-50px" }}

@@ -181,7 +181,7 @@ function Login() {
               <p className="text-center text-xs text-gray-400 mt-5 tracking-wide">
                 Don't have an account?{" "}
                 <span className="text-primary font-bold hover:underline cursor-pointer">
-                  Contact Administration
+                  Sign Up Now!
                 </span>
               </p>
             </div>

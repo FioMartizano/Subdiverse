@@ -3,7 +3,7 @@ import { Calendar } from "./ui/calendar";
 
 function ResidentCalendar() {
     const [events, setEvents] = useState([
-        { date: new Date(2026, 6, 4), title: "Basketball Tournament" },
+        { date: new Date(2026, 6, 4), title: "Basketball Tournament" }, //ipakita mo yan
     ]);
     const [selectedDate, setSelectedDate] = useState(null);
     const [showForm, setShowForm] = useState(false);

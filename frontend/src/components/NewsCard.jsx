@@ -1,34 +1,30 @@
 // components/NewsCard.jsx
 function NewsCard({ image, title, excerpt, office }) {
     return (
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer w-60">
-            {/* Photo */}
-            <div className="w-full h-40 overflow-hidden  bg-gray-100 flex items-center justify-center">
+        // Changed w-60 to min-w-[280px] to ensure cards don't shrink too much
+        <div className="flex-shrink-0 w-[280px] bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 cursor-pointer">
+            <div className="w-full h-48 overflow-hidden bg-gray-100">
                 {image ? (
-                    <img
-                        src={image}
-                        alt={title}
-                        className="w-full h-full object-cover"
-                    />
+                    <img src={image} alt={title} className="w-full h-full object-cover" />
                 ) : (
-                    <span className="text-gray-400 text-sm">No image available</span>
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No image</div>
                 )}
             </div>
 
-            {/* Content */}
-            <div className="p-4 flex flex-col gap-1">
-                <h3 className="text-secondary font-bold text-lg leading-snug line-clamp-2">
+            <div className="p-5 flex flex-col gap-2">
+                <h3 className="text-neutral-900 font-bold text-lg leading-snug line-clamp-2">
                     {title}
                 </h3>
-                <p className="text-gray-500 text-sm line-clamp-2">
+                <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed">
                     {excerpt}
                 </p>
-                <p className="text-primary font-semibold text-xs mt-2">
-                    {office}
-                </p>
+                <div className="mt-3 pt-3 border-t border-gray-50">
+                    <p className="text-emerald-700 font-bold text-[10px] uppercase tracking-wider">
+                        {office}
+                    </p>
+                </div>
             </div>
         </div>
     );
 }
-
 export default NewsCard;

@@ -7,28 +7,31 @@ function NewsScroller({ latestNews }) {
 
     const scroll = (direction) => {
         if (!scrollRef.current) return;
-        const cardWidth = 260; // roughly card width + gap, adjust to match your NewsCard width
+        const scrollAmount = 300; 
         scrollRef.current.scrollBy({
-            left: direction === "left" ? -cardWidth : cardWidth,
+            left: direction === "left" ? -scrollAmount : scrollAmount,
             behavior: "smooth",
         });
     };
 
     return (
-        <div className="relative lg:col-span-3 w-full">
-            {/* Left button */}
+        /* 1. Added px-16 to create the "gutters" on the left and right */
+        <div className="relative w-full px-16">
+            
+            {/* 2. Absolute positioning stays, but now they sit in the px-16 space */}
             <button
                 onClick={() => scroll("left")}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center shadow-sm hover:bg-gray-100 transition-all duration-200"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white border border-gray-200 rounded-full w-12 h-12 flex items-center justify-center shadow-md hover:shadow-lg hover:border-emerald-500 transition-all"
                 aria-label="Scroll left"
             >
-                <ChevronLeft className="w-5 h-5 text-primary" />
+                <ChevronLeft className="w-6 h-6 text-emerald-600" />
             </button>
 
-            {/* Scrollable row */}
+            {/* 3. The card container is now safely inside the gutters */}
             <div
                 ref={scrollRef}
-                className="flex overflow-x-auto gap-20 px-12 pb-4 min-w-0 scroll-hide scroll-smooth"
+                className="flex overflow-x-auto gap-8 py-4 scroll-smooth scrollbar-hide"
+                style={{ scrollbarWidth: 'none' }}
             >
                 {latestNews.map((news, index) => (
                     <div key={index} className="flex-shrink-0">
@@ -42,13 +45,12 @@ function NewsScroller({ latestNews }) {
                 ))}
             </div>
 
-            {/* Right button */}
             <button
                 onClick={() => scroll("right")}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full w-9 h-9 flex items-center justify-center shadow-sm hover:bg-gray-100 transition-all duration-200"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white border border-gray-200 rounded-full w-12 h-12 flex items-center justify-center shadow-md hover:shadow-lg hover:border-emerald-500 transition-all"
                 aria-label="Scroll right"
             >
-                <ChevronRight className="w-5 h-5 text-primary" />
+                <ChevronRight className="w-6 h-6 text-emerald-600" />
             </button>
         </div>
     );

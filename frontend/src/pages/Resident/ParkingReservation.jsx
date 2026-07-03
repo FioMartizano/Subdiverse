@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, Image, File, Trash2 } from 'lucide-react';
-import { auth, db, storage } from "../../firebase";
-import { collection, query, where, getDocs, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore';
+import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, File, Trash2, RefreshCw } from 'lucide-react';
+import { auth, db, storage } from '../../firebase';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, getDoc, doc, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 const CarIcon = ({ className, color = "currentColor", windowColor = "white" }) => (
@@ -22,6 +22,10 @@ export default function ParkingReservation() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reservationError, setReservationError] = useState(null);
+
+  // Status Display States
+  const [userReservation, setUserReservation] = useState(null);
+  const [loadingStatus, setLoadingStatus] = useState(false);
 
   // OR/CR Upload States
   const [orcFile, setOrcFile] = useState(null);
@@ -70,15 +74,23 @@ export default function ParkingReservation() {
       if (currentUser) {
         setUser(currentUser);
         await fetchUserData(currentUser.uid);
+        await fetchLatestReservation(currentUser.uid);
       } else {
         setUser(null);
         setUserData(null);
+        setUserReservation(null);
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user && userData) {
+      fetchLatestReservation(user.uid);
+    }
+  }, [user, userData]);
 
   // Fetch user data from Firestore
   const fetchUserData = async (uid) => {
@@ -101,12 +113,70 @@ export default function ParkingReservation() {
     }
   };
 
+
+// Fetch user's latest reservation
+const fetchLatestReservation = async (uid) => {
+  if (!uid) {
+    console.log('❌ No UID provided');
+    return;
+  }
+  
+  console.log('🔍 Fetching reservation for user UID:', uid);
+  setLoadingStatus(true);
+  
+  try {
+    const reservationsRef = collection(db, 'ParkingReservation');
+    // Query by userId (which should be the Firebase Auth UID)
+    const q = query(
+      reservationsRef,
+      where('userId', '==', uid) // This should match user.uid
+    );
+    const querySnapshot = await getDocs(q);
+    
+    console.log(`👤 Found ${querySnapshot.size} reservations for user UID:`, uid);
+    
+    if (!querySnapshot.empty) {
+      // Sort by createdAt descending
+      const sortedDocs = querySnapshot.docs.sort((a, b) => {
+        const aData = a.data();
+        const bData = b.data();
+        const aTime = aData.createdAt?.toDate?.() || new Date(aData.createdAt);
+        const bTime = bData.createdAt?.toDate?.() || new Date(bData.createdAt);
+        return bTime - aTime;
+      });
+      
+      const doc = sortedDocs[0];
+      const data = doc.data();
+      console.log('✅ Found reservation:', { id: doc.id, ...data });
+      
+      // Convert Firestore timestamps
+      const startDate = data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate);
+      const endDate = data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate);
+      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+      
+      setUserReservation({
+        id: doc.id,
+        ...data,
+        startDate: startDate,
+        endDate: endDate,
+        createdAt: createdAt
+      });
+    } else {
+      console.log('❌ No reservations found for user UID:', uid);
+      setUserReservation(null);
+    }
+  } catch (error) {
+    console.error('❌ Error fetching reservation:', error);
+  } finally {
+    setLoadingStatus(false);
+  }
+};
+
   // Check if user has pending reservation
   const checkPendingReservation = async () => {
     if (!user) return false;
     
     try {
-      // Updated collection name to 'ParkingReservation'
       const reservationsRef = collection(db, 'ParkingReservation');
       const q = query(
         reservationsRef,
@@ -124,7 +194,6 @@ export default function ParkingReservation() {
   // Check if spot is available for selected dates
   const checkSpotAvailability = async (spotId, startDate, endDate) => {
     try {
-      // Updated collection name to 'ParkingReservation'
       const reservationsRef = collection(db, 'ParkingReservation');
       const q = query(
         reservationsRef,
@@ -196,14 +265,12 @@ export default function ParkingReservation() {
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
       const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
       if (!validTypes.includes(file.type)) {
         alert('Please upload a valid image (JPEG, PNG) or PDF file.');
         return;
       }
 
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('File size must be less than 5MB.');
         return;
@@ -212,7 +279,6 @@ export default function ParkingReservation() {
       setOrcFile(file);
       setOrcFileName(file.name);
 
-      // Create preview for images
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -220,7 +286,6 @@ export default function ParkingReservation() {
         };
         reader.readAsDataURL(file);
       } else {
-        // For PDF or other files
         setOrcPreview(null);
       }
     }
@@ -236,101 +301,69 @@ export default function ParkingReservation() {
     }
   };
 
-  // Handle reservation submission
-  const handleSubmitReservation = async () => {
-    if (!user || !userData) return;
+// Handle reservation submission
+const handleSubmitReservation = async () => {
+  if (!user || !userData) return;
 
-    // Validate payment type
-    if (!paymentType) {
-      setReservationError('Please select a payment method.');
-      return;
-    }
+  if (!paymentType) {
+    setReservationError('Please select a payment method.');
+    return;
+  }
 
-    // Validate OR/CR upload (optional for now)
-    // Uncomment the lines below if you want to make it required
-    // if (!orcFile) {
-    //   setReservationError('Please upload your OR/CR document.');
-    //   return;
-    // }
+  setSubmitting(true);
+  setReservationError(null);
 
-    setSubmitting(true);
-    setReservationError(null);
-
-    try {
-      // Prepare reservation data
-      const reservationData = {
-        userId: user.uid,
-        residentId: userData.residentId || '',
-        spotId: selectedId,
-        spotNumber: spots.find(s => s.id === selectedId)?.number || 0,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate || startDate),
-        monthlyRate: monthlyRate,
-        totalAmount: monthlyRate,
-        paymentType: paymentType,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        // OR/CR File Info (standby - not uploaded to Firebase yet)
-        orcFileInfo: orcFile ? {
-          fileName: orcFile.name,
-          fileSize: orcFile.size,
-          fileType: orcFile.type,
-          uploadStatus: 'pending' // Will be updated when actual upload is implemented
-        } : null,
-        residentInfo: {
-          name: `${userData.residentData?.firstName || ''} ${userData.residentData?.lastName || ''}`.trim() || 'N/A',
-          address: [
-            userData.residentData?.block,
-            userData.residentData?.lot,
-            userData.residentData?.street,
-            userData.residentData?.phase
-          ].filter(Boolean).join(', ') || 'N/A',
-          residentCategory: userData.residentData?.residentCategory || 'N/A',
-          contactNumber: userData.residentData?.contactNumber || 'N/A'
-        }
-      };
-
-      // If OR/CR file is selected, we'll store it for later upload
-      // For now, we just save the file info
-      if (orcFile) {
-        // In the future, you can upload to Firebase Storage here:
-        // const storageRef = ref(storage, `orcrs/${user.uid}/${Date.now()}_${orcFile.name}`);
-        // await uploadBytes(storageRef, orcFile);
-        // const downloadURL = await getDownloadURL(storageRef);
-        // reservationData.orcFileUrl = downloadURL;
-        
-        // For now, we'll just save the file info
-        console.log('OR/CR File ready for upload:', orcFile.name);
+  try {
+    const reservationData = {
+      // Use user.uid for userId (Firebase Auth UID)
+      userId: user.uid, // <-- THIS IS THE FIREBASE AUTH UID
+      residentId: userData.residentId || '', // <-- THIS IS THE RESIDENT ID FROM users collection
+      spotId: selectedId,
+      spotNumber: spots.find(s => s.id === selectedId)?.number || 0,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate || startDate),
+      monthlyRate: monthlyRate,
+      totalAmount: monthlyRate,
+      paymentType: paymentType,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      orcFileInfo: orcFile ? {
+        fileName: orcFile.name,
+        fileSize: orcFile.size,
+        fileType: orcFile.type,
+        uploadStatus: 'pending'
+      } : null,
+      residentInfo: {
+        name: `${userData.residentData?.firstName || ''} ${userData.residentData?.lastName || ''}`.trim() || 'N/A',
+        address: [
+          userData.residentData?.block,
+          userData.residentData?.lot,
+          userData.residentData?.street,
+          userData.residentData?.phase
+        ].filter(Boolean).join(', ') || 'N/A',
+        residentCategory: userData.residentData?.residentCategory || 'N/A',
+        contactNumber: userData.residentData?.contactNumber || 'N/A'
       }
+    };
 
-      // Updated collection name to 'ParkingReservation'
-      await addDoc(collection(db, 'ParkingReservation'), reservationData);
-      
-      const updatedSpots = spots.map(spot => {
-        if (spot.id === selectedId) {
-          return { ...spot, status: 'occupied' };
-        }
-        return spot;
-      });
-      setSpots(updatedSpots);
+    console.log('📝 Submitting reservation with userId:', reservationData.userId);
+    console.log('📝 ResidentId:', reservationData.residentId);
 
-      setShowSuccess(true);
-      setShowModal(false);
+    await addDoc(collection(db, 'ParkingReservation'), reservationData);
+    
+    // ... rest of the code
+  } catch (error) {
+    console.error('Error submitting reservation:', error);
+    setReservationError('Failed to submit reservation. Please try again.');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
-      setTimeout(() => {
-        setShowSuccess(false);
-        setSelectedId('SPOT-01');
-        const resetSpots = generateSpots();
-        setSpots(resetSpots);
-        // Reset file upload
-        handleRemoveFile();
-      }, 3000);
-
-    } catch (error) {
-      console.error('Error submitting reservation:', error);
-      setReservationError('Failed to submit reservation. Please try again.');
-    } finally {
-      setSubmitting(false);
+  // Refresh status
+  const handleRefreshStatus = async () => {
+    if (user) {
+      await fetchLatestReservation(user.uid);
     }
   };
 
@@ -445,6 +478,107 @@ export default function ParkingReservation() {
     return pages;
   };
 
+  const renderStatusMessage = () => {
+    if (loadingStatus) {
+      return (
+        <div className="flex items-center justify-center py-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-[var(--color-primary)] border-t-transparent"></div>
+          <span className="ml-2 text-sm text-gray-500">Loading status...</span>
+        </div>
+      );
+    }
+
+    if (!userReservation) {
+      return (
+        <div className="text-center py-6">
+          <p className="text-gray-500 text-sm">No active reservation</p>
+          <p className="text-xs text-gray-400 mt-1">Make a reservation to get started</p>
+        </div>
+      );
+    }
+
+    const { status, spotId, rejectionReason } = userReservation;
+
+    switch (status) {
+      case 'pending':
+        return (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-yellow-100 p-2 rounded-full">
+                <Clock className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-yellow-800">Pending Approval</h4>
+                  <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">{spotId}</span>
+                </div>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Please wait for the HOA admin to review and approve your reservation.
+                </p>
+                <p className="text-xs text-yellow-600 mt-2">
+                  You will receive a notification once your reservation is processed.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'confirmed':
+        return (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-green-100 p-2 rounded-full">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-green-800">Reservation Confirmed!</h4>
+                  <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">{spotId}</span>
+                </div>
+                <p className="text-sm text-green-700 mt-1">
+                  You can now proceed to the HOA office to pay and claim your sticker.
+                </p>
+                <p className="text-xs text-green-600 mt-2">
+                  Please bring your valid ID and payment confirmation.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'rejected':
+        return (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-red-100 p-2 rounded-full">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-red-800">Reservation Rejected</h4>
+                  <span className="text-xs text-red-600 bg-red-100 px-2 py-0.5 rounded-full">{spotId}</span>
+                </div>
+                <p className="text-sm text-red-700 mt-1">
+                  Sorry, we can't process your reservation.
+                </p>
+                {rejectionReason && (
+                  <p className="text-sm text-red-700 mt-1 font-medium">
+                    Reason: {rejectionReason}
+                  </p>
+                )}
+                <p className="text-xs text-red-600 mt-2">
+                  Please contact the HOA office for more information.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -459,7 +593,6 @@ export default function ParkingReservation() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans pt-16">
-      {/* Success Toast */}
       {showSuccess && (
         <div className="fixed top-20 right-4 z-50 animate-slide-in">
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg max-w-sm">
@@ -578,70 +711,86 @@ export default function ParkingReservation() {
           </div>
 
           {/* RIGHT PANEL: Reservation Details */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 w-full xl:w-[380px] shrink-0 flex flex-col h-fit">
-            <h2 className="text-xl font-bold mb-6 text-gray-900">Reservation Details</h2>
+          <div className="w-full xl:w-[380px] shrink-0 flex flex-col gap-4">
+           {/* Status Display Container */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Reservation Status</h3>
+              {renderStatusMessage()}
+            </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Reservation Details</h2>
+                <button
+                  onClick={handleRefreshStatus}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  title="Refresh status"
+                >
+                  <RefreshCw className={`w-4 h-4 text-gray-500 ${loadingStatus ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
 
-            <div className="mb-6">
-              <p className="text-xs text-gray-500 mb-2">Selected Spot</p>
-              <div className="border border-[var(--color-primary)] bg-[#eef4ee] rounded-xl p-4 flex flex-col justify-between h-32">
-                <div className="flex justify-between items-start">
-                  <CarIcon 
-                    className="w-14 h-14 ml-1 mt-1" 
-                    color="var(--color-primary)" 
-                    windowColor="#eef4ee" 
+              <div className="mb-6">
+                <p className="text-xs text-gray-500 mb-2">Selected Spot</p>
+                <div className="border border-[var(--color-primary)] bg-[#eef4ee] rounded-xl p-4 flex flex-col justify-between h-32">
+                  <div className="flex justify-between items-start">
+                    <CarIcon 
+                      className="w-14 h-14 ml-1 mt-1" 
+                      color="var(--color-primary)" 
+                      windowColor="#eef4ee" 
+                    />
+                    <span className="font-bold text-gray-900 text-lg">{selectedSpot?.id || '—'}</span>
+                  </div>
+                  <div className="text-[var(--color-primary)] font-bold text-sm ml-1">
+                    Php {monthlyRate.toLocaleString()}/month
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 mb-6">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1.5">Start Date</label>
+                  <input
+                    type="date"
+                    value={formatDateForInput(startDate)}
+                    onChange={handleStartDateChange}
+                    min={formatDateForInput(today)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2.5 bg-white cursor-pointer hover:border-gray-400 transition-colors text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                   />
-                  <span className="font-bold text-gray-900 text-lg">{selectedSpot?.id || '—'}</span>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Rental starts on {formatDate(startDate)}
+                  </p>
                 </div>
-                <div className="text-[var(--color-primary)] font-bold text-sm ml-1">
-                  Php {monthlyRate.toLocaleString()}/month
+                
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1.5">End Date (Auto-calculated)</label>
+                  <div className="flex items-center justify-between border border-gray-300 rounded-md px-3 py-2.5 bg-gray-50 cursor-not-allowed">
+                    <span className="text-sm text-gray-800">{formatDate(endDate)}</span>
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    30 days after start date
+                  </p>
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-4 mb-6">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1.5">Start Date</label>
-                <input
-                  type="date"
-                  value={formatDateForInput(startDate)}
-                  onChange={handleStartDateChange}
-                  min={formatDateForInput(today)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2.5 bg-white cursor-pointer hover:border-gray-400 transition-colors text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Rental starts on {formatDate(startDate)}
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-xs text-gray-600 mb-1.5">End Date (Auto-calculated)</label>
-                <div className="flex items-center justify-between border border-gray-300 rounded-md px-3 py-2.5 bg-gray-50 cursor-not-allowed">
-                  <span className="text-sm text-gray-800">{formatDate(endDate)}</span>
-                  <Calendar className="w-4 h-4 text-gray-400" />
+              <div className="bg-[var(--color-secondary)] text-white rounded-xl p-5 mb-6 shadow-md">
+                <div className="text-xs font-medium opacity-90 mb-1">Total Amount</div>
+                <div className="flex justify-between items-end">
+                  <div className="text-[10px] opacity-90 pb-1">
+                    1 month ({totalDays} days)
+                  </div>
+                  <div className="text-2xl font-bold tracking-tight">Php {totalAmount.toFixed(2)}</div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  30 days after start date
-                </p>
               </div>
-            </div>
 
-            <div className="bg-[var(--color-secondary)] text-white rounded-xl p-5 mb-6 shadow-md">
-              <div className="text-xs font-medium opacity-90 mb-1">Total Amount</div>
-              <div className="flex justify-between items-end">
-                <div className="text-[10px] opacity-90 pb-1">
-                  1 month ({totalDays} days)
-                </div>
-                <div className="text-2xl font-bold tracking-tight">Php {totalAmount.toFixed(2)}</div>
+              <div className="flex justify-end">
+                <button 
+                  onClick={handleInputDetails}
+                  className="bg-[var(--color-primary)] text-white px-8 py-3 rounded-full text-sm font-semibold hover:brightness-95 transition-all shadow-sm"
+                >
+                  Input details
+                </button>
               </div>
-            </div>
-
-            <div className="flex justify-end">
-              <button 
-                onClick={handleInputDetails}
-                className="bg-[var(--color-primary)] text-white px-8 py-3 rounded-full text-sm font-semibold hover:brightness-95 transition-all shadow-sm"
-              >
-                Input details
-              </button>
             </div>
           </div>
         </div>

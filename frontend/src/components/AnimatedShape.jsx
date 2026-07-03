@@ -1,32 +1,51 @@
-import { useScroll, useTransform, motion } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 
-function AnimatedShape({
-  className = "",
-  xRange = [0, 80],
-  yRange = [0, -500],
-  rotateRange = [0, 0],
-  scaleRange = [1, 1],
-}) {
-  const ref = useRef(null);
+const AnimatedShape = ({ 
+    className, 
+    xRange, 
+    yRange, 
+    rotateRange, 
+    scaleRange, 
+    duration = 20,
+    animateType = "scroll", // "scroll" or "loop"
+    style = {}              // Accepts your CSS variables
+}) => {
+    
+    // LOOP MODE: Endless floating animation
+    if (animateType === "loop") {
+        return (
+            <motion.div
+                className={`absolute rounded-full mix-blend-multiply ${className}`}
+                style={style}
+                animate={{
+                    x: xRange,
+                    y: yRange,
+                    rotate: rotateRange,
+                    scale: scaleRange,
+                }}
+                transition={{
+                    duration: duration,
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                    ease: "easeInOut",
+                }}
+            />
+        );
+    }
 
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-
-  const x = useTransform(scrollYProgress, [0, 1], xRange);
-  const y = useTransform(scrollYProgress, [0, 1], yRange);
-  const rotate = useTransform(scrollYProgress, [0, 1], rotateRange);
-  const scale = useTransform(scrollYProgress, [0, 1], scaleRange);
-
-  return (
-    <motion.div
-      ref={ref}
-      style={{ x, y, rotate, scale }}
-      className={`absolute rounded-[50%] bg-secondary z-0 ${className}`}
-    />
-  );
-}
+    // SCROLL MODE (Default): Parallax scroll setup
+    return (
+        <motion.div
+            className={`absolute rounded-full mix-blend-multiply ${className}`}
+            style={{
+                ...style,
+                x: xRange,
+                y: yRange,
+                rotate: rotateRange,
+                scale: scaleRange,
+            }}
+        />
+    );
+};
 
 export default AnimatedShape;

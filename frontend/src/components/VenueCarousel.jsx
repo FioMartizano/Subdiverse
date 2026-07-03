@@ -7,21 +7,21 @@ import courtImage from "../assets/court.jpg";
 
 const venues = [
   {
-    name: "Clubhouse",
-    location: "Main Building, Ground Floor",
+    name: "Function Hall",
+    location: "WWHS, Clubhouse",
     capacity: "Up to 150 guests",
     image: clubhouseImage,
   },
   {
     name: "Swimming Pool",
-    location: "Near Community Pool",
+    location: "WWHS, Clubhouse",
     capacity: "Up to 80 guests",
     image: poolImage,
   },
   {
     name: "Basketball Court",
-    location: "Sports Complex",
-    capacity: "Up to 200 guests",
+    location: "WWHS, Clubhouse",
+    capacity: "Up to 300 guests",
     image: courtImage,
   },
 ];
@@ -32,13 +32,12 @@ export default function VenueStackCarousel() {
   const next = () => setIndex((i) => (i + 1) % venues.length);
   const prev = () => setIndex((i) => (i - 1 + venues.length) % venues.length);
 
-  // returns the venue at a given offset from the active index
   const getCard = (offset) =>
     venues[(index + offset + venues.length) % venues.length];
 
   return (
     <div className="relative w-full max-w-sm h-96 flex items-center justify-center">
-      {/* Card 3 (furthest back) */}
+
       <motion.div
         key={`back2-${index}`}
         className="absolute w-72 h-80 rounded-3xl overflow-hidden shadow-md"
@@ -54,7 +53,7 @@ export default function VenueStackCarousel() {
         <div className="absolute inset-0 bg-black/40" />
       </motion.div>
 
-      {/* Card 2 (middle back) */}
+
       <motion.div
         key={`back1-${index}`}
         className="absolute w-72 h-80 rounded-3xl overflow-hidden shadow-md"
@@ -70,7 +69,6 @@ export default function VenueStackCarousel() {
         <div className="absolute inset-0 bg-black/25" />
       </motion.div>
 
-      {/* Active Card (front) */}
       <AnimatePresence mode="popLayout">
         <motion.div
           key={`front-${index}`}
@@ -114,7 +112,6 @@ export default function VenueStackCarousel() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Prev/Next controls */}
       <button
         onClick={prev}
         className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:bg-secondary hover:text-white transition-all duration-300"
@@ -129,7 +126,6 @@ export default function VenueStackCarousel() {
         <ChevronRight className="w-5 h-5" />
       </button>
 
-      {/* Dot indicators */}
       <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-2">
         {venues.map((_, i) => (
           <button

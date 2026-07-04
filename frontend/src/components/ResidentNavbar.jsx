@@ -1,7 +1,10 @@
-import { useState , useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState , useEffect, useRef } from "react";
+import { Link , useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import heroImg from "../assets/hero.png"; /*temporary, for logo*/
+
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase"; 
 
 export default function ResidentNavbar() {
   const [openOffices, setOpenOffices] = useState(false);
@@ -9,6 +12,15 @@ export default function ResidentNavbar() {
   const [openReservation, setOpenReservation] = useState(false);
   const [openUser, setOpenUser] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  const navigate = useNavigate(); //for logout function
+
+//dropdown timer set for these:
+  const closeOfficeTimer = useRef(null);
+  const closeServicesTimer = useRef(null);
+  const closeReservationTimer = useRef(null);
+  const closeUserTimer = useRef(null);
+
   const notificationCount = 0; // Temporary
 
 useEffect(() => {
@@ -23,13 +35,25 @@ useEffect(() => {
   };
 }, []);
 
-  return (
-    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-    scrolled
-      ? "bg-white/90 backdrop-blur-md shadow-md"
-      : "bg-transparent"
-  }`}
->
+const handleLogout = async () => {
+  try {
+    await signOut(auth);
+    setOpenUser(false);
+    navigate("/");
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
+};
+
+return (
+  <nav
+    className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+      scrolled
+        ? "bg-white/90 backdrop-blur-md shadow-md"
+        : "bg-transparent"
+    }`}
+  >
+  
       <div className="flex items-center justify-between px-12 py-2">
 
         {/*Logo natin here*/}
@@ -53,7 +77,19 @@ useEffect(() => {
           </Link>
 
           {/*DROPDOWN LIST (for Offices)*/}
-          <div className="relative">
+          <div
+              className="relative"
+              onMouseEnter={() => {
+                if (closeOfficeTimer.current) {
+                  clearTimeout(closeOfficeTimer.current);
+                }
+              }}
+              onMouseLeave={() => {
+                closeOfficeTimer.current = setTimeout(() => {
+                  setOpenOffices(false);
+                }, 200);
+              }}
+            >
             <button
               onClick={() => setOpenOffices(!openOffices)}
               className="flex items-center gap-2 text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
@@ -123,7 +159,20 @@ useEffect(() => {
           </Link>
 
           {/*DROPDOWN LIST for Services*/}
-          <div className="relative">
+          <div
+              className="relative"
+              onMouseEnter={() => {
+                if (closeServicesTimer.current) {
+                  clearTimeout(closeServicesTimer.current);
+                }
+              }}
+              onMouseLeave={() => {
+                closeServicesTimer.current = setTimeout(() => {
+                  setOpenServices(false);
+                  setOpenReservation(false);
+                }, 200);
+              }}
+            >
             <button
               onClick={() => setOpenServices(!openServices)}
               className="flex items-center gap-2 text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
@@ -141,11 +190,20 @@ useEffect(() => {
             {openServices && (
               <div className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-xl border border-gray-100 overflow-visible">
 
-                <div
-                  className="relative"
-                  onMouseEnter={() => setOpenReservation(true)}
-                  onMouseLeave={() => setOpenReservation(false)}
-                >
+                  <div
+                    className="relative"
+                    onMouseEnter={() => {
+                      if (closeReservationTimer.current) {
+                        clearTimeout(closeReservationTimer.current);
+                      }
+                      setOpenReservation(true);
+                    }}
+                    onMouseLeave={() => {
+                      closeReservationTimer.current = setTimeout(() => {
+                        setOpenReservation(false);
+                      }, 200);
+                    }}
+                  >
 
                   <Link
                     to="/reservation"
@@ -220,7 +278,7 @@ useEffect(() => {
 
           {/*NOTIFICATION*/}
           <button
-            className="relative ml-6 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover-secondary-bg hover:text-white transition-all duration-300"
+            className="relative ml-4 w-10 h-10 rounded-full bg-black shadow-md flex items-center justify-center text-white hover-secondary-bg hover:text-white transition-all duration-300"
           >
             <Bell size={20} />
 
@@ -232,10 +290,22 @@ useEffect(() => {
           </button>
 
           {/*ICON*/}
-          <div className="relative">
+          <div
+              className="relative"
+              onMouseEnter={() => {
+                if (closeUserTimer.current) {
+                  clearTimeout(closeUserTimer.current);
+                }
+              }}
+              onMouseLeave={() => {
+                closeUserTimer.current = setTimeout(() => {
+                  setOpenUser(false);
+                }, 200);
+              }}
+            >
             <button
               onClick={() => setOpenUser(!openUser)}
-              className="ml-6 w-10 h-10 rounded-full bg-black flex items-center justify-center hover-secondary-bg transition-all duration-300"
+              className="ml-2 w-10 h-10 rounded-full bg-black shadow-md flex items-center justify-center text-white hover-secondary-bg hover:text-white transition-all duration-300"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -256,13 +326,12 @@ useEffect(() => {
             {openUser && (
               <div className="absolute right-0 mt-3 w-44 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
 
-                <Link
-                  to="/logout"
-                  onClick={() => setOpenUser(false)}
-                  className="block px-5 py-3 hover-secondary-bg hover:text-white transition"
-                >
-                  Logout
-                </Link>
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left px-5 py-3 hover-secondary-bg hover:text-white transition"
+              >
+                Logout
+              </button>
 
               </div>
             )}

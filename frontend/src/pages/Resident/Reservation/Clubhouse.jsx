@@ -23,8 +23,8 @@ function Clubhouse() {
 
               <div>
 
-                <h1 className="text-white text-5xl md:text-7xl font-bold leading-tight">Subdivision</h1>
                 <h1 className="text-white text-5xl md:text-7xl font-bold leading-tight">Clubhouse</h1>
+                <h1 className="text-white text-5xl md:text-7xl font-bold leading-tight">Function Hall</h1>
 
               </div>
 

@@ -49,7 +49,7 @@ export default function GuestNavbar() {
             About Us
           </Link>
 
-    {/*DROPDOWN LIST*/}
+    {/*DROPDOWN LIST, updated: will be closed automatically na*/}
       <div
         className="relative"
         onMouseEnter={() => {

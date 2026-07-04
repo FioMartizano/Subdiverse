@@ -37,6 +37,7 @@ import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
 
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
 import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
+import Community from "./pages/Resident/Community";
 
 
 /* PENDING PAGES */
@@ -68,7 +69,7 @@ function AppRoutes() {
 
         <Route path="/resident-home" element={<ResidentHomePage />} />
 
-        {/*<Route path="/community" element={<Community />} />*/}
+        <Route path="/community" element={<Community />} />
 
         <Route path="/businesshub" element={<BusinessHub />} />
 

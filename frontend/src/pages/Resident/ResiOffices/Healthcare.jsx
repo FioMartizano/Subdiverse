@@ -22,7 +22,6 @@ import hoaService1 from "../../../assets/hoaService1.jpg";
 import hoaService2 from "../../../assets/hoaService2.jpg";
 import hoaService3 from "../../../assets/hoaService3.jpg";
 
-// Updated officers data with real names
 const officersData = [
     { id: 1, name: "Mary Jane L. Tala", position: "Barangay Health Worker (BHW)", image: hoaOfficer1 },
     { id: 2, name: "Eleonor R. Bueno", position: "Midwife", image: hoaOfficer2 },
@@ -93,7 +92,6 @@ function Healthcare() {
     return (
         <div className="bg-white min-h-screen w-full flex flex-col">
             
-            {/* 👇 Embedded Styles for Entrance Animations 👇 */}
             <style>{`
                 @keyframes fadeInUp {
                     0% { opacity: 0; transform: translateY(30px); }

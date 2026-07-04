@@ -12,6 +12,7 @@ import Contact from "./pages/Guest/Contact";
 
 
 /*RESIDENT PAGES*/
+import ResidentHomePage from "./pages/Resident/ResidentHomePage";
 import BusinessHub from "./pages/Resident/BusinessHub";
 
 /*RESIDENT / OFFICES*/
@@ -25,16 +26,17 @@ import Healthcare from "./pages/Resident/ResiOffices/Healthcare";
 import ParishChurch from "./pages/Resident/ResiOffices/ParishChurch";
 
 /*SERVICES*/
-import ResidentHomePage from "./pages/Resident/ResidentHomePage";
+
+import ReservationHome from "./pages/Resident/Reservation/ReservationHome";
 import VehicleSticker from "./pages/Resident/VehicleSticker";
 import ParkingReservation from "./pages/Resident/ParkingReservation";
 
 
 /*SERVICES / RESIDENT / RESERVATION*/
-import ReservationHome from "./pages/Resident/Reservation/ReservationHome";
-import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
+
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
+import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 
 
 /* PENDING PAGES */
@@ -90,6 +92,7 @@ function AppRoutes() {
 
         {/*SERVICES / RESIDENT / RESERVATION*/}
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
+
         <Route path="/reservation/pool" element={<SwimmingPool />} />
         <Route path="/reservation/court" element={<BasketballCourt />} />
 

@@ -6,6 +6,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import signUpImage from "../../assets/signUp.jpg";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { uploadImage } from "../../services/cloudinary"; //add this to link cloudinary.js
 
 
 function SignUp() {
@@ -120,7 +121,7 @@ function SignUp() {
         setIsLoading(true);
 
         try {
-            // Step 1: Create the user authentication account
+            // Step 1: Create user authentication account sa Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(
                 auth,
                 formData.email,
@@ -128,10 +129,13 @@ function SignUp() {
             );
             const userId = userCredential.user.uid;
 
-            // Step 2: wala muna storage since kelangan upgrade sa firebase if storage is used :/
+            // Step 2: Upload the ID copy to Cloudinary 
             let uploadedIdUrl = "";
+            if (idFile) {
+                uploadedIdUrl = await uploadImage(idFile, "authentication/valid-ids"); //add this pero state your own folder 
+            }
 
-            // Step 3A: Save to the "users" collection
+            // Step 3A: Save user base role and status to the "users" collection
             await setDoc(doc(db, "users", userId), {
                 email: formData.email,
                 role: "resident",
@@ -140,7 +144,7 @@ function SignUp() {
                 createdAt: new Date().toISOString()
             });
 
-            // Step 3B: Save to the "residents" collection
+            // Step 3B: Save detailed profile fields to the "residents" collection
             await setDoc(doc(db, "residents", userId), {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
@@ -166,7 +170,7 @@ function SignUp() {
 
                 idType: formData.idType === "Other" ? formData.otherIdType : formData.idType,
                 idNumber: formData.idNumber,
-                idImageUrl: uploadedIdUrl,
+                idImageUrl: uploadedIdUrl, // Stores the secure Cloudinary URL
                 verificationStatus: "unverified",
                 createdAt: new Date().toISOString()
             });
@@ -174,7 +178,7 @@ function SignUp() {
             alert("Registration successful! Your account has been submitted for admin approval.");
 
         } catch (error) {
-            console.error(error);
+            console.error("Error during registration process:", error);
 
             if (error.code === "auth/email-already-in-use") {
                 alert("This email address is already in use. Please try a different email or log in.");
@@ -187,11 +191,14 @@ function SignUp() {
     };
 
 
+
     const getAccountTypeLabel = () => {
         if (userType === "owner") return "Property Owner Account";
         if (userType === "renter") return "Renter Account";
         return "Household Member Account";
     };
+
+
 
     return (
         <div className="w-full h-screen min-h-screen bg-white grid grid-cols-1 md:grid-cols-12 overflow-hidden">

@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import aboutus_bg from "../../assets/aboutus_bg.jpg";
 import AnimatedShape from "../../components/AnimatedShape";
-import WindwardMap from "../../components/WindwardMap";
+import WindwardMap from "../../components/Maps/WindwardMap";
 
 function AboutUs() {
   // Cohesive premium deceleration curve for organic movement

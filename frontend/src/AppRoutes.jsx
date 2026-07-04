@@ -32,6 +32,8 @@ import Elderly from "./pages/Resident/ResiOffices/Elderly";
 import Healthcare from "./pages/Resident/ResiOffices/Healthcare";
 import ParishChurch from "./pages/Resident/ResiOffices/ParishChurch";
 
+import GrievanceComplaint from "./pages/Resident/ResiOffices/GrievanceComplaint"
+
 import ParkingReservation from "./pages/Resident/ParkingReservation";
 /*
 import Contact from "./pages/Guest/Contact";
@@ -124,6 +126,9 @@ function AppRoutes() {
       <Route path="/parishchurch" element={<ParishChurch />} />
 
       <Route path="/parkingReservation" element={<ParkingReservation />} />
+
+
+      <Route path="/grievanceComplaint" element={<GrievanceComplaint />} />
 
       
 

@@ -7,78 +7,43 @@ import SignUp from "./pages/Auth/SignUp";
 /*GUEST PAGES*/
 import GuestHomePage from "./pages/Guest/GuestHomePage";
 import AboutUs from "./pages/Guest/AboutUs";
-import Contact from "./pages/Guest/Contact";
-
-/*try*/
-
-import ResidentHomePage from "./pages/Resident/ResidentHomePage";
-
-import ReservationHome from "./pages/Resident/Reservation/ReservationHome";
-import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
-import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
-import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
-
-import VehicleSticker from "./pages/Resident/VehicleSticker";
-
 import OfficesAll from "./pages/Guest/Offices/OfficesAll";
-
-
-import BusinessHub from "./pages/Resident/BusinessHub";
-
-
-import HOA from "./pages/Resident/ResiOffices/HOA";
-import Grievance from "./pages/Resident/ResiOffices/Grievance";
-import Elderly from "./pages/Resident/ResiOffices/Elderly";
-import Healthcare from "./pages/Resident/ResiOffices/Healthcare";
-import ParishChurch from "./pages/Resident/ResiOffices/ParishChurch";
-
-import GrievanceComplaint from "./pages/Resident/ResiOffices/GrievanceComplaint"
-
-import ParkingReservation from "./pages/Resident/ParkingReservation";
-/*
 import Contact from "./pages/Guest/Contact";
-import Login from "./pages/Auth/Login";
-import SignUp from "./pages/Auth/SignUp";
-*/
-
-
-/*GUEST/OFFICES*/
-/*
-import GuestHOA from "./pages/Guest/Offices/GuestHOA";
-import GuestElderly from "./pages/Guest/Offices/GuestElderly";
-import GuestHealthcare from "./pages/Guest/Offices/GuestHealthcare";
-import GuestParishChurch from "./pages/Guest/Offices/GuestParishChurch";
-*/
 
 
 /*RESIDENT PAGES*/
-/*
-import ResidentHomePage from "./pages/Resident/ResidentHomePage";
-import Community from "./pages/Resident/Community";
+import BusinessHub from "./pages/Resident/BusinessHub";
 
-import VehicleSticker from "./pages/Resident/VehicleSticker";
-import ParkingReservation from "./pages/Resident/ParkingReservation";
-import MonthlyDues from "./pages/Resident/MonthlyDues";
-*/
-
-
-/*RESIDENT/OFFICES*/
-/*
+/*RESIDENT / OFFICES*/
 import HOA from "./pages/Resident/ResiOffices/HOA";
+
 import Grievance from "./pages/Resident/ResiOffices/Grievance";
+import GrievanceComplaint from "./pages/Resident/ResiOffices/GrievanceComplaint"
+
 import Elderly from "./pages/Resident/ResiOffices/Elderly";
 import Healthcare from "./pages/Resident/ResiOffices/Healthcare";
 import ParishChurch from "./pages/Resident/ResiOffices/ParishChurch";
-*/
+
+/*SERVICES*/
+import ResidentHomePage from "./pages/Resident/ResidentHomePage";
+import VehicleSticker from "./pages/Resident/VehicleSticker";
+import ParkingReservation from "./pages/Resident/ParkingReservation";
 
 
-/*RESIDENT/RESERVATION*/
-/*
+/*SERVICES / RESIDENT / RESERVATION*/
 import ReservationHome from "./pages/Resident/Reservation/ReservationHome";
+import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
-import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
+
+
+/* PENDING PAGES */
+/*RESIDENT PAGES*/
+/*
+import Community from "./pages/Resident/Community";
+import MonthlyDues from "./pages/Resident/MonthlyDues";
 */
+
 
 
 function AppRoutes() {
@@ -92,100 +57,41 @@ function AppRoutes() {
       {/* GUEST ROUTING */}
 
         <Route path="/" element={<GuestHomePage />} />
-
         <Route path="/about" element={<AboutUs />} />
-
+        <Route path="/guest_offices" element={<OfficesAll />} />
         <Route path="/contact" element={<Contact />} />
 
-        <Route path="/guest_offices" element={<OfficesAll />} />
 
+        {/*RESIDENT ROUTING*/}
 
-
-        {/*try*/}
         <Route path="/resident-home" element={<ResidentHomePage />} />
-        
+
+        {/*<Route path="/community" element={<Community />} />*/}
+
+        <Route path="/businesshub" element={<BusinessHub />} />
+
+        {/*RESIDENT / OFFICES*/}
+        <Route path="/hoa" element={<HOA />} />
+
+        <Route path="/grievance" element={<Grievance />} />
+          <Route path="/grievanceComplaint" element={<GrievanceComplaint />} />
+
+        <Route path="/elderly" element={<Elderly />} />
+        <Route path="/healthcare" element={<Healthcare />} />
+        <Route path="/parishchurch" element={<ParishChurch />} />
+
+
+        {/*SERVICES*/}
         <Route path="/reservation" element={<ReservationHome />} />
-        <Route path="/reservation/court" element={<BasketballCourt />} />
+        <Route path="/vehicleSticker" element={<VehicleSticker />} />
+        <Route path="/parkingReservation" element={<ParkingReservation />} />
+      {/*<Route path="/monthlyDues" element={<MonthlyDues />} />*/}
+
+
+        {/*SERVICES / RESIDENT / RESERVATION*/}
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
         <Route path="/reservation/pool" element={<SwimmingPool />} />
-
-        <Route path="/vehicleSticker" element={<VehicleSticker />} />
-
-
-      <Route path="/businesshub" element={<BusinessHub />} />
-
-
-       <Route path="/hoa" element={<HOA />} />
-
-      <Route path="/grievance" element={<Grievance />} />
-
-      <Route path="/elderly" element={<Elderly />} />
-
-      <Route path="/healthcare" element={<Healthcare />} />
-
-      <Route path="/parishchurch" element={<ParishChurch />} />
-
-      <Route path="/parkingReservation" element={<ParkingReservation />} />
-
-
-      <Route path="/grievanceComplaint" element={<GrievanceComplaint />} />
-
-      
-
-
-      {/*
-      <Route path="/guest_hoa" element={<GuestHOA />} />
-      <Route path="/guest_grievance" element={<GuestGrievance />} />
-      <Route path="/guest_elderly" element={<GuestElderly />} />
-      <Route path="/guest_healthcare" element={<GuestHealthcare />} />
-      <Route path="/guest_parishchurch" element={<GuestParishChurch />} />
-
-      <Route path="/contact" element={<Contact />} />
-
-      <Route path="/login" element={<Login />} />
-
-      <Route path="/signup" element={<SignUp />} />
-      */}
-
-
-
-      {/* RESIDENT ROUTING */}
-
-      {/*
-      <Route path="/resident-home" element={<ResidentHomePage />} />
-
-      <Route path="/hoa" element={<HOA />} />
-
-      <Route path="/grievance" element={<Grievance />} />
-
-      <Route path="/elderly" element={<Elderly />} />
-
-      <Route path="/healthcare" element={<Healthcare />} />
-
-      <Route path="/parishchurch" element={<ParishChurch />} />
-
-
-      <Route path="/community" element={<Community />} />
-
-      <Route path="/businesshub" element={<BusinessHub />} />
-
-
-      <Route path="/reservation" element={<ReservationHome />} />
-
-      <Route path="/reservation/clubhouse" element={<Clubhouse />} />
-
-      <Route path="/reservation/pool" element={<SwimmingPool />} />
-
-      <Route path="/reservation/court" element={<BasketballCourt />} />
-
-
-      <Route path="/vehicleSticker" element={<VehicleSticker />} />
-
-      <Route path="/parkingReservation" element={<ParkingReservation />} />
-
-      <Route path="/monthlyDues" element={<MonthlyDues />} />
-      */}
-
+        <Route path="/reservation/court" element={<BasketballCourt />} />
 
     </Routes>
   );

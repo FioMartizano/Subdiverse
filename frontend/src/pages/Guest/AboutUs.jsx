@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import aboutus_bg from "../../assets/aboutus_bg.jpg";
+import clubhouse_img from "../../assets/clubhouse.jpg";
 import AnimatedShape from "../../components/AnimatedShape";
 import WindwardMap from "../../components/WindwardMap";
 
@@ -54,11 +55,11 @@ function AboutUs() {
       </section>
 
       {/* Main Content Section */}
-      <section className="relative bg-white pt-28 pb-24 px-4 overflow-visible md:overflow-x-hidden select-none">
+      <section className="relative bg-white pt-16 pb-24 px-4 overflow-visible md:overflow-hidden select-none">
         
-        {/* Dynamic Animated Shapes - Using GuestHomePage pattern */}
+        {/* Dynamic Animated Shapes */}
         <AnimatedShape
-          className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -left-[104px] md:-left-[143px] lg:-left-[192px] top-50 !bg-primary"
+          className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -left-[104px] md:-left-[143px] lg:-left-[192px] top-50 !bg-[var(--color-primary)]"
           xRange={[0, 80]}
           yRange={[0, -500]}
           rotateRange={[0, 12]}
@@ -66,17 +67,17 @@ function AboutUs() {
         />
         
         <AnimatedShape
-          className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -right-[104px] md:-right-[143px] lg:-right-[192px] bottom-20 !bg-secondary"
+          className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -right-[104px] md:-right-[143px] lg:-right-[192px] bottom-20 !bg-[var(--color-secondary)]"
           xRange={[0, -80]}
           yRange={[0, -400]}
           rotateRange={[0, -15]}
           scaleRange={[0.9, 1.05]}
         />
 
-        <div className="max-w-6xl mx-auto relative z-10">
+        <div className="max-w-7xl mx-auto relative z-10">
           
-          {/* ====== TOP SECTION (Orange Info Card + Interactive Map Component) ====== */}
-          <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-6 md:gap-0">
+          {/* ====== TOP SECTION (Demographics + Map) ====== */}
+          <div className="relative w-full min-h-[500px] md:min-h-[600px] flex flex-col md:flex-row items-center justify-end mt-12 mb-24">
             
             {/* Left Content Card */}
             <motion.div
@@ -85,60 +86,134 @@ function AboutUs() {
               viewport={{ once: true, amount: 0.2 }}
               transition={smoothCurve}
               className="
-                md:col-span-5
+                order-2 md:order-1
+                w-full md:w-[45%] lg:w-[40%]
+                md:absolute md:left-4 lg:left-8
                 bg-[var(--color-secondary)]
-                rounded-2xl
-                p-8
+                rounded-3xl md:rounded-br-[6rem]
+                p-8 md:p-12
                 text-white
-                shadow-xl
+                shadow-2xl
                 relative
-                z-20
-                md:translate-x-8
-                lg:translate-x-16
+                z-30
+                mt-[-4rem] md:mt-0
               "
             >
-              <h2 className="text-3xl font-bold mb-2">Our Territory</h2> 
-              <div className="w-12 h-1 bg-emerald-800 rounded mb-5" />
-              <p className="leading-8">
-                Explore the bounds of Windward Hills. Our integrated community layout 
-                is purposefully designed to provide safe pathways, organized zoning, 
-                and unified residential setups to secure comfort across the community territory.
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight">Demographics Overview</h2> 
+              <div className="w-16 h-1.5 bg-emerald-500 rounded-full mb-6" />
+              <p className="text-base md:text-lg leading-relaxed opacity-95">
+                Windward Hills Subdivision is located in Barangay Burol 1, Dasma City. 
+                Spanning a total area of [Insert Area Size], the subdivision is organized 
+                into four distinct phases: Phase 1, Phase 2, Phase A, and Phase E. The community consists of
+                1,800 households, representing a significant population cluster within the barangay.
               </p>
             </motion.div>
 
-            {/* Interactive Map Wrapper */}
+            {/* Map Wrapper */}
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={smoothCurve}
               className="
-                md:col-span-7
-                h-[400px]
-                bg-gray-50
-                rounded-2xl
-                shadow-lg
-                overflow-hidden
+                order-1 md:order-2
+                w-full md:w-[70%]
                 relative
                 z-10
               "
             >
-              <WindwardMap />
+              {/* Accent Outline */}
+              <div className="absolute inset-0 bg-[var(--color-primary)] opacity-30 translate-x-4 translate-y-4 md:translate-x-8 md:translate-y-8 rounded-bl-[6rem] md:rounded-bl-[12rem] rounded-3xl md:rounded-l-none -z-10" />
+              
+              {/* Main Map Container */}
+              <div className="w-full rounded-bl-[6rem] md:rounded-bl-[12rem] rounded-3xl md:rounded-l-none shadow-xl overflow-hidden relative z-20 border-4 border-white">
+                <WindwardMap />
+                
+                {/* Custom Popup Card Overlay - Positioned over the Basketball Court marker */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex flex-col items-center pointer-events-none">
+                  
+                  {/* Popup Card */}
+                  <div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-64 mb-2 transform transition-all hover:scale-105 cursor-pointer pointer-events-auto">
+                    <img 
+                      src={clubhouse_img} 
+                      alt="Windward Hills Basketball Court" 
+                      className="w-full h-32 object-cover"
+                    />
+                    <div className="p-4 bg-white">
+                      <h4 className="text-[#D32F2F] font-bold text-lg leading-tight mb-1">
+                        Basketball Court
+                      </h4>
+                      <p className="text-slate-600 text-sm font-medium">
+                        Phase 1
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Map Pin */}
+                  <div className="w-5 h-5 bg-[#D32F2F] border-[3px] border-white rounded-full shadow-md pointer-events-none" />
+                  
+                </div>
+              </div>
             </motion.div>
 
           </div>
 
-          {/* ====== BOTTOM SECTION (History Panel Showcase) ====== */}
+          {/* ====== LOCATION & NEARBY SECTION ====== */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={smoothCurve}
+            className="mb-24"
+          >
+            <div className="bg-[#F8F9FA] rounded-3xl p-8 md:p-12 shadow-lg">
+              <h3 className="text-gray-900 font-bold tracking-widest uppercase text-sm mb-2">
+                Where We Are
+              </h3>
+              <h2 className="text-4xl md:text-5xl font-black text-[#D32F2F] tracking-tight mb-6">
+                Location & Nearby
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Clubhouse */}
+                <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-shadow">
+                  <div className="text-4xl mb-3">🏠</div>
+                  <h4 className="font-bold text-lg mb-1">Clubhouse</h4>
+                  <p className="text-sm text-gray-600">Windward Hills Clubhouse</p>
+                  <p className="text-xs text-gray-500 mt-1">Phase 1</p>
+                </div>
+
+                {/* Basketball Court */}
+                <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-shadow">
+                  <div className="text-4xl mb-3">🏀</div>
+                  <h4 className="font-bold text-lg mb-1">Basketball Court</h4>
+                  <p className="text-sm text-gray-600">Community Sports Facility</p>
+                  <p className="text-xs text-gray-500 mt-1">Phase 1</p>
+                </div>
+
+                {/* Church */}
+                <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-shadow">
+                  <div className="text-4xl mb-3">⛪</div>
+                  <h4 className="font-bold text-lg mb-1">Pope Saint Paul VI Parish</h4>
+                  <p className="text-sm text-gray-600">Parish Church</p>
+                  <p className="text-xs text-gray-500 mt-1">Near Phase A</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ====== BOTTOM SECTION (History Panel) ====== */}
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.15 }}
             transition={smoothCurve}
-            className="max-w-10xl mx-auto mt-48 relative z-20"
+            className="max-w-5xl mx-auto mt-24 md:mt-48 relative z-20 px-4"
           >
-            <div className="bg-[var(--color-primary)] rounded-3xl text-center text-white px-12 py-24 md:px-20 md:py-36 shadow-2xl">
-              <h2 className="text-5xl font-bold mb-6">Our History</h2>
-              <p className="max-w-2xl mx-auto text-lg leading-8 opacity-90">
+            <div className="bg-[var(--color-primary)] rounded-3xl text-center text-white px-8 py-16 md:px-20 md:py-32 shadow-2xl">
+              <h2 className="text-4xl md:text-5xl font-bold mb-6">Our History</h2>
+              <div className="w-24 h-1.5 bg-white/30 mx-auto rounded-full mb-8" />
+              <p className="max-w-2xl mx-auto text-base md:text-lg leading-8 opacity-95">
                 Established with a vision for harmonious living, Windward Hills has grown 
                 from a small development plan into a vibrant neighborhood. For years, we 
                 have fostered safety, unity, and a beautiful space that families are proud 

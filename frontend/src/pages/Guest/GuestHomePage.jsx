@@ -1,4 +1,7 @@
-import { motion } from "framer-motion";
+import { useRef, useState, useEffect } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { Link } from "react-router-dom";
+// Assets
 import homeImage from "../../assets/home.jpg";
 import wwhsLogo from "../../assets/wwhs-logo.png";
 import filinvestLogo from "../../assets/filinvest-logo.png";
@@ -7,66 +10,76 @@ import hoaGuest from "../../assets/hoaGuest.jpg";
 import seniorGuest from "../../assets/seniorGuest.jpg";
 import healthGuest from "../../assets/healthCareGuest.jpg";
 import churchGuest from "../../assets/churchGuest.jpg";
+// Components
 import AnimatedShape from "../../components/AnimatedShape";
 import WindwardMap from "../../components/Maps/WindwardMap";
-import { Link } from "react-router-dom";
 
 const logos = [wwhsLogo, filinvestLogo];
 const repeated = Array(5).fill(logos).flat();
 
 const offices = [
-    {
-        img: hoaGuest,
-        title: "HOA Office",
-        desc: "Handles community concerns and homeowner assistance.",
-        link: "/guest_offices?section=hoa",
-    },
-    {
-        img: seniorGuest,
-        title: "Senior Citizen Office",
-        desc: "Support and services for senior residents.",
-        link: "/guest_offices?section=elderly",
-    },
-    {
-        img: healthGuest,
-        title: "Health Office",
-        desc: "Basic healthcare and wellness assistance.",
-        link: "/guest_offices?section=healthcare",
-    },
-    {
-        img: churchGuest,
-        title: "Church Office",
-        desc: "Coordinates parish events and services.",
-        link: "/guest_offices?section=parish",
-    },
+    { img: hoaGuest, title: "HOA Office", desc: "Handles community concerns and homeowner assistance.", link: "/guest_offices?section=hoa" },
+    { img: seniorGuest, title: "Senior Citizen Office", desc: "Support and services for senior residents.", link: "/guest_offices?section=elderly" },
+    { img: healthGuest, title: "Health Office", desc: "Basic healthcare and wellness assistance.", link: "/guest_offices?section=healthcare" },
+    { img: churchGuest, title: "Church Office", desc: "Coordinates parish events and services.", link: "/guest_offices?section=parish" },
 ];
 
-const staggerContainer = {
-    hidden: {},
-    visible: {
-        transition: { staggerChildren: 0.12 },
-    },
-};
-
-const staggerItem = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
-};
+const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.12 } } };
+const staggerItem = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 
 function GuestHomePage() {
+    const { scrollYProgress } = useScroll();
+    const yellowY = useTransform(scrollYProgress, [0, 1], [0, -200]);
+    const yellowRotate = useTransform(scrollYProgress, [0, 1], [0, 45]);
+
+    // CHANGED: instead of a ref around just the offices section (which shortened
+    // the shape's travel distance), this ref sits on the Contact section only.
+    // We use it purely to detect "how close is Contact to being in view" so we
+    // can fade the shape right before it would visually collide with the
+    // Contact text — without touching the wrapper structure, so the shape's
+    // full original travel path (offices -> contact) is preserved.
+    const contactRef = useRef(null);
+
+    const { scrollYProgress: contactProgress } = useScroll({
+        target: contactRef,
+        offset: ["start end", "start center"],
+        // progress 0: top of Contact section touches bottom of viewport (not visible yet)
+        // progress 1: top of Contact section reaches vertical center of viewport (well in view)
+    });
+
+    const [isLargeScreen, setIsLargeScreen] = useState(false);
+
+    useEffect(() => {
+        const mq = window.matchMedia("(min-width: 1024px)");
+        const updateMatch = () => setIsLargeScreen(mq.matches);
+        updateMatch();
+        mq.addEventListener("change", updateMatch);
+        return () => mq.removeEventListener("change", updateMatch);
+    }, []);
+
+    // CHANGED: on lg+, output stays [1, 1] the whole time — shape never fades,
+    // travels the full original distance from Contact up through Offices.
+    // On smaller screens, it fades to 0 as Contact scrolls toward view, so it
+    // disappears before overlapping the green Contact text in the stacked layout.
+    const shapeOpacity = useTransform(
+        contactProgress,
+        [0, 1],
+        isLargeScreen ? [1, 1] : [1, 0]
+    );
+
     return (
         <>
-            {/*Hero Section*/}
+            {/* Hero Section */}
             <section
                 className="min-h-screen bg-cover bg-center flex items-center"
                 style={{ backgroundImage: `url(${homeImage})` }}
             >
-                <div className="ml-20 max-w-4xl">
+                <div className="px-6 sm:px-10 md:px-16 lg:ml-20 lg:px-0 max-w-4xl">
                     <motion.h1
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, ease: "easeOut" }}
-                        className="text-white text-5xl md:text-7xl lg:text-7xl font-bold drop-shadow-lg"
+                        className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold drop-shadow-lg leading-tight"
                     >
                         Windward Hills Subdivision
                     </motion.h1>
@@ -75,7 +88,7 @@ function GuestHomePage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-                        className="text-white text-s mt-6 leading-relaxed drop-shadow-md"
+                        className="text-white text-sm md:text-base mt-6 leading-relaxed drop-shadow-md"
                     >
                         Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
                     </motion.p>
@@ -93,7 +106,7 @@ function GuestHomePage() {
                 </div>
             </section>
 
-            {/*Logo Carousel Section*/}
+            {/* Logo Carousel Section */}
             <motion.section
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
@@ -119,14 +132,14 @@ function GuestHomePage() {
 
                 <div className="logo-track flex items-center gap-8 md:gap-12 lg:gap-16">
                     {[...repeated, ...repeated].map((logo, i) => (
-                        <img key={i} src={logo} alt={`Logo ${i}`} className="h-10 md:h-16 lg:h-45 w-auto flex-none" />
+                        <img key={i} src={logo} alt={`Logo ${i}`} className="h-8 sm:h-10 md:h-16 lg:h-45 w-auto flex-none" />
                     ))}
                 </div>
             </motion.section>
 
-            {/*About Section*/}
-            <section className="min-h-screen flex items-center bg-primary">
-                <div className="max-w-6xl mx-auto px-6 lg:px-12 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+            {/* About Section */}
+            <section className="min-h-fit md:min-h-screen flex items-center bg-primary py-16 md:py-0">
+                <div className="max-w-6xl mx-auto px-6 lg:px-12 flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
 
                     <motion.div
                         initial={{ opacity: 0, x: -60 }}
@@ -138,7 +151,7 @@ function GuestHomePage() {
                         <img
                             src={abHome}
                             alt="About Us"
-                            className="w-full h-64 md:h-80 lg:h-[400px] xl:h-[480px] object-cover rounded-2xl shadow-lg"
+                            className="w-full h-56 sm:h-64 md:h-80 lg:h-[400px] xl:h-[480px] object-cover rounded-2xl shadow-lg"
                         />
                     </motion.div>
 
@@ -151,41 +164,46 @@ function GuestHomePage() {
                     >
                         <div className="flex items-center gap-4 mb-4">
                             <div className="rounded-full bg-secondary px-6 py-2 shadow-lg"></div>
-                            <p className="text-white text-base md:text-lg lg:text-xl font-semibold mb-2">
+                            <p className="text-white text-sm sm:text-base md:text-lg lg:text-xl font-semibold mb-2">
                                 Windward Hills Subdivision
                             </p>
                         </div>
 
-                        <h2 className="text-secondary text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold drop-shadow-lg">
+                        <h2 className="text-secondary text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold drop-shadow-lg">
                             About Us
                         </h2>
 
-                        <p className="mt-6 text-base md:text-lg leading-relaxed">
+                        <p className="mt-6 text-sm md:text-base lg:text-lg leading-relaxed">
                             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
                         </p>
                     </motion.div>
                 </div>
             </section>
 
-            {/*Offices Section*/}
+            {/* CHANGED: Offices + divider + Contact are back under ONE shared
+                relative wrapper, exactly like your original — this is what lets
+                the shape travel the full distance from Contact up through Offices. */}
             <div className="relative bg-white overflow-hidden pb-15 lg:pb-25">
-                <AnimatedShape
-                    className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -right-[104px] md:-right-[143px] lg:-right-[192px] top-150"
-                    xRange={[0, -100]}
-                    yRange={[0, -450]}
-                    rotateRange={[0, 12]}
-                    scaleRange={[1, 1.1]}
-                />
-                <AnimatedShape
-                    className="w-[160px] h-[280px] md:w-[220px] md:h-[380px] lg:w-[296px] lg:h-[513px] -left-[104px] md:-left-[143px] lg:-left-[192px] top-240 !bg-primary origin-top"
-                    xRange={[0, 100]}
-                    yRange={[0, -350]}
-                    rotateRange={[0, -15]}
-                    scaleRange={[0.9, 1.05]}
-                />
+                <motion.div style={{ opacity: shapeOpacity }}>
+                    <AnimatedShape
+                        className="w-[150px] h-[150px] sm:w-[200px] sm:h-[200px] md:w-[300px] md:h-[300px] lg:w-[400px] lg:h-[400px] -right-[75px] sm:-right-[100px] md:-right-[150px] lg:-right-[200px] top-100 !bg-secondary !blur-none rounded-full opacity-100"
+                        xRange={[0, 0]}
+                        yRange={[0, -800]}
+                        rotateRange={[0, 45]}
+                        scaleRange={[1, 1.2]}
+                    />
 
-                <section className="relative z-10 min-h-screen py-16">
-                    {/* Office Section */}
+                    <AnimatedShape
+                        className="absolute w-[150px] h-[150px] sm:w-[200px] sm:h-[200px] md:w-[300px] md:h-[300px] lg:w-[400px] lg:h-[400px] -left-[75px] sm:-left-[100px] md:-left-[150px] lg:-left-[200px] top-[50%] -translate-y-1/2 !bg-primary !blur-none rounded-full opacity-100"
+                        xRange={[0, 0]}
+                        yRange={[1300, -40]}
+                        rotateRange={[0, -45]}
+                        scaleRange={[1, 1.2]}
+                    />
+                </motion.div>
+
+                <section className="relative z-10 py-16">
+                    {/* Office Section Heading */}
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -193,7 +211,7 @@ function GuestHomePage() {
                         transition={{ duration: 0.6, ease: "easeOut" }}
                         className="mx-auto max-w-4xl px-6 text-center mt-16"
                     >
-                        <h1 className="text-primary text-3xl md:text-4xl lg:text-5xl font-bold">
+                        <h1 className="text-primary text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">
                             Windward Hills Offices
                         </h1>
 
@@ -205,17 +223,17 @@ function GuestHomePage() {
                     {/* Office Cards */}
                     <div className="mx-auto mt-12 max-w-6xl px-6">
                         <motion.div
-                            className="flex flex-col md:flex-row gap-5 h-[280px] md:h-[333px] lg:h-[400px]"
+                            className="flex flex-col md:flex-row gap-5 md:h-[333px] lg:h-[400px]"
                             initial="hidden"
                             whileInView="visible"
                             viewport={{ once: true, amount: 0.2 }}
                             variants={staggerContainer}
                         >
                             {offices.map((office, i) => (
-                                <Link key={i} to={office.link} className="flex-1">
+                                <Link key={i} to={office.link} className="md:flex-1">
                                     <motion.div
                                         variants={staggerItem}
-                                        className="group relative h-full md:hover:flex-[2.2] transition-all duration-500 ease-in-out overflow-hidden rounded-2xl shadow-lg cursor-pointer"
+                                        className="group relative h-56 sm:h-64 md:h-full md:hover:flex-[2.2] transition-all duration-500 ease-in-out overflow-hidden rounded-2xl shadow-lg cursor-pointer"
                                     >
                                         <img
                                             src={office.img}
@@ -223,10 +241,10 @@ function GuestHomePage() {
                                             className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                         />
 
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-500" />
 
-                                        <div className="absolute bottom-0 left-0 p-5 text-white opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
-                                            <h3 className="text-lg md:text-xl font-bold">{office.title}</h3>
+                                        <div className="absolute bottom-0 left-0 p-5 text-white opacity-100 translate-y-0 md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-500">
+                                            <h3 className="text-base sm:text-lg md:text-xl font-bold">{office.title}</h3>
                                             <p className="text-xs md:text-sm mt-1 text-white/90">{office.desc}</p>
                                         </div>
                                     </motion.div>
@@ -236,9 +254,15 @@ function GuestHomePage() {
                     </div>
                 </section>
 
-                <section className="relative z-10 py-16">
-                    <div className="max-w-7xl mx-auto px-6">
+                {/* divider */}
+                <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 py-8">
+                    <div className="h-1 w-full rounded-full bg-emerald-600" />
+                </div>
 
+                {/* Contact Section — ref placed here so we can detect when it's
+                    about to scroll into view, purely to drive the mobile/tablet fade */}
+                <section ref={contactRef} className="relative z-10 py-16">
+                    <div className="max-w-7xl mx-auto px-6">
                         {/* Heading */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
@@ -257,7 +281,7 @@ function GuestHomePage() {
                         </motion.div>
 
                         {/* Content */}
-                        <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+                        <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
 
                             {/* Left */}
                             <motion.div
@@ -305,7 +329,7 @@ function GuestHomePage() {
                                 whileInView={{ opacity: 1, scale: 1 }}
                                 viewport={{ once: true, amount: 0.2 }}
                                 transition={{ duration: 0.7, ease: "easeOut" }}
-                                className="w-full -mt-16 lg:-ml-16"
+                                className="w-full lg:-mt-16 lg:-ml-16"
                             >
                                 <WindwardMap />
                             </motion.div>

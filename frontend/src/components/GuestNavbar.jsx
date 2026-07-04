@@ -1,4 +1,4 @@
-import { useState, useEffect} from "react";
+import { useState, useEffect, useRef} from "react";
 import { Link } from "react-router-dom";
 import heroImg from "../assets/hero.png"; /*temporary, for logo*/
 
@@ -6,6 +6,8 @@ export default function GuestNavbar() {
   const [openOffices, setOpenOffices] = useState(false);
   const [openUser, setOpenUser] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const closeTimer = useRef(null);
+  const closeUserTimer = useRef(null);
 
   useEffect(() => {
   const handleScroll = () => {
@@ -48,7 +50,19 @@ export default function GuestNavbar() {
           </Link>
 
     {/*DROPDOWN LIST*/}
-    <div className="relative">
+      <div
+        className="relative"
+        onMouseEnter={() => {
+          if (closeTimer.current) {
+            clearTimeout(closeTimer.current);
+          }
+        }}
+        onMouseLeave={() => {
+          closeTimer.current = setTimeout(() => {
+            setOpenOffices(false);
+          }, 200);
+        }}
+      >
       <button
         onClick={() => setOpenOffices(!openOffices)}
         className="flex items-center gap-2 text-black text-lg font-semibold hover-secondary-text transition-colors duration-300"
@@ -116,7 +130,19 @@ export default function GuestNavbar() {
     </Link>
 
           {/*ICON*/}
-          <div className="relative">
+          <div
+            className="relative"
+            onMouseEnter={() => {
+              if (closeUserTimer.current) {
+                clearTimeout(closeUserTimer.current);
+              }
+            }}
+            onMouseLeave={() => {
+              closeUserTimer.current = setTimeout(() => {
+                setOpenUser(false);
+              }, 200);
+            }}
+          >
             <button
               onClick={() => setOpenUser(!openUser)}
               className="ml-6 w-10 h-10 rounded-full bg-black flex items-center justify-center hover-secondary-bg transition-all duration-300"

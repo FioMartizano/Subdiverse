@@ -145,7 +145,7 @@ export default function GuestNavbar() {
           >
             <button
               onClick={() => setOpenUser(!openUser)}
-              className="ml-6 w-10 h-10 rounded-full bg-black flex items-center justify-center hover-secondary-bg transition-all duration-300"
+              className="ml-2 w-10 h-10 rounded-full bg-black shadow-md flex items-center justify-center text-white hover-secondary-bg hover:text-white transition-all duration-300"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

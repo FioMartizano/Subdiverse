@@ -1,90 +1,33 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import businesshub_banner from "../../assets/businesshub_banner.png";
 import { 
   Cherry, CakeSlice, Coffee, Salad, Dumbbell, Volleyball, Search, 
-  Home, Scissors, BookOpen, MapPin, Phone, Clock, ArrowUpRight 
+  Home, Scissors, BookOpen, MapPin, Phone, Clock, X 
 } from 'lucide-react';
 
 const customIcons = [
-  // --- LEFT SIDE ---
-  { id: 'L1', Icon: Cherry,     pos: 'bottom-13 left-1 px-0 justify-between', rot: 'rotate-[17deg]' },
-  { id: 'L2', Icon: CakeSlice,  pos: 'bottom-9 left-10 px-5 justify-between',  rot: 'rotate-[20deg]' },
-  { id: 'L3', Icon: Coffee,     pos: 'bottom-7 left-10 px-20 justify-between', rot: 'rotate-[5deg]' },
-  { id: 'L4', Icon: Salad,      pos: 'bottom-5 left-5 px-40 justify-between',  rot: 'rotate-[3deg]' },
-  { id: 'L5', Icon: Dumbbell,   pos: 'bottom-2 left-21 px-60 justify-between', rot: 'rotate-[50deg]' },
-  { id: 'L7', Icon: Volleyball, pos: 'bottom-2 left-27 px-70 justify-between', rot: 'rotate-[3deg]' },
-
-  // --- RIGHT SIDE ---
-  { id: 'R1', Icon: Cherry,     pos: 'bottom-13 right-1 px-0 justify-end',  rot: '-rotate-[17deg]' },
-  { id: 'R2', Icon: CakeSlice,  pos: 'bottom-9 right-10 px-5 justify-end',  rot: '-rotate-[20deg]' },
-  { id: 'R3', Icon: Dumbbell,   pos: 'bottom-7 right-10 px-20 justify-end', rot: '-rotate-[5deg]' },
-  { id: 'R4', Icon: Salad,      pos: 'bottom-5 right-5 px-40 justify-end',  rot: '-rotate-[3deg]' },
-  { id: 'R5', Icon: Coffee,     pos: 'bottom-4 right-22 px-40 justify-end', rot: '-rotate-[0deg]' },
+  { id: 'L1', Icon: Cherry,    pos: 'bottom-3 left-1 px-0 justify-between', rot: 'rotate-[17deg]' },
+  { id: 'L2', Icon: CakeSlice,  pos: 'bottom-3 left-10 px-5 justify-between',  rot: 'rotate-[20deg]' },
+  { id: 'L3', Icon: Coffee,    pos: 'bottom-3 left-10 px-20 justify-between', rot: 'rotate-[5deg]' },
+  { id: 'L4', Icon: Salad,      pos: 'bottom-3 left-5 px-40 justify-between',  rot: 'rotate-[3deg]' },
+  { id: 'L5', Icon: Dumbbell,   pos: 'bottom-3 left-5 px-60 justify-between', rot: 'rotate-[50deg]' },
+  { id: 'L7', Icon: Volleyball, pos: 'bottom-3 left-27 px-70 justify-between', rot: 'rotate-[3deg]' },
+  { id: 'R1', Icon: Cherry,    pos: 'bottom-3 right-1 px-0 justify-end',  rot: '-rotate-[17deg]' },
+  { id: 'R2', Icon: CakeSlice,  pos: 'bottom-3 right-10 px-5 justify-end',  rot: '-rotate-[20deg]' },
+  { id: 'R3', Icon: Dumbbell,   pos: 'bottom-3 right-10 px-20 justify-end', rot: '-rotate-[5deg]' },
+  { id: 'R4', Icon: Salad,      pos: 'bottom-3 right-5 px-40 justify-end',  rot: '-rotate-[3deg]' },
+  { id: 'R5', Icon: Coffee,    pos: 'bottom-3 right-22 px-40 justify-end', rot: '-rotate-[0deg]' },
   { id: 'R6', Icon: Volleyball, pos: 'bottom-2 right-21 px-60 justify-end', rot: '-rotate-[0deg]' },
 ];
 
-// Mock Business Data Stream Source Array
 const SAMPLE_BUSINESSES = [
-  {
-    id: 1,
-    name: "Windward Heights Villas",
-    category: "house-rent",
-    description: "Premium 3-bedroom residential luxury townhomes ready for lease with skyline views.",
-    phone: "(555) 019-2834",
-    address: "Block 4, Lot 12, Upper Ridge Drive",
-    hours: "9:00 AM - 6:00 PM",
-    image: "https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?auto=format&fit=crop&w=600&q=80"
-  },
-  {
-    id: 2,
-    name: "The Daily Grind Cafe",
-    category: "cafe-resto",
-    description: "Artisanal espresso bar serving small-batch roasts and organic community breakfasts daily.",
-    phone: "(555) 023-8841",
-    address: "Commercial Center, Ground Floor",
-    hours: "6:30 AM - 8:00 PM",
-    image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80"
-  },
-  {
-    id: 3,
-    name: "Iron & Pulse Fitness Club",
-    category: "fitness",
-    description: "Fully equipped athletic center offering cross-training, free weights, and cardio equipment.",
-    phone: "(555) 044-9102",
-    address: "Clubhouse Complex, East Wing",
-    hours: "5:00 AM - 10:00 PM",
-    image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&q=80"
-  },
-  {
-    id: 4,
-    name: "Classic & Co. Cuts",
-    category: "barber-salon",
-    description: "Premium modern grooming studio specializing in traditional hot towel shaves and custom styling.",
-    phone: "(555) 091-7723",
-    address: "Starlight Strip, Suite B",
-    hours: "10:00 AM - 8:00 PM",
-    image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80"
-  },
-  {
-    id: 5,
-    name: "Little Sprouts Academy",
-    category: "daycare-academy",
-    description: "Certified early education development and enrichment daycare programs for toddlers.",
-    phone: "(555) 032-1198",
-    address: "Community Quad, Building 3",
-    hours: "7:00 AM - 5:30 PM",
-    image: "https://images.unsplash.com/photo-1576489922095-a3a44d03395c?auto=format&fit=crop&w=600&q=80"
-  },
-  {
-    id: 6,
-    name: "Bella Vista Bistro",
-    category: "cafe-resto",
-    description: "Fine alfresco family dining highlighting handcrafted wood-fired brick oven pizzas.",
-    phone: "(555) 082-3345",
-    address: "Commercial Center, Lookout Deck",
-    hours: "11:00 AM - 10:00 PM",
-    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80"
-  }
+  { id: 1, name: "Windward Heights Villas", category: "house-rent", description: "Premium 3-bedroom residential luxury townhomes ready for lease with skyline views.", phone: "(555) 019-2834", address: "Block 4, Lot 12, Upper Ridge Drive", hours: "9:00 AM - 6:00 PM", image: "https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?auto=format&fit=crop&w=600&q=80" },
+  { id: 2, name: "The Daily Grind Cafe", category: "cafe-resto", description: "Artisanal espresso bar serving small-batch roasts and organic community breakfasts daily.", phone: "(555) 023-8841", address: "Commercial Center, Ground Floor", hours: "6:30 AM - 8:00 PM", image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80" },
+  { id: 3, name: "Iron & Pulse Fitness Club", category: "fitness", description: "Fully equipped athletic center offering cross-training, free weights, and cardio equipment.", phone: "(555) 044-9102", address: "Clubhouse Complex, East Wing", hours: "5:00 AM - 10:00 PM", image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&q=80" },
+  { id: 4, name: "Classic & Co. Cuts", category: "barber-salon", description: "Premium modern grooming studio specializing in traditional hot towel shaves and custom styling.", phone: "(555) 091-7723", address: "Starlight Strip, Suite B", hours: "10:00 AM - 8:00 PM", image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80" },
+  { id: 5, name: "Little Sprouts Academy", category: "daycare-academy", description: "Certified early education development and enrichment daycare programs for toddlers.", phone: "(555) 032-1198", address: "Community Quad, Building 3", hours: "7:00 AM - 5:30 PM", image: "https://images.unsplash.com/photo-1576489922095-a3a44d03395c?auto=format&fit=crop&w=600&q=80" },
+  { id: 6, name: "Bella Vista Bistro", category: "cafe-resto", description: "Fine alfresco family dining highlighting handcrafted wood-fired brick oven pizzas.", phone: "(555) 082-3345", address: "Commercial Center, Lookout Deck", hours: "11:00 AM - 10:00 PM", image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80" }
 ];
 
 function BusinessHub() {
@@ -99,7 +42,42 @@ function BusinessHub() {
     { id: 'daycare-academy', label: 'Daycare & Academy', Icon: BookOpen }
   ];
 
-  // Dynamic Query Filter Compute Pipeline
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1, 
+      transition: { 
+        staggerChildren: 0.2,
+        delayChildren: 0.1
+      } 
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        duration: 0.6, 
+        ease: [0.25, 1, 0.5, 1] 
+      }
+    }
+  };
+
+  const iconVariants = {
+    hidden: { opacity: 0, scale: 0.5 },
+    visible: { 
+      opacity: 0.2, 
+      scale: 1,
+      transition: { 
+        duration: 0.8, 
+        ease: "easeOut" 
+      }
+    }
+  };
+
   const filteredBusinesses = useMemo(() => {
     return SAMPLE_BUSINESSES.filter(biz => {
       const matchesCategory = selectedCategory === "all" || biz.category === selectedCategory;
@@ -111,173 +89,169 @@ function BusinessHub() {
   }, [searchQuery, selectedCategory]);
 
   return (
-    <div className="w-full flex flex-col items-center bg-gray-50 min-h-screen pt-24 pb-20">
-      <div className="w-[98%] max-w-[1600px] relative">
-        
-        {/* BANNER COMPONENT */}
-        <section 
-          id="hero-banner"
-          aria-label="Neighborhood Essentials Hero Banner"
-          className="relative w-full h-[400px] bg-[var(--color-primary)] rounded-t-3xl overflow-hidden shadow-md flex items-end"
-          style={{ 
-            borderBottomLeftRadius: '50% 15%', 
-            borderBottomRightRadius: '50% 15%' 
-          }}
+    <div className="w-full flex flex-col items-center bg-gray-50 min-h-screen">
+      {/* BANNER SECTION WITH ANIMATION */}
+      <motion.section 
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+        className="relative w-full h-[400px] bg-primary overflow-hidden shadow-xl"
+        style={{ borderBottomLeftRadius: '3rem', borderBottomRightRadius: '3rem' }}
+      >
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-orange-400 to-transparent" />
+        <div className="relative w-full max-w-7xl mx-auto h-full flex items-center px-12">
+          <motion.div variants={itemVariants} className="text-white z-10 max-w-lg">
+            <h1 className="text-6xl font-extrabold mb-6 tracking-tight">
+              Neighborhood <span className="text-orange-500">Essentials</span>
+            </h1>
+            <p className="text-xl text-slate-300 font-light">
+              Discover local merchant services, dining selections, and administrative amenities near Windward Hills.
+            </p>
+          </motion.div>
+          <motion.img 
+            variants={itemVariants}
+            src={businesshub_banner} 
+            alt="Banner" 
+            className="absolute right-0 top-3 w-[700px] opacity-90 drop-shadow-2xl" 
+          />
+        </div>
+        {/* Decorative Icons with Animation */}
+        {customIcons.map((item) => (
+          <motion.div 
+            variants={iconVariants}
+            initial="hidden"
+            animate="visible"
+            key={item.id} 
+            className={`absolute w-full flex items-end text-white/20 pointer-events-none ${item.pos}`}
+          >
+            <item.Icon className={item.rot} size={48} strokeWidth={1.5} />
+          </motion.div>
+        ))}
+      </motion.section>
+
+      {/* SEARCH AND FILTERS */}
+      <section className="w-full max-w-5xl mx-auto -mt-12 px-4 z-20">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="bg-white p-4 rounded-3xl shadow-2xl border border-gray-100"
         >
-          <div className="absolute top-0 left-0 w-full h-[85%] flex items-center justify-between px-16 lg:px-24 gap-12">
-            <div className="w-[40%] text-white z-10 max-w-xl">
-              <h1 className="text-5xl lg:text-6xl font-bold mb-4 leading-tight drop-shadow-xl">
-                Neighborhood <br /> Essentials
-              </h1>
-              <p className="text-lg lg:text-xl opacity-90 drop-shadow-md">
-                Discover local merchant services, dining selections, and administrative amenities open near Windward Hills.
-              </p>
-            </div>
-
-            <div className="w-[60%] flex justify-end z-10 relative">
-              <img 
-                src={businesshub_banner} 
-                alt="House and Groceries" 
-                className="absolute left-33 top-[-205px] w-[800px] max-w-none object-contain drop-shadow-2xl" 
-              />
-            </div>
-          </div>
-
-          {customIcons.map((item) => (
-            <div 
-              key={item.id} 
-              className={`absolute w-full flex items-end text-[#2F5931] opacity-80 pointer-events-none ${item.pos}`}
-            >
-              <item.Icon className={item.rot} size={48} strokeWidth={1.5} />
-            </div>
-          ))}
-        </section>
-
-        {/* SEARCH AND CONTROL ACTION FILTERS */}
-        <section 
-          id="search-categories"
-          aria-label="Search and Category Filters"
-          className="w-full max-w-5xl mx-auto mt-[-40px] pt-15 z-20 relative px-4"
-        >
-          {/* Dynamic Search Box Input */}
-          <div className="relative w-full mb-8">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
+          <div className="relative w-full mb-6">
+            <Search className="absolute left-5 top-5 h-6 w-6 text-orange-500" />
             <input 
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-full border border-gray-200 bg-white shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-800 transition-all"
-              placeholder="Search for merchants, menus, keywords or locations..."
-              aria-label="Search for services"
+              className="w-full pl-14 pr-6 py-5 rounded-2xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-4 focus:ring-orange-500/20 text-lg transition-all"
+              placeholder="Search merchants, services, or locations..."
             />
           </div>
-
-          {/* Interactive Category Filter Row buttons */}
-          <div className="flex flex-wrap justify-center gap-4 md:flex-nowrap">
+          <div className="flex flex-wrap justify-center gap-3">
             {categories.map((btn) => {
               const isActive = selectedCategory === btn.id;
               return (
-                <button 
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   key={btn.id}
                   onClick={() => setSelectedCategory(isActive ? "all" : btn.id)}
-                  className={`flex items-center justify-between px-6 py-4 rounded-xl shadow-md min-w-[220px] transition-all duration-300 transform hover:-translate-y-0.5
-                    ${isActive 
-                      ? 'bg-orange-600 border-2 border-orange-300 scale-102 shadow-orange-600/20' 
-                      : 'bg-[var(--color-secondary)] hover:bg-orange-600/90'
-                    } 
-                    text-white font-bold flex-1`}
+                  className={`flex items-center gap-3 px-6 py-3 rounded-full transition-all duration-300 ${
+                    isActive ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'bg-gray-100 hover:bg-gray-200 text-slate-700'
+                  } font-semibold text-sm`}
                 >
-                  <span className="truncate mr-2">{btn.label}</span>
-                  <btn.Icon size={22} className="shrink-0" />
-                </button>
+                  <btn.Icon size={18} />
+                  {btn.label}
+                </motion.button>
               );
             })}
           </div>
-        </section>
+        </motion.div>
+      </section>
 
-        {/* DYNAMIC SHOWCASE CONTAINER GRID PANELS */}
-        <section className="w-full max-w-7xl mx-auto mt-16 px-4">
-          <div className="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">Verified Local Establishments</h2>
-              <p className="text-sm text-slate-500 mt-1">Showing {filteredBusinesses.length} active directory entries</p>
-            </div>
-            {selectedCategory !== "all" && (
-              <button 
-                onClick={() => setSelectedCategory("all")}
-                className="text-sm text-orange-600 font-semibold hover:underline"
-              >
-                Clear Filters
-              </button>
-            )}
-          </div>
-
-          {filteredBusinesses.length === 0 ? (
-            <div className="w-full text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300 shadow-sm">
-              <p className="text-slate-400 text-lg">No business matches your matching search criteria.</p>
-              <button 
-                onClick={() => { setSearchQuery(""); setSelectedCategory("all"); }}
-                className="mt-4 px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-full text-sm font-medium transition-colors"
-              >
-                Reset Search parameters
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredBusinesses.map((biz) => (
-                <article 
-                  key={biz.id}
-                  className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group flex flex-col border border-slate-100"
-                >
-                  <div className="h-48 w-full relative overflow-hidden bg-slate-100">
-                    <img 
-                      src={biz.image} 
-                      alt={biz.name}
-                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
-                    />
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-slate-700 uppercase tracking-wider shadow-sm">
-                      {biz.category.replace('-', ' ')}
-                    </div>
-                  </div>
-
-                  <div className="p-6 flex flex-col flex-grow">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="text-xl font-bold text-slate-900 group-hover:text-orange-600 transition-colors">
-                        {biz.name}
-                      </h3>
-                      <div className="text-slate-400 group-hover:text-orange-600 transition-colors pt-1">
-                        <ArrowUpRight size={18} />
-                      </div>
-                    </div>
-
-                    <p className="text-slate-600 text-sm leading-relaxed mb-6 flex-grow">
-                      {biz.description}
-                    </p>
-
-                    <div className="space-y-2.5 pt-4 border-t border-slate-100 text-xs text-slate-500">
-                      <div className="flex items-center gap-2">
-                        <MapPin size={14} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{biz.address}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone size={14} className="text-slate-400 shrink-0" />
-                        <span>{biz.phone}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock size={14} className="text-slate-400 shrink-0" />
-                        <span className="font-medium text-slate-600">{biz.hours}</span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+      {/* LISTING GRID */}
+      <section className="w-full max-w-7xl mx-auto py-16 px-4">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="flex justify-between items-center mb-8 px-2"
+        >
+          <h2 className="text-2xl font-bold text-slate-800">Verified Establishments</h2>
+          {selectedCategory !== "all" && (
+            <motion.button 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={() => setSelectedCategory("all")} 
+              className="text-sm text-orange-600 font-semibold flex items-center gap-1 hover:underline"
+            >
+              <X size={14} /> Clear Filters
+            </motion.button>
           )}
-        </section>
+        </motion.div>
 
-      </div>
+        <motion.div 
+          layout
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+        >
+          <AnimatePresence mode="popLayout">
+            {filteredBusinesses.map((biz) => (
+              <motion.article 
+                layout
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                transition={{ 
+                  duration: 0.4, 
+                  ease: [0.25, 1, 0.5, 1] 
+                }}
+                key={biz.id} 
+                className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col border border-gray-100 group"
+              >
+                <div className="h-48 w-full relative overflow-hidden">
+                  <img 
+                    src={biz.image} 
+                    alt={biz.name} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" 
+                  />
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-slate-700 shadow-sm">
+                    {biz.category.replace('-', ' ')}
+                  </div>
+                </div>
+                <div className="p-6 flex flex-col flex-grow">
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">{biz.name}</h3>
+                  <p className="text-slate-500 text-sm leading-relaxed mb-6 flex-grow">{biz.description}</p>
+                  <div className="space-y-3 pt-4 border-t border-gray-100 text-xs text-slate-500">
+                    <div className="flex items-center gap-2"><MapPin size={14} className="text-orange-400" /> {biz.address}</div>
+                    <div className="flex items-center gap-2"><Phone size={14} className="text-orange-400" /> {biz.phone}</div>
+                    <div className="flex items-center gap-2"><Clock size={14} className="text-orange-400" /> {biz.hours}</div>
+                  </div>
+                </div>
+              </motion.article>
+            ))}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Empty State */}
+        {filteredBusinesses.length === 0 && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-16"
+          >
+            <p className="text-slate-500 text-lg">No establishments found matching your criteria.</p>
+            <button 
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedCategory("all");
+              }}
+              className="mt-4 text-orange-500 font-semibold hover:underline"
+            >
+              Clear all filters
+            </button>
+          </motion.div>
+        )}
+      </section>
     </div>
   );
 }

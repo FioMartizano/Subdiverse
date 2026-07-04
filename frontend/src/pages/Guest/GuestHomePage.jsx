@@ -8,7 +8,7 @@ import seniorGuest from "../../assets/seniorGuest.jpg";
 import healthGuest from "../../assets/healthCareGuest.jpg";
 import churchGuest from "../../assets/churchGuest.jpg";
 import AnimatedShape from "../../components/AnimatedShape";
-import WindwardMap from "../../components/WindwardMap";
+import WindwardMap from "../../components/Maps/WindwardMap";
 import { Link } from "react-router-dom";
 
 const logos = [wwhsLogo, filinvestLogo];

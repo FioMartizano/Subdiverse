@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import WindwardMap from "../../components/WindwardMap";
+import WindwardMap from "../../components/Maps/WindwardMap";
 
 const staggerContainer = {
     hidden: {},

@@ -1,11 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import grievanceGuest from "../../../assets/guestHOA_bg.jpg"; // Replace with your grievance asset
+import LogInValidation from "../../../components/LogInValidation";  
 
 function GuestGrievance() {
   // Ultra-premium ease-out curve for a fluid, tactile presentation fluid glide
   const smoothCurve = { duration: 1.2, ease: [0.25, 1, 0.5, 1] };
-
+  const [showLogin, setShowLogin] = useState(false);
   return (
     <section className="relative w-full min-h-screen bg-slate-50 overflow-hidden py-20 px-6 md:px-12 lg:px-24 flex items-center">
       
@@ -100,9 +101,18 @@ function GuestGrievance() {
             viewport={{ once: true }}
             transition={{ ...smoothCurve, delay: 0.3 }}
           >
-            <button className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-full shadow-lg shadow-emerald-600/20 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-600/30">
+            <button 
+              className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-full shadow-lg shadow-emerald-600/20 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-600/30"
+              onClick={() => setShowLogin(true)}
+            >
               File a Request
             </button>
+            <LogInValidation
+              isOpen={showLogin}
+              onClose={() => setShowLogin(false)}
+              onLogin={() => console.log("Login")}
+              onSignup={() => console.log("Signup")}
+            />
           </motion.div>
 
         </div>

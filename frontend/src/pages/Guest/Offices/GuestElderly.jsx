@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import seniorGuest from "../../../assets/guestHOA_bg.jpg";  
+import LogInValidation from "../../../components/LogInValidation";  
 
 function GuestElderly() {
 
   const smoothCurve = { duration: 1.2, ease: [0.25, 1, 0.5, 1] };
+  const [showLogin, setShowLogin] = useState(false);
 
   return (
     <section className="relative w-full min-h-screen bg-white overflow-hidden py-20 px-6 md:px-12 lg:px-24 flex items-center">
@@ -64,10 +66,19 @@ function GuestElderly() {
             viewport={{ once: true }}
             transition={{ ...smoothCurve, delay: 0.3 }}
           >
-            <button className="btn-glow">
-              View Programs
-            </button>
-          </motion.div>
+        <button
+          onClick={() => setShowLogin(true)}
+          className="btn-glow ..."
+        >
+          View Programs →
+        </button>
+        <LogInValidation
+          isOpen={showLogin}
+          onClose={() => setShowLogin(false)}
+          onLogin={() => console.log("Login")}
+          onSignup={() => console.log("Signup")}
+        />
+      </motion.div> 
 
         </div>
 

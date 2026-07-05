@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import ScrollToTop from "./components/ScrollOnTop";
 
 /*Login and SignUp*/
 import Login from "./pages/Auth/Login";
@@ -51,6 +52,8 @@ import MonthlyDues from "./pages/Resident/MonthlyDues";
 
 function AppRoutes() {
   return (
+    <>
+    <ScrollToTop />
     <Routes>
 
         <Route path="/login" element={<Login />} />
@@ -98,6 +101,7 @@ function AppRoutes() {
         <Route path="/reservation/court" element={<BasketballCourt />} />
 
     </Routes>
+    </>
   );
 }
 

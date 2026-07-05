@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import churchGuest from "../../../assets/GuestHOA_bg.jpg"; 
+import LogInValidation from "../../../components/LogInValidation"; 
 
 function GuestParish() {
   const smoothCurve = { duration: 1.2, ease: [0.25, 1, 0.5, 1] };
+  const [showLogin, setShowLogin] = useState(false);
 
   return (
     <section className="relative w-full min-h-screen bg-white overflow-hidden py-20 px-6 md:px-12 lg:px-24 flex items-center">
@@ -65,9 +67,19 @@ function GuestParish() {
             viewport={{ once: true }}
             transition={{ ...smoothCurve, delay: 0.3 }}
           >
-            <button className="px-8 py-3.5 bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm rounded-full shadow-lg shadow-amber-600/20 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-600/30">
+            <button 
+              className="px-8 py-3.5 bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm rounded-full shadow-lg shadow-amber-600/20 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-600/30"
+              onClick={() => setShowLogin(true)}
+            >
               Parish Events
+              
             </button>
+            <LogInValidation
+              isOpen={showLogin}
+              onClose={() => setShowLogin(false)}
+              onLogin={() => console.log("Login")}
+              onSignup={() => console.log("Signup")}
+            />
           </motion.div>
 
         </div>

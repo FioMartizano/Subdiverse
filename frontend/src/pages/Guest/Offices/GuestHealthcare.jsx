@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import healthGuest from "../../../assets/guestHOA_bg.jpg"; // Match your assets file path
+import healthGuest from "../../../assets/guestHOA_bg.jpg";
+import LogInValidation from "../../../components/LogInValidation";  
 
 function GuestHealthcare() {
   // Ultra-premium ease-out curve for a fluid, tactile presentation fluid glide
   const smoothCurve = { duration: 1.2, ease: [0.25, 1, 0.5, 1] };
+  const [showLogin, setShowLogin] = useState(false);
 
   return (
     <section className="relative w-full min-h-screen bg-slate-50 overflow-hidden py-20 px-6 md:px-12 lg:px-24 flex items-center">
@@ -100,9 +102,18 @@ function GuestHealthcare() {
             viewport={{ once: true }}
             transition={{ ...smoothCurve, delay: 0.3 }}
           >
-            <button className="px-8 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-sm rounded-full shadow-lg shadow-emerald-500/20 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30">
+            <button 
+              className="px-8 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-sm rounded-full shadow-lg shadow-emerald-500/20 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30"
+              onClick={() => setShowLogin(true)}
+            >
               Medical Services
             </button>
+            <LogInValidation
+              isOpen={showLogin}
+              onClose={() => setShowLogin(false)}
+              onLogin={() => console.log("Login")}
+              onSignup={() => console.log("Signup")}
+            />
           </motion.div>
 
         </div>

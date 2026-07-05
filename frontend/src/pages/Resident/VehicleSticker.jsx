@@ -1,110 +1,116 @@
-import { useState, useEffect } from "react";
-import {Car,Bike,FileText,Upload,BadgeCheck,LoaderCircle,Clock3,CircleCheckBig,CircleX,Plus} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import {Car, Bike,FileText,Upload,BadgeCheck,LoaderCircle,Clock3,CircleCheckBig,CircleX,Plus,CheckCircle2} from "lucide-react";
 
-import {auth,db,} from "../../firebase";
-import {collection, addDoc,getDocs,getDoc,doc,query,where,serverTimestamp,setDoc,orderBy} from "firebase/firestore";
+import { auth, db } from "../../firebase";
+import {collection,addDoc,getDocs,getDoc,doc,query,where,serverTimestamp,setDoc} from "firebase/firestore";
+
 import { onAuthStateChanged } from "firebase/auth";
 import { uploadImage } from "../../services/cloudinary";
 
 import stickerImg from "../../assets/VehicleStickerBg.jpg";
 import gcash from "../../assets/gcash.jpg";
 
-const [formData, setFormData] = useState({
-  vehicleType: "",
-  plateNumber: "",
-});
+export default function VehicleSticker() {
 
-const [resident, setResident] = useState(null);
-
-const [applications, setApplications] = useState([]);
-
-const [loadingResident, setLoadingResident] = useState(true);
-
-const [submitting, setSubmitting] = useState(false);
-
-const [orcrFile, setOrcrFile] = useState(null);
-
-const [receiptFile, setReceiptFile] = useState(null);
-
-const [pricing, setPricing] = useState({
-
-  homeownerCarPrice: 150,
-  homeownerMotorcyclePrice: 100,
-  homeownerTribikePrice: 120,
-
-  renterCarPrice: 200,
-  renterMotorcyclePrice: 150,
-  renterTribikePrice: 170,
-
-  householdCarPrice: 180,
-  householdMotorcyclePrice: 130,
-  householdTribikePrice: 150,
-
-});
-const handleChange = (e) => {
-
-  setFormData({
-
-    ...formData,
-
-    [e.target.name]: e.target.value,
-
+  const [formData, setFormData] = useState({
+    vehicleType: "",
+    plateNumber: "",
   });
 
-};
-const getStickerFee = () => {
+  const [resident, setResident] = useState(null);
+  const [applications, setApplications] = useState([]);
+  const [loadingResident, setLoadingResident] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  if (!resident) return 0;
+  const [orcrFile, setOrcrFile] = useState(null);
+  const [receiptFile, setReceiptFile] = useState(null);
 
-  const category =
-    resident.residentCategory?.toLowerCase();
+  const orcrInputRef = useRef(null);
+  const receiptInputRef = useRef(null);
 
-  const vehicle =
-    formData.vehicleType.toLowerCase();
+  const [pricing, setPricing] = useState({
+    homeownerCarPrice: 150,
+    homeownerMotorcyclePrice: 100,
+    homeownerTribikePrice: 120,
 
-  //residentCategory: homeowner
-  if (category === "homeowner") {
+    renterCarPrice: 200,
+    renterMotorcyclePrice: 150,
+    renterTribikePrice: 170,
 
-    if (vehicle === "car")
-      return pricing.homeownerCarPrice;
+    householdCarPrice: 180,
+    householdMotorcyclePrice: 130,
+    householdTribikePrice: 150,
+  });
 
-    if (vehicle === "motorcycle")
-      return pricing.homeownerMotorcyclePrice;
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
 
-    if (vehicle === "tri-bike")
-      return pricing.homeownerTribikePrice;
+  const getStickerFee = () => {
+    if (!resident) return 0;
 
-  }//residentCategory: renter
-  if (category === "renter") {
+    const category = resident.residentCategory?.toLowerCase();
+    const vehicle = formData.vehicleType.toLowerCase();
 
-    if (vehicle === "car")
-      return pricing.renterCarPrice;
+    if (category === "homeowner") {
+      if (vehicle === "car") return pricing.homeownerCarPrice;
+      if (vehicle === "motorcycle") return pricing.homeownerMotorcyclePrice;
+      if (vehicle === "tri-bike") return pricing.homeownerTribikePrice;
+    }
+    if (category === "renter") {
+      if (vehicle === "car") return pricing.renterCarPrice;
+      if (vehicle === "motorcycle") return pricing.renterMotorcyclePrice;
+      if (vehicle === "tri-bike") return pricing.renterTribikePrice;
+    }
+    if (category === "household") {
+      if (vehicle === "car") return pricing.householdCarPrice;
+      if (vehicle === "motorcycle") return pricing.householdMotorcyclePrice;
+      if (vehicle === "tri-bike") return pricing.householdTribikePrice;
+    }
 
-    if (vehicle === "motorcycle")
-      return pricing.renterMotorcyclePrice;
+    return 0;
+  };
 
-    if (vehicle === "tri-bike")
-      return pricing.renterTribikePrice;
+  const selectedFee = getStickerFee();
 
-  } //residentCategory: household
-  if (category === "household") {
+  // Load all applied vehicle sticker applications of the current resident
+  const loadApplications = async (residentId) => {
+    try {
 
-    if (vehicle === "car")
-      return pricing.householdCarPrice;
+      console.log("Loading applications for Resident ID:", residentId);
 
-    if (vehicle === "motorcycle")
-      return pricing.householdMotorcyclePrice;
+      const q = query(
+        collection(db, "vehicleStickerApplications"),
+        where("residentId", "==", residentId)
+      );
 
-    if (vehicle === "tri-bike")
-      return pricing.householdTribikePrice;
-  }
+      const snapshot = await getDocs(q);
 
-  return 0;
+      console.log("Documents Found:", snapshot.size);
 
-};
+      const list = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-const selectedFee = getStickerFee();
-useEffect(() => {
+      list.sort((a, b) => {
+        const aTime = a.createdAt?.seconds || 0;
+        const bTime = b.createdAt?.seconds || 0;
+        return bTime - aTime;
+      });
+
+      console.log("Applications:", list);
+
+      setApplications(list);
+
+    } catch (error) {
+      console.error("Load Applications Error:", error);
+    }
+  };
+  useEffect(() => {
 
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
 
@@ -113,7 +119,9 @@ useEffect(() => {
       return;
     }
 
-    try { //to know the resident's category
+    try {
+
+      //resident logged in
       const residentQuery = query(
         collection(db, "residents"),
         where("email", "==", user.email)
@@ -121,102 +129,65 @@ useEffect(() => {
 
       const residentSnapshot = await getDocs(residentQuery);
 
-      if (!residentSnapshot.empty) {
+      if (residentSnapshot.empty) {
+        console.log("Resident not found.");
+        return;
+      }
 
-        const residentDoc = residentSnapshot.docs[0];
+      const residentDoc = residentSnapshot.docs[0];
 
-        const residentData = residentDoc.data();
+      const residentInfo = {
+        id: residentDoc.id,
+        ...residentDoc.data(),
+      };
 
-        const residentInfo = {
+      console.log("Resident Loaded:", residentInfo);
 
-          id: residentDoc.id,
+      setResident(residentInfo);
 
-          ...residentData,
+      //price
+      const settingsRef = doc(db, "vehicleSticker", "settings");
 
+      const settingsSnap = await getDoc(settingsRef);
+
+      if (!settingsSnap.exists()) {
+
+        const defaultPricing = {
+          homeownerCarPrice: 150,
+          homeownerMotorcyclePrice: 100,
+          homeownerTribikePrice: 120,
+
+          renterCarPrice: 200,
+          renterMotorcyclePrice: 150,
+          renterTribikePrice: 170,
+
+          householdCarPrice: 180,
+          householdMotorcyclePrice: 130,
+          householdTribikePrice: 150,
         };
 
-        setResident(residentInfo);
+        await setDoc(settingsRef, defaultPricing);
 
-//firestore console collection
-        const settingsRef = doc(
-          db,
-          "vehicleSticker",
-          "settings"
-        );
+        setPricing(defaultPricing);
 
-        const settingsSnap = await getDoc(settingsRef);
+      } else {
 
-        if (!settingsSnap.exists()) {
-
-          const defaultPricing = {
-
-            homeownerCarPrice: 150,
-            homeownerMotorcyclePrice: 100,
-            homeownerTribikePrice: 120,
-
-            renterCarPrice: 200,
-            renterMotorcyclePrice: 150,
-            renterTribikePrice: 170,
-
-            householdCarPrice: 180,
-            householdMotorcyclePrice: 130,
-            householdTribikePrice: 150,
-
-          };
-          await setDoc(
-            settingsRef,
-            defaultPricing
-          );
-          setPricing(defaultPricing);
-        }
-        else {
-          setPricing(settingsSnap.data());
-        }
-        const applicationQuery = query(
-
-          collection(
-            db,
-            "vehicleStickerApplications"
-          ),
-          where(
-            "residentId",
-            "==",
-            residentDoc.id
-          ),
-          orderBy(
-            "createdAt",
-            "desc"
-          )
-
-        );
-
-        const applicationSnapshot =
-          await getDocs(applicationQuery);
-
-        const applicationList =
-          applicationSnapshot.docs.map(doc => ({
-
-            id: doc.id,
-            ...doc.data(),
-
-          }));
-
-        setApplications(applicationList);
+        setPricing(settingsSnap.data());
 
       }
 
-    }
+      // Load ALL applications of this resident
+      await loadApplications(residentInfo.id);
 
-    catch (error) {
+    } catch (error) {
 
-      console.error(
-        "Vehicle Sticker Error:",
-        error
-      );
+      console.error("Vehicle Sticker Error:", error);
+      alert(error.message);
 
-    }
-    finally {
+    } finally {
+
       setLoadingResident(false);
+
     }
 
   });
@@ -232,201 +203,134 @@ const handleSubmit = async (e) => {
     alert("Resident information not found.");
     return;
   }
+
   if (!formData.vehicleType) {
     alert("Please select a vehicle type.");
     return;
   }
+
   if (!formData.plateNumber.trim()) {
     alert("Please enter your plate number.");
     return;
   }
+
   if (!orcrFile) {
     alert("Please upload your OR/CR.");
     return;
   }
+
   if (!receiptFile) {
     alert("Please upload your payment receipt.");
     return;
   }
+
   try {
 
     setSubmitting(true);
-    const uploadedOrcr =
-      await uploadImage(orcrFile, "vehicleSticker");
 
-    const uploadedReceipt =
-      await uploadImage(receiptFile, "vehicleSticker");
+    const uploadedOrcr = await uploadImage(orcrFile, "vehicleSticker");
+
+    const uploadedReceipt = await uploadImage(receiptFile, "vehicleSticker");
 
     const applicationData = {
 
       residentId: resident.id,
 
       residentInfo: {
-
         firstName: resident.firstName,
-
         lastName: resident.lastName,
-
-        fullName:
-          `${resident.firstName} ${resident.lastName}`,
-
-        residentCategory:
-          resident.residentCategory,
-
-        contactNumber:
-          resident.contactNumber,
-
-        email:
-          resident.email,
-
+        fullName: `${resident.firstName} ${resident.lastName}`,
+        residentCategory: resident.residentCategory,
+        contactNumber: resident.contactNumber,
+        email: resident.email,
       },
 
       vehicleInfo: {
-
-        vehicleType:
-          formData.vehicleType,
-
-        plateNumber:
-          formData.plateNumber
-            .trim()
-            .toUpperCase(),
-
+        vehicleType: formData.vehicleType,
+        plateNumber: formData.plateNumber.trim().toUpperCase(),
       },
 
       stickerFee: selectedFee,
 
       orcrInfo: {
-
-        fileName:
-          orcrFile.name,
-
-        fileSize:
-          orcrFile.size,
-
-        fileType:
-          orcrFile.type,
-
-        secureUrl:
-          uploadedOrcr.secureUrl,
-
-        publicId:
-          uploadedOrcr.publicId,
-
-        resourceType:
-          uploadedOrcr.resourceType,
-
-        uploadStatus:
-          "uploaded",
-
+        fileName: orcrFile.name,
+        fileSize: orcrFile.size,
+        fileType: orcrFile.type,
+        secureUrl: uploadedOrcr.secureUrl,
+        publicId: uploadedOrcr.publicId,
+        resourceType: uploadedOrcr.resourceType,
+        uploadStatus: "uploaded",
       },
 
       receiptInfo: {
-
-        fileName:
-          receiptFile.name,
-
-        fileSize:
-          receiptFile.size,
-
-        fileType:
-          receiptFile.type,
-
-        secureUrl:
-          uploadedReceipt.secureUrl,
-
-        publicId:
-          uploadedReceipt.publicId,
-
-        resourceType:
-          uploadedReceipt.resourceType,
-
-        uploadStatus:
-          "uploaded",
-
+        fileName: receiptFile.name,
+        fileSize: receiptFile.size,
+        fileType: receiptFile.type,
+        secureUrl: uploadedReceipt.secureUrl,
+        publicId: uploadedReceipt.publicId,
+        resourceType: uploadedReceipt.resourceType,
+        uploadStatus: "uploaded",
       },
 
       status: "Pending",
-
       remarks: "",
-
       createdAt: serverTimestamp(),
 
     };
 
-    await addDoc(
-
-      collection(
-        db,
-        "vehicleStickerApplications"
-      ),
-
+    const docRef = await addDoc(
+      collection(db, "vehicleStickerApplications"),
       applicationData
-
     );
-//check applications
 
-    const applicationQuery = query(
+    console.log("Application Saved:", docRef.id);
 
-      collection(
-        db,
-        "vehicleStickerApplications"
-      ),
+    // Reload all applications for this resident
+    await loadApplications(resident.id);
 
-      where(
-        "residentId",
-        "==",
-        resident.id
-      ),
+    // Clear form
+    setFormData({
+      vehicleType: "",
+      plateNumber: "",
+    });
 
-      orderBy(
-        "createdAt",
-        "desc"
-      )
-
-    );
-    const snapshot =
-      await getDocs(applicationQuery);
-
-    const data =
-      snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-
-      }));
-
-    setApplications(data);
+    setOrcrFile(null);
+    setReceiptFile(null);
 
     setFormData({
       vehicleType: "",
       plateNumber: "",
-
     });
 
     setOrcrFile(null);
-
     setReceiptFile(null);
 
-    alert(
-      "Vehicle Sticker Application Submitted Successfully!"
-    );
+    if (orcrInputRef.current) {
+      orcrInputRef.current.value = "";
+    }
+
+    if (receiptInputRef.current) {
+      receiptInputRef.current.value = "";
+    }
+
+    alert("Vehicle Sticker Application Submitted Successfully!");
+
+  } catch (error) {
+
+    console.error("Submit Error:", error);
+
+    alert(error.message);
+
+  } finally {
+
+    setSubmitting(false);
 
   }
 
-  catch (error) {
-
-    console.error(error);
-
-    alert(
-      "Unable to submit application."
-    );
-  }
-  finally {setSubmitting(false);}
 };
+
 return (
   <div className="pt-20">
-
-    {/* Header */}
-
     <section className="bg-white pt-10 pb-20 px-8 lg:px-28">
 
       <div className="text-center max-w-4xl mx-auto">
@@ -444,9 +348,7 @@ return (
       </div>
 
     </section>
-
-    {/* Hero Image */}
-
+{/*TOP IMAGE */}
     <section className="pb-24">
 
       <div className="overflow-hidden shadow-xl">
@@ -461,7 +363,7 @@ return (
 
     </section>
 
-    {/* Vehicle Sticker Fee */}
+    {/*Vehicle Sticker Fees*/}
 
     <section className="bg-white px-8 lg:px-28 pb-24">
 
@@ -588,8 +490,6 @@ return (
 
         <div className="grid lg:grid-cols-2 gap-14">
 
-          {/* LEFT */}
-
           <div>
 
             <h2 className="text-4xl font-bold text-[var(--color-primary)]">
@@ -664,7 +564,7 @@ return (
 
             <form className="space-y-8">
 
-              {/* Vehicle Type */}
+              {/*Vehicle Type*/}
 
               <div>
 
@@ -721,7 +621,7 @@ return (
             </form>
 
           </div>
-          {/* RIGHT */}
+          {/*payment*/}
 
           <div>
 
@@ -809,7 +709,7 @@ return (
 
     </section>
 
-    {/* Required Documents */}
+    {/*Required Documents*/}
 
     <section className="bg-white px-8 lg:px-28 pb-24">
 
@@ -850,32 +750,34 @@ return (
               and Certificate of Registration (CR).
 
             </p>
+          <input
+            ref={orcrInputRef}
+            required
+            type="file"
+            accept=".jpg,.jpeg,.png,.pdf"
+            onChange={(e) => setOrcrFile(e.target.files[0])}
+            className="block w-full text-gray-700
+            file:mr-4
+            file:rounded-lg
+            file:border-0
+            file:bg-[var(--color-primary)]
+            file:px-5
+            file:py-3
+            file:text-white
+            hover:file:bg-green-700"
+          />
 
-            <input
-              required
-              type="file"
-              accept=".jpg,.jpeg,.png,.pdf"
-              onChange={(e) => setOrcrFile(e.target.files[0])}
-              className="block w-full text-gray-700
-              file:mr-4
-              file:rounded-lg
-              file:border-0
-              file:bg-[var(--color-primary)]
-              file:px-5
-              file:py-3
-              file:text-white
-              hover:file:bg-green-700"
-            />
-
-            {orcrFile && (
-
-              <p className="mt-4 text-sm text-green-700 font-medium">
-
-                ✓ {orcrFile.name}
-
-              </p>
-
-            )}
+          {orcrFile && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-4 py-3">
+              <CheckCircle2
+                size={18}
+                className="text-green-600"
+              />
+              <span className="text-sm font-medium text-green-700 truncate">
+                {orcrFile.name}
+              </span>
+            </div>
+          )}
 
           </div>
 
@@ -907,32 +809,34 @@ return (
 
             </p>
 
-            <input
-              required
-              type="file"
-              accept=".jpg,.jpeg,.png,.pdf"
-              onChange={(e) => setReceiptFile(e.target.files[0])}
-              className="block w-full text-gray-700
-              file:mr-4
-              file:rounded-lg
-              file:border-0
-              file:bg-[var(--color-secondary)]
-              file:px-5
-              file:py-3
-              file:text-white
-              hover:file:bg-orange-600"
-            />
+          <input
+            ref={receiptInputRef}
+            required
+            type="file"
+            accept=".jpg,.jpeg,.png,.pdf"
+            onChange={(e) => setReceiptFile(e.target.files[0])}
+            className="block w-full text-gray-700
+            file:mr-4
+            file:rounded-lg
+            file:border-0
+            file:bg-[var(--color-secondary)]
+            file:px-5
+            file:py-3
+            file:text-white    
+            hover:file:bg-orange-600"
+          />
 
-            {receiptFile && (
-
-              <p className="mt-4 text-sm text-green-700 font-medium">
-
-                ✓ {receiptFile.name}
-
-              </p>
-
-            )}
-
+          {receiptFile && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-4 py-3">
+              <CheckCircle2
+                size={18}
+                className="text-green-600"
+              />
+              <span className="text-sm font-medium text-green-700 truncate">
+                {receiptFile.name}
+              </span>
+            </div>
+          )}
           </div>
 
         </div>
@@ -940,8 +844,8 @@ return (
       </div>
 
     </section>
-{/* Application Status */}
 
+{/*Application Status*/}
 <section className="px-8 lg:px-28 pb-24">
 
   <div className="bg-green-50 rounded-3xl shadow-lg p-12">
@@ -1117,7 +1021,7 @@ return (
 
 </section>
 
-{/* Submit */}
+{/*Submit*/}
 
 <section className="pb-28 text-center">
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, User, Phone, MapPin, Lock, Eye, EyeOff, Calendar, ShieldCheck, CreditCard, Image, Users, Upload, FileText, AlertCircle } from "lucide-react";
 import { auth, db, storage } from "../../firebase";
@@ -64,13 +64,16 @@ function SignUp() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [idFile, setIdFile] = useState(null);
+    const [isDraggingFile, setIsDraggingFile] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [passwordStrength, setPasswordStrength] = useState("Weak");
     const [passwordScore, setPasswordScore] = useState(0);
 
-    // NEW: per-field errors instead of a single modal
+    // Per-field errors, kept in sync live via useEffect below
     const [fieldErrors, setFieldErrors] = useState({});
-    // NEW: generic, non-field submit error (e.g. network/firebase issues)
+    // Which fields the user has actually interacted with — only touched fields show red
+    const [touched, setTouched] = useState({});
+    // Generic, non-field submit error (e.g. network/firebase issues)
     const [submitError, setSubmitError] = useState("");
 
     const [success, setSuccess] = useState({ show: false, message: "" });
@@ -127,18 +130,9 @@ function SignUp() {
         }
     };
 
-    // NEW: clears a field's error the moment the user edits it
-    const clearFieldError = (field) => {
-        setFieldErrors((prev) => {
-            if (!prev[field]) return prev;
-            const updated = { ...prev };
-            delete updated[field];
-            return updated;
-        });
-    };
-
     const handleInputChange = (e) => {
         const { id, value } = e.target;
+        setTouched((prev) => ({ ...prev, [id]: true }));
 
         if (id === "contactNumber") {
             const numbersOnly = value.replace(/\D/g, "");
@@ -146,7 +140,6 @@ function SignUp() {
                 ...prev,
                 contactNumber: numbersOnly.slice(0, 11),
             }));
-            clearFieldError("contactNumber");
             return;
         }
 
@@ -155,21 +148,47 @@ function SignUp() {
             [id]: value,
         }));
 
-        clearFieldError(id);
-
         if (id === "password") {
             checkPasswordStrength(value);
         }
     };
 
-    const handleFileChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            setIdFile(e.target.files[0]);
-            clearFieldError("idFile");
+    // Shared by both the file picker and drag-and-drop
+    const handleFileSelected = (file) => {
+        setTouched((prev) => ({ ...prev, idFile: true }));
+        if (file) {
+            setIdFile(file);
         }
     };
 
-    // NEW: builds an errors object instead of throwing on the first bad field
+    const handleFileChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFileSelected(e.target.files[0]);
+        }
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingFile(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingFile(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingFile(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFileSelected(e.dataTransfer.files[0]);
+        }
+    };
+
+    // Builds an errors object instead of throwing on the first bad field
     const validateForm = () => {
         const errors = {};
 
@@ -243,12 +262,35 @@ function SignUp() {
         return errors;
     };
 
+    // NEW: recompute validation live any time relevant state changes.
+    // This is now the single source of truth for fieldErrors — no more
+    // manually clearing/setting errors inside handlers.
+    useEffect(() => {
+        const errors = validateForm();
+        setFieldErrors(errors);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData, idFile, userType]);
+
+    // Overall form validity — drives whether the submit button is enabled
+    const isFormValid = Object.keys(fieldErrors).length === 0;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitError("");
 
         const errors = validateForm();
+
         if (Object.keys(errors).length > 0) {
+            // Mark every field touched so anything still invalid lights up,
+            // even fields the user tabbed past without changing.
+            setTouched((prev) => {
+                const all = { ...prev };
+                Object.keys(formData).forEach((k) => {
+                    all[k] = true;
+                });
+                all.idFile = true;
+                return all;
+            });
             setFieldErrors(errors);
             setShowIncompleteModal(true);
             return;
@@ -317,6 +359,7 @@ function SignUp() {
             console.error("Error during registration process:", error);
 
             if (error.code === "auth/email-already-in-use") {
+                setTouched((prev) => ({ ...prev, email: true }));
                 setFieldErrors((prev) => ({
                     ...prev,
                     email: "This email address is already in use. Please try a different email or log in.",
@@ -329,8 +372,11 @@ function SignUp() {
         }
     };
 
-    // NEW: shared helpers that drive the clean inline validation UI
+    // Shared helpers that drive the inline validation UI.
+    // A field only shows as "error" if it's both invalid AND touched.
     const getFieldStatus = (field) => {
+        if (!touched[field]) return "default";
+
         if (field === "confirmPassword") {
             if (formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword) return "error";
             if (fieldErrors.confirmPassword) return "error";
@@ -353,14 +399,11 @@ function SignUp() {
             if (fieldErrors.email) return "error";
             return "default";
         }
-        // All other fields: only ever flag an error (from submit validation).
+        // All other fields: only ever flag an error (from live validation).
         // Correct/filled fields stay in their normal, unhighlighted state.
         if (fieldErrors[field]) return "error";
         return "default";
     };
-
-    // NEW: overall form validity, recomputed on every render (no side effects)
-    const isFormValid = Object.keys(validateForm()).length === 0;
 
     const inputClasses = (field, extra = "") => {
         const status = getFieldStatus(field);
@@ -382,7 +425,7 @@ function SignUp() {
     };
 
     const FieldError = ({ field }) => {
-        if (!fieldErrors[field]) return null;
+        if (!touched[field] || !fieldErrors[field]) return null;
         return <p className="text-xs text-red-500 font-medium mt-0.5">{fieldErrors[field]}</p>;
     };
 
@@ -780,7 +823,7 @@ function SignUp() {
                                                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                             </button>
                                         </div>
-                                        {fieldErrors.confirmPassword ? (
+                                        {touched.confirmPassword && fieldErrors.confirmPassword ? (
                                             <FieldError field="confirmPassword" />
                                         ) : formData.confirmPassword.length > 0 ? (
                                             formData.password === formData.confirmPassword ? (
@@ -856,8 +899,17 @@ function SignUp() {
 
                                     <div className="flex flex-col gap-1.5">
                                         <label className="text-xs font-semibold text-gray-600">Upload ID Copy</label>
-                                        <label className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-2 bg-gray-50/50 hover:bg-gray-50 cursor-pointer transition-colors duration-200 ${
-                                            fieldErrors.idFile ? "border-red-400" : "border-gray-300"
+                                        <label
+                                            onDragOver={handleDragOver}
+                                            onDragEnter={handleDragOver}
+                                            onDragLeave={handleDragLeave}
+                                            onDrop={handleDrop}
+                                            className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors duration-200 ${
+                                            isDraggingFile
+                                                ? "border-primary bg-primary/5"
+                                                : touched.idFile && fieldErrors.idFile
+                                                    ? "border-red-400 bg-gray-50/50 hover:bg-gray-50"
+                                                    : "border-gray-300 bg-gray-50/50 hover:bg-gray-50"
                                         }`}>
                                             <input
                                                 type="file"
@@ -865,9 +917,13 @@ function SignUp() {
                                                 onChange={handleFileChange}
                                                 className="hidden"
                                             />
-                                            <Upload className={`w-5 h-5 ${fieldErrors.idFile ? "text-red-400" : "text-gray-400"}`} />
+                                            <Upload className={`w-5 h-5 ${isDraggingFile ? "text-primary" : touched.idFile && fieldErrors.idFile ? "text-red-400" : "text-gray-400"}`} />
                                             <span className="text-xs text-gray-600 font-medium">
-                                                {idFile ? idFile.name : "Click to upload or drag image/PDF"}
+                                                {isDraggingFile
+                                                    ? "Drop your file here"
+                                                    : idFile
+                                                        ? idFile.name
+                                                        : "Click to upload or drag image/PDF"}
                                             </span>
                                             <span className="text-[10px] text-gray-400">Max size: 5MB</span>
                                         </label>

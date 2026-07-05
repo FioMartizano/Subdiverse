@@ -1,6 +1,6 @@
 import { useState , useEffect, useRef } from "react";
-import { Link , useNavigate } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Link , useNavigate, useLocation } from "react-router-dom";
+import { Bell, ArrowLeft } from "lucide-react";
 import heroImg from "../assets/hero.png"; /*temporary, for logo*/
 
 import { signOut } from "firebase/auth";
@@ -14,6 +14,7 @@ export default function ResidentNavbar() {
   const [scrolled, setScrolled] = useState(false);
 
   const navigate = useNavigate(); //for logout function
+  const location = useLocation(); //for back button function then logo if sa HOME page
 
 //dropdown timer set for these:
   const closeOfficeTimer = useRef(null);
@@ -56,15 +57,23 @@ return (
   
       <div className="flex items-center justify-between px-12 py-2">
 
-        {/*Logo natin here*/}
-        <div>
-          <img
-            src={heroImg}
-            /*PENDING - to be changed~~*/
-            alt="Logo"
-            className="h-16 w-auto object-contain"
-          />
-        </div>
+<div className="h-16 flex items-center">
+  {location.pathname === "/resident-home" ? (
+    <img
+      src={heroImg}
+      alt="Logo"
+      className="h-16 w-auto object-contain"
+    />
+  ) : (
+    <button
+      onClick={() => navigate(-1)}
+      className="flex items-center gap-2 text-black font-semibold hover-secondary-text transition-colors duration-300"
+    >
+      <ArrowLeft size={28} />
+      <span className="text-lg">Back</span>
+    </button>
+  )}
+</div>
 
         {/*RESIDENT NAV*/}
         <div className="flex items-center gap-10">

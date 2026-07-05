@@ -69,11 +69,11 @@ function SignUp() {
     const [passwordStrength, setPasswordStrength] = useState("Weak");
     const [passwordScore, setPasswordScore] = useState(0);
 
-    // Per-field errors, kept in sync live via useEffect below
+
     const [fieldErrors, setFieldErrors] = useState({});
-    // Which fields the user has actually interacted with — only touched fields show red
+
     const [touched, setTouched] = useState({});
-    // Generic, non-field submit error (e.g. network/firebase issues)
+
     const [submitError, setSubmitError] = useState("");
 
     const [success, setSuccess] = useState({ show: false, message: "" });
@@ -153,7 +153,6 @@ function SignUp() {
         }
     };
 
-    // Shared by both the file picker and drag-and-drop
     const handleFileSelected = (file) => {
         setTouched((prev) => ({ ...prev, idFile: true }));
         if (file) {
@@ -188,7 +187,6 @@ function SignUp() {
         }
     };
 
-    // Builds an errors object instead of throwing on the first bad field
     const validateForm = () => {
         const errors = {};
 
@@ -262,16 +260,12 @@ function SignUp() {
         return errors;
     };
 
-    // NEW: recompute validation live any time relevant state changes.
-    // This is now the single source of truth for fieldErrors — no more
-    // manually clearing/setting errors inside handlers.
     useEffect(() => {
         const errors = validateForm();
         setFieldErrors(errors);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+  
     }, [formData, idFile, userType]);
 
-    // Overall form validity — drives whether the submit button is enabled
     const isFormValid = Object.keys(fieldErrors).length === 0;
 
     const handleSubmit = async (e) => {
@@ -281,8 +275,7 @@ function SignUp() {
         const errors = validateForm();
 
         if (Object.keys(errors).length > 0) {
-            // Mark every field touched so anything still invalid lights up,
-            // even fields the user tabbed past without changing.
+  
             setTouched((prev) => {
                 const all = { ...prev };
                 Object.keys(formData).forEach((k) => {
@@ -308,7 +301,7 @@ function SignUp() {
 
             let uploadedIdUrl = "";
             if (idFile) {
-                uploadedIdUrl = await uploadImage(idFile, "authentication/valid-ids");
+                uploadedIdUrl = await uploadImage(idFile, "authentication/valid-ids"); //cloudinary
             }
 
             await setDoc(doc(db, "users", userId), {
@@ -372,8 +365,6 @@ function SignUp() {
         }
     };
 
-    // Shared helpers that drive the inline validation UI.
-    // A field only shows as "error" if it's both invalid AND touched.
     const getFieldStatus = (field) => {
         if (!touched[field]) return "default";
 
@@ -384,7 +375,7 @@ function SignUp() {
         }
         if (field === "contactNumber") {
             if (formData.contactNumber.length > 0 && !/^09\d{9}$/.test(formData.contactNumber)) {
-                // still typing a valid prefix (e.g. "0", "09", "091") is not an error yet
+
                 const isPossiblyStillTyping = formData.contactNumber.length < 11 && /^0?9?\d*$/.test(formData.contactNumber);
                 if (!isPossiblyStillTyping) return "error";
             }
@@ -399,8 +390,7 @@ function SignUp() {
             if (fieldErrors.email) return "error";
             return "default";
         }
-        // All other fields: only ever flag an error (from live validation).
-        // Correct/filled fields stay in their normal, unhighlighted state.
+
         if (fieldErrors[field]) return "error";
         return "default";
     };

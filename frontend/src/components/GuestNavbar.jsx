@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef} from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+
 import heroImg from "../assets/hero.png"; /*temporary, for logo*/
 
 export default function GuestNavbar() {
@@ -8,6 +10,9 @@ export default function GuestNavbar() {
   const [scrolled, setScrolled] = useState(false);
   const closeTimer = useRef(null);
   const closeUserTimer = useRef(null);
+
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
   const handleScroll = () => {
@@ -28,10 +33,26 @@ export default function GuestNavbar() {
 >
       <div className="flex items-center justify-between px-12 py-2">
 
-        {/*Logo natin here*/}
-        <Link to="/">
-          <img src={heroImg} /*temporary muna*/ alt="Logo" className="h-16 w-auto object-contain"/>
-        </Link>
+        {/* Logo / Back Button */}
+        <div className="h-16 flex items-center">
+          {location.pathname === "/" ? (
+            <Link to="/">
+              <img
+                src={heroImg}
+                alt="Logo"
+                className="h-16 w-auto object-contain"
+              />
+            </Link>
+          ) : (
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 text-black font-semibold hover-secondary-text transition-colors duration-300"
+            >
+              <ArrowLeft size={24} />
+              <span className="text-lg">Back</span>
+            </button>
+          )}
+        </div>
 
         {/*GUEST NAV*/}
         <div className="flex items-center gap-10">

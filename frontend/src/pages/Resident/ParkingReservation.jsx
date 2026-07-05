@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, File, Trash2, RefreshCw } from 'lucide-react';
 import { auth, db, storage } from '../../firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, getDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { uploadImage } from "../../services/cloudinary";
 
@@ -24,20 +24,16 @@ export default function ParkingReservation() {
   const [submitting, setSubmitting] = useState(false);
   const [reservationError, setReservationError] = useState(null);
 
-  // Status Display States
   const [userReservation, setUserReservation] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
 
-  // OR/CR Upload States
   const [orcFile, setOrcFile] = useState(null);
   const [orcPreview, setOrcPreview] = useState(null);
   const [orcFileName, setOrcFileName] = useState('');
   const fileInputRef = useRef(null);
 
-  // Payment Type State
   const [paymentType, setPaymentType] = useState('cash');
 
-  // Generate 50 spots (1-50)
   const generateSpots = () => {
     const spots = [];
     const totalSpots = 50;
@@ -69,7 +65,6 @@ export default function ParkingReservation() {
 
   const monthlyRate = 1000;
 
-  // Check if user is authenticated
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -93,7 +88,6 @@ export default function ParkingReservation() {
     }
   }, [user, userData]);
 
-  // Fetch user data from Firestore
   const fetchUserData = async (uid) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', uid));
@@ -114,66 +108,60 @@ export default function ParkingReservation() {
     }
   };
 
-
-// Fetch user's latest reservation
-const fetchLatestReservation = async (uid) => {
-  if (!uid) {
-    console.log('❌ No UID provided');
-    return;
-  }
-  
-  console.log('🔍 Fetching reservation for user UID:', uid);
-  setLoadingStatus(true);
-  
-  try {
-    const reservationsRef = collection(db, 'ParkingReservation');
-    // Query by userId (which should be the Firebase Auth UID)
-    const q = query(
-      reservationsRef,
-      where('userId', '==', uid) // This should match user.uid
-    );
-    const querySnapshot = await getDocs(q);
-    
-    console.log(`👤 Found ${querySnapshot.size} reservations for user UID:`, uid);
-    
-    if (!querySnapshot.empty) {
-      // Sort by createdAt descending
-      const sortedDocs = querySnapshot.docs.sort((a, b) => {
-        const aData = a.data();
-        const bData = b.data();
-        const aTime = aData.createdAt?.toDate?.() || new Date(aData.createdAt);
-        const bTime = bData.createdAt?.toDate?.() || new Date(bData.createdAt);
-        return bTime - aTime;
-      });
-      
-      const doc = sortedDocs[0];
-      const data = doc.data();
-      console.log('✅ Found reservation:', { id: doc.id, ...data });
-      
-      // Convert Firestore timestamps
-      const startDate = data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate);
-      const endDate = data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate);
-      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-      
-      setUserReservation({
-        id: doc.id,
-        ...data,
-        startDate: startDate,
-        endDate: endDate,
-        createdAt: createdAt
-      });
-    } else {
-      console.log('❌ No reservations found for user UID:', uid);
-      setUserReservation(null);
+  const fetchLatestReservation = async (uid) => {
+    if (!uid) {
+      console.log('❌ No UID provided');
+      return;
     }
-  } catch (error) {
-    console.error('❌ Error fetching reservation:', error);
-  } finally {
-    setLoadingStatus(false);
-  }
-};
+    
+    console.log('🔍 Fetching reservation for user UID:', uid);
+    setLoadingStatus(true);
+    
+    try {
+      const reservationsRef = collection(db, 'ParkingReservation');
+      const q = query(
+        reservationsRef,
+        where('userId', '==', uid)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      console.log(`👤 Found ${querySnapshot.size} reservations for user UID:`, uid);
+      
+      if (!querySnapshot.empty) {
+        const sortedDocs = querySnapshot.docs.sort((a, b) => {
+          const aData = a.data();
+          const bData = b.data();
+          const aTime = aData.createdAt?.toDate?.() || new Date(aData.createdAt);
+          const bTime = bData.createdAt?.toDate?.() || new Date(bData.createdAt);
+          return bTime - aTime;
+        });
+        
+        const doc = sortedDocs[0];
+        const data = doc.data();
+        console.log('✅ Found reservation:', { id: doc.id, ...data });
+        
+        const startDate = data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate);
+        const endDate = data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate);
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+        
+        setUserReservation({
+          id: doc.id,
+          ...data,
+          startDate: startDate,
+          endDate: endDate,
+          createdAt: createdAt
+        });
+      } else {
+        console.log('❌ No reservations found for user UID:', uid);
+        setUserReservation(null);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching reservation:', error);
+    } finally {
+      setLoadingStatus(false);
+    }
+  };
 
-  // Check if user has pending reservation
   const checkPendingReservation = async () => {
     if (!user) return false;
     
@@ -192,7 +180,6 @@ const fetchLatestReservation = async (uid) => {
     }
   };
 
-  // Check if spot is available for selected dates
   const checkSpotAvailability = async (spotId, startDate, endDate) => {
     try {
       const reservationsRef = collection(db, 'ParkingReservation');
@@ -224,7 +211,6 @@ const fetchLatestReservation = async (uid) => {
     }
   };
 
-  // Handle opening the modal
   const handleInputDetails = async () => {
     if (!user) {
       alert('Please log in to make a reservation.');
@@ -253,7 +239,6 @@ const fetchLatestReservation = async (uid) => {
       return;
     }
 
-    // Reset file upload state when opening modal
     setOrcFile(null);
     setOrcPreview(null);
     setOrcFileName('');
@@ -262,7 +247,6 @@ const fetchLatestReservation = async (uid) => {
     setShowModal(true);
   };
 
-  // Handle file selection
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -292,7 +276,6 @@ const fetchLatestReservation = async (uid) => {
     }
   };
 
-  // Handle file removal
   const handleRemoveFile = () => {
     setOrcFile(null);
     setOrcPreview(null);
@@ -302,98 +285,96 @@ const fetchLatestReservation = async (uid) => {
     }
   };
 
-// Handle reservation submission
-const handleSubmitReservation = async () => {
-  if (!user || !userData) return;
+  const handleSubmitReservation = async () => {
+    if (!user || !userData) return;
 
-  if (!paymentType) {
-    setReservationError("Please select a payment method.");
-    return;
-  }
-
-  setSubmitting(true);
-  setReservationError(null);
-
-  try {
-
-    // STEP 1: Upload the OR/CR first
-    let uploadedImage = null;
-
-    if (orcFile) {
-      uploadedImage = await uploadImage(orcFile, "orcr");
-
-      console.log("✅ Cloudinary Upload Successful");
-      console.log(uploadedImage);
+    if (!paymentType) {
+      setReservationError("Please select a payment method.");
+      return;
     }
 
-    // STEP 2: Create Firestore data
-    const reservationData = {
-      userId: user.uid,
-      residentId: userData.residentId || "",
+    setSubmitting(true);
+    setReservationError(null);
 
-      spotId: selectedId,
-      spotNumber: spots.find((s) => s.id === selectedId)?.number || 0,
+    try {
+      let uploadedImage = null;
 
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      if (orcFile) {
+        uploadedImage = await uploadImage(orcFile, "orcr");
+        console.log("✅ Cloudinary Upload Successful");
+        console.log(uploadedImage);
+      }
 
-      monthlyRate,
-      totalAmount,
+      const reservationData = {
+        userId: user.uid,
+        residentId: userData.residentId || "",
+        spotId: selectedId,
+        spotNumber: spots.find((s) => s.id === selectedId)?.number || 0,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        monthlyRate,
+        totalAmount,
+        paymentType,
+        status: "pending",
+        createdAt: serverTimestamp(),
+        residentInfo: {
+          name: `${userData.residentData?.firstName || ""} ${userData.residentData?.lastName || ""}`.trim(),
+          address: [
+            userData.residentData?.block,
+            userData.residentData?.lot,
+            userData.residentData?.street,
+            userData.residentData?.phase,
+          ]
+            .filter(Boolean)
+            .join(", "),
+          residentCategory: userData.residentData?.residentCategory || "",
+          contactNumber: userData.residentData?.contactNumber || "",
+        },
+        orcFileInfo: uploadedImage
+          ? {
+              fileName: orcFile.name,
+              fileSize: orcFile.size,
+              fileType: orcFile.type,
+              secureUrl: uploadedImage.secureUrl,
+              publicId: uploadedImage.publicId,
+              resourceType: uploadedImage.resourceType,
+              uploadStatus: "uploaded",
+            }
+          : null,
+      };
 
-      paymentType,
-      status: "pending",
+      await addDoc(collection(db, "ParkingReservation"), reservationData);
 
-      createdAt: serverTimestamp(),
+      setShowModal(false);
+      setShowSuccess(true);
+      
+      setOrcFile(null);
+      setOrcPreview(null);
+      setOrcFileName('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      await fetchLatestReservation(user.uid);
 
-      residentInfo: {
-        name: `${userData.residentData?.firstName || ""} ${userData.residentData?.lastName || ""}`.trim(),
-        address: [
-          userData.residentData?.block,
-          userData.residentData?.lot,
-          userData.residentData?.street,
-          userData.residentData?.phase,
-        ]
-          .filter(Boolean)
-          .join(", "),
-        residentCategory: userData.residentData?.residentCategory || "",
-        contactNumber: userData.residentData?.contactNumber || "",
-      },
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 5000);
 
-      // Cloudinary information
-      orcFileInfo: uploadedImage
-        ? {
-            fileName: orcFile.name,
-            fileSize: orcFile.size,
-            fileType: orcFile.type,
+    } catch (error) {
+      console.error(error);
+      setReservationError("Failed to submit reservation. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-            secureUrl: uploadedImage.secureUrl,
-            publicId: uploadedImage.publicId,
-            resourceType: uploadedImage.resourceType,
-
-            uploadStatus: "uploaded",
-          }
-        : null,
-    };
-
-    // STEP 3: Save to Firestore
-    await addDoc(collection(db, "ParkingReservation"), reservationData);
-
-  } catch (error) {
-    console.error(error);
-    setReservationError("Failed to submit reservation.");
-  } finally {
-    setSubmitting(false);
-  }
-};
-
-  // Refresh status
   const handleRefreshStatus = async () => {
     if (user) {
       await fetchLatestReservation(user.uid);
     }
   };
 
-  // Calculate end date (30 days after start date)
   useMemo(() => {
     if (!startDate) {
       setEndDate(null);
@@ -412,7 +393,6 @@ const handleSubmitReservation = async () => {
 
   const totalAmount = monthlyRate;
 
-  // Get spots for current page
   const getCurrentPageSpots = useMemo(() => {
     const startIndex = (currentPage - 1) * SPOTS_PER_PAGE;
     const endIndex = startIndex + SPOTS_PER_PAGE;
@@ -605,7 +585,6 @@ const handleSubmitReservation = async () => {
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -637,11 +616,9 @@ const handleSubmitReservation = async () => {
         </div>
       )}
 
-      {/* Main Content */}
       <div className="p-4 md:p-8 flex justify-center">
         <div className="flex flex-col xl:flex-row gap-6 w-full max-w-[1400px]">
           
-          {/* LEFT PANEL: Parking Space */}
           <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
             <div className="bg-[var(--color-secondary)] py-6 text-center">
               <h1 className="text-white text-3xl font-bold tracking-wider uppercase drop-shadow-sm">
@@ -651,7 +628,6 @@ const handleSubmitReservation = async () => {
 
             <div className="p-6 md:p-8 flex flex-col h-full" id="parking-space-container">
               <div className="bg-[#FCFAFA] border border-gray-300 rounded-xl p-4 md:p-6 mb-6 relative shadow-sm">
-                {/* Parking Spots Grid - 5 columns */}
                 <div className="grid grid-cols-5 gap-3 md:gap-4 lg:gap-6">
                   {getCurrentPageSpots.map((spot) => {
                     const { color, borderClass } = getSpotStyles(spot.status);
@@ -681,7 +657,6 @@ const handleSubmitReservation = async () => {
                 </div>
               </div>
 
-              {/* Pagination Controls */}
               <div className="flex flex-col items-center gap-4">
                 <div className="flex items-center gap-2 flex-wrap justify-center">
                   <button
@@ -713,7 +688,6 @@ const handleSubmitReservation = async () => {
                 </div>
               </div>
 
-              {/* Legend */}
               <div className="flex flex-col items-center mt-6">
                 <div className="flex flex-wrap justify-center gap-6 md:gap-10">
                   <div className="flex items-center gap-2">
@@ -736,9 +710,7 @@ const handleSubmitReservation = async () => {
             </div>
           </div>
 
-          {/* RIGHT PANEL: Reservation Details */}
           <div className="w-full xl:w-[380px] shrink-0 flex flex-col gap-4">
-           {/* Status Display Container */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-sm font-semibold text-gray-700 mb-4">Reservation Status</h3>
               {renderStatusMessage()}
@@ -822,17 +794,16 @@ const handleSubmitReservation = async () => {
         </div>
       </div>
 
-      {/* Reservation Modal */}
       {showModal && userData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
-            {/* Modal Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white rounded-t-2xl z-10">
               <h3 className="text-xl font-bold text-gray-900">Reservation Details</h3>
               <button 
                 onClick={() => {
                   setShowModal(false);
                   handleRemoveFile();
+                  setReservationError(null);
                 }}
                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
               >
@@ -840,9 +811,7 @@ const handleSubmitReservation = async () => {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 space-y-6">
-              {/* User Information */}
               <div className="space-y-3">
                 <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider">User Information</h4>
                 <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl">
@@ -874,7 +843,6 @@ const handleSubmitReservation = async () => {
                 </div>
               </div>
 
-              {/* Reservation Details */}
               <div className="space-y-3">
                 <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider">Reservation Details</h4>
                 <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-xl">
@@ -901,7 +869,6 @@ const handleSubmitReservation = async () => {
                 </div>
               </div>
 
-              {/* Payment Type */}
               <div className="space-y-3">
                 <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider">Payment Method</h4>
                 <div className="bg-gray-50 p-4 rounded-xl">
@@ -917,7 +884,6 @@ const handleSubmitReservation = async () => {
                 </div>
               </div>
 
-              {/* OR/CR Upload Section */}
               <div className="space-y-3">
                 <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider">OR/CR Document (Optional)</h4>
                 <div className="bg-gray-50 p-4 rounded-xl">
@@ -972,7 +938,6 @@ const handleSubmitReservation = async () => {
                 </div>
               </div>
 
-              {/* Error Message */}
               {reservationError && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-700">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -980,12 +945,12 @@ const handleSubmitReservation = async () => {
                 </div>
               )}
 
-              {/* Submit Button */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                 <button
                   onClick={() => {
                     setShowModal(false);
                     handleRemoveFile();
+                    setReservationError(null);
                   }}
                   className="px-6 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
                 >
@@ -1011,7 +976,6 @@ const handleSubmitReservation = async () => {
         </div>
       )}
 
-      {/* CSS Animations */}
       <style jsx>{`
         @keyframes slide-in {
           from {

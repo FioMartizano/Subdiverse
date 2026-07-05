@@ -3,6 +3,7 @@ import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, File, Trash2, Ref
 import { auth, db, storage } from '../../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, getDoc, doc, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { uploadImage } from "../../services/cloudinary";
 
 const CarIcon = ({ className, color = "currentColor", windowColor = "white" }) => (
   <svg viewBox="0 0 100 100" className={className} fill={color}>
@@ -306,7 +307,7 @@ const handleSubmitReservation = async () => {
   if (!user || !userData) return;
 
   if (!paymentType) {
-    setReservationError('Please select a payment method.');
+    setReservationError("Please select a payment method.");
     return;
   }
 
@@ -314,47 +315,72 @@ const handleSubmitReservation = async () => {
   setReservationError(null);
 
   try {
+
+    // STEP 1: Upload the OR/CR first
+    let uploadedImage = null;
+
+    if (orcFile) {
+      uploadedImage = await uploadImage(orcFile, "orcr");
+
+      console.log("✅ Cloudinary Upload Successful");
+      console.log(uploadedImage);
+    }
+
+    // STEP 2: Create Firestore data
     const reservationData = {
-      // Use user.uid for userId (Firebase Auth UID)
-      userId: user.uid, // <-- THIS IS THE FIREBASE AUTH UID
-      residentId: userData.residentId || '', // <-- THIS IS THE RESIDENT ID FROM users collection
+      userId: user.uid,
+      residentId: userData.residentId || "",
+
       spotId: selectedId,
-      spotNumber: spots.find(s => s.id === selectedId)?.number || 0,
+      spotNumber: spots.find((s) => s.id === selectedId)?.number || 0,
+
       startDate: new Date(startDate),
-      endDate: new Date(endDate || startDate),
-      monthlyRate: monthlyRate,
-      totalAmount: monthlyRate,
-      paymentType: paymentType,
-      status: 'pending',
+      endDate: new Date(endDate),
+
+      monthlyRate,
+      totalAmount,
+
+      paymentType,
+      status: "pending",
+
       createdAt: serverTimestamp(),
-      orcFileInfo: orcFile ? {
-        fileName: orcFile.name,
-        fileSize: orcFile.size,
-        fileType: orcFile.type,
-        uploadStatus: 'pending'
-      } : null,
+
       residentInfo: {
-        name: `${userData.residentData?.firstName || ''} ${userData.residentData?.lastName || ''}`.trim() || 'N/A',
+        name: `${userData.residentData?.firstName || ""} ${userData.residentData?.lastName || ""}`.trim(),
         address: [
           userData.residentData?.block,
           userData.residentData?.lot,
           userData.residentData?.street,
-          userData.residentData?.phase
-        ].filter(Boolean).join(', ') || 'N/A',
-        residentCategory: userData.residentData?.residentCategory || 'N/A',
-        contactNumber: userData.residentData?.contactNumber || 'N/A'
-      }
+          userData.residentData?.phase,
+        ]
+          .filter(Boolean)
+          .join(", "),
+        residentCategory: userData.residentData?.residentCategory || "",
+        contactNumber: userData.residentData?.contactNumber || "",
+      },
+
+      // Cloudinary information
+      orcFileInfo: uploadedImage
+        ? {
+            fileName: orcFile.name,
+            fileSize: orcFile.size,
+            fileType: orcFile.type,
+
+            secureUrl: uploadedImage.secureUrl,
+            publicId: uploadedImage.publicId,
+            resourceType: uploadedImage.resourceType,
+
+            uploadStatus: "uploaded",
+          }
+        : null,
     };
 
-    console.log('📝 Submitting reservation with userId:', reservationData.userId);
-    console.log('📝 ResidentId:', reservationData.residentId);
+    // STEP 3: Save to Firestore
+    await addDoc(collection(db, "ParkingReservation"), reservationData);
 
-    await addDoc(collection(db, 'ParkingReservation'), reservationData);
-    
-    // ... rest of the code
   } catch (error) {
-    console.error('Error submitting reservation:', error);
-    setReservationError('Failed to submit reservation. Please try again.');
+    console.error(error);
+    setReservationError("Failed to submit reservation.");
   } finally {
     setSubmitting(false);
   }

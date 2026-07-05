@@ -114,9 +114,9 @@ function Healthcare() {
             >
                 {/* Applied fade-in-up here */}
                 <div className="ml-12 md:ml-24 max-w-2xl text-left z-10 fade-in-up" style={{ animationDelay: '0.1s' }}>
-                    <span className="text-[var(--color-accent)] text-lg md:text-xl font-semibold tracking-wider block mb-1">
-                        WWHS · Satellite Health Center
-                    </span>
+                   <p className="text-[var(--color-accent)] text-lg md:text-xl font-semibold tracking-wider block mb-1"> <span className="text-secondary">
+                        WWHS  </span> · Satellite Health Center </p>
+                   
                     <h1 className="text-white text-4xl md:text-6xl font-bold leading-tight">
                         Healthcare <br /> 
                         <span className="whitespace-nowrap text-[var(--color-accent)]">Committee Office</span>

@@ -1,525 +1,1162 @@
-//firebase ready even the pending and the price can be changed for admin side later pagka gawa
-// https://www.pexels.com/photo/row-of-shiny-vehicles-on-parking-lot-of-car-market-5864152/
-import { useState } from "react";
-import {
-  Car,
-  Bike,
-  FileText,
-  Upload,
-  BadgeCheck,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import {Car,Bike,FileText,Upload,BadgeCheck,LoaderCircle,Clock3,CircleCheckBig,CircleX,Plus} from "lucide-react";
+
+import {auth,db,} from "../../firebase";
+import {collection, addDoc,getDocs,getDoc,doc,query,where,serverTimestamp,setDoc,orderBy} from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { uploadImage } from "../../services/cloudinary";
 
 import stickerImg from "../../assets/VehicleStickerBg.jpg";
 import gcash from "../../assets/gcash.jpg";
 
-export default function VehicleSticker() {
-  const [formData, setFormData] = useState({
-    vehicleType: "",
-    plateNumber: "",
+const [formData, setFormData] = useState({
+  vehicleType: "",
+  plateNumber: "",
+});
+
+const [resident, setResident] = useState(null);
+
+const [applications, setApplications] = useState([]);
+
+const [loadingResident, setLoadingResident] = useState(true);
+
+const [submitting, setSubmitting] = useState(false);
+
+const [orcrFile, setOrcrFile] = useState(null);
+
+const [receiptFile, setReceiptFile] = useState(null);
+
+const [pricing, setPricing] = useState({
+
+  homeownerCarPrice: 150,
+  homeownerMotorcyclePrice: 100,
+  homeownerTribikePrice: 120,
+
+  renterCarPrice: 200,
+  renterMotorcyclePrice: 150,
+  renterTribikePrice: 170,
+
+  householdCarPrice: 180,
+  householdMotorcyclePrice: 130,
+  householdTribikePrice: 150,
+
+});
+const handleChange = (e) => {
+
+  setFormData({
+
+    ...formData,
+
+    [e.target.name]: e.target.value,
+
   });
 
-  const [orcrFile, setOrcrFile] = useState(null);
-  const [receiptFile, setReceiptFile] = useState(null);
+};
+const getStickerFee = () => {
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  if (!resident) return 0;
 
-  const getStickerFee = () => {
-    switch (formData.vehicleType) {
-      case "Car":
-        return 150;
-      case "Motorcycle":
-        return 100;
-      case "Tri-Bike":
-        return 120;
-      default:
-        return 0;
+  const category =
+    resident.residentCategory?.toLowerCase();
+
+  const vehicle =
+    formData.vehicleType.toLowerCase();
+
+  //residentCategory: homeowner
+  if (category === "homeowner") {
+
+    if (vehicle === "car")
+      return pricing.homeownerCarPrice;
+
+    if (vehicle === "motorcycle")
+      return pricing.homeownerMotorcyclePrice;
+
+    if (vehicle === "tri-bike")
+      return pricing.homeownerTribikePrice;
+
+  }//residentCategory: renter
+  if (category === "renter") {
+
+    if (vehicle === "car")
+      return pricing.renterCarPrice;
+
+    if (vehicle === "motorcycle")
+      return pricing.renterMotorcyclePrice;
+
+    if (vehicle === "tri-bike")
+      return pricing.renterTribikePrice;
+
+  } //residentCategory: household
+  if (category === "household") {
+
+    if (vehicle === "car")
+      return pricing.householdCarPrice;
+
+    if (vehicle === "motorcycle")
+      return pricing.householdMotorcyclePrice;
+
+    if (vehicle === "tri-bike")
+      return pricing.householdTribikePrice;
+  }
+
+  return 0;
+
+};
+
+const selectedFee = getStickerFee();
+useEffect(() => {
+
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+      setLoadingResident(false);
+      return;
     }
-  };
 
-  const selectedFee = getStickerFee();
+    try { //to know the resident's category
+      const residentQuery = query(
+        collection(db, "residents"),
+        where("email", "==", user.email)
+      );
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+      const residentSnapshot = await getDocs(residentQuery);
 
-    // Firebase ditu 
+      if (!residentSnapshot.empty) {
 
-    console.log(formData);
-  };
+        const residentDoc = residentSnapshot.docs[0];
 
-  return (
-    <div className="pt-20">
+        const residentData = residentDoc.data();
 
-      {/*use this instead if want padding: <section className="bg-white py-20 px-8 lg:px-28">  */}
+        const residentInfo = {
 
-      <section className="bg-white pt-10 pb-20 px-8 lg:px-28">
+          id: residentDoc.id,
 
-        <div className="text-center max-w-4xl mx-auto">
+          ...residentData,
 
-          <h1 className="text-5xl lg:text-6xl font-bold text-[var(--color-primary)]">
-            Vehicle Sticker Application
-          </h1>
+        };
 
-          <p className="mt-8 text-lg leading-8 text-gray-600">
+        setResident(residentInfo);
 
-            Apply for a new vehicle sticker or renew your existing one.
-            Vehicle Stickers help identify authorized resident
-            vehicles and support subdivision security and access.
+//firestore console collection
+        const settingsRef = doc(
+          db,
+          "vehicleSticker",
+          "settings"
+        );
 
-          </p>
+        const settingsSnap = await getDoc(settingsRef);
 
-        </div>
+        if (!settingsSnap.exists()) {
 
-      </section>
+          const defaultPricing = {
 
-        {/*BG CAR IMAGE*/}
+            homeownerCarPrice: 150,
+            homeownerMotorcyclePrice: 100,
+            homeownerTribikePrice: 120,
 
-        <section className="pb-24">
+            renterCarPrice: 200,
+            renterMotorcyclePrice: 150,
+            renterTribikePrice: 170,
 
-          <div className="overflow-hidden shadow-xl">
+            householdCarPrice: 180,
+            householdMotorcyclePrice: 130,
+            householdTribikePrice: 150,
 
-            <img
-              src={stickerImg}
-              alt="Vehicle Sticker"
-              className="w-full h-[500px] object-cover"
-            />
+          };
+          await setDoc(
+            settingsRef,
+            defaultPricing
+          );
+          setPricing(defaultPricing);
+        }
+        else {
+          setPricing(settingsSnap.data());
+        }
+        const applicationQuery = query(
 
-          </div>
+          collection(
+            db,
+            "vehicleStickerApplications"
+          ),
+          where(
+            "residentId",
+            "==",
+            residentDoc.id
+          ),
+          orderBy(
+            "createdAt",
+            "desc"
+          )
 
-        </section>
+        );
 
-      {/*FFES*/}
+        const applicationSnapshot =
+          await getDocs(applicationQuery);
 
-      <section className="bg-white px-8 lg:px-28 pb-24">
+        const applicationList =
+          applicationSnapshot.docs.map(doc => ({
 
-        <div className="border-t border-[var(--color-primary)]/20 pt-20">
+            id: doc.id,
+            ...doc.data(),
 
-          <h2 className="text-4xl font-bold text-[var(--color-primary)] text-center">
-            Vehicle Sticker Fee
-          </h2>
+          }));
 
-          <div className="w-24 h-1 bg-[var(--color-primary)] rounded-full mx-auto mt-4 mb-14"></div>
+        setApplications(applicationList);
 
-          <div className="grid md:grid-cols-3 gap-8">
+      }
 
-            {/*Car*/}
+    }
 
-            <div className="rounded-3xl shadow-lg border border-gray-200 p-10 hover:-translate-y-2 transition">
+    catch (error) {
 
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-8">
+      console.error(
+        "Vehicle Sticker Error:",
+        error
+      );
 
-                <Car
-                  size={32}
-                  className="text-[var(--color-primary)]"
-                />
+    }
+    finally {
+      setLoadingResident(false);
+    }
 
-              </div>
+  });
 
-              <h3 className="text-2xl font-bold">
-                Car
-              </h3>
+  return () => unsubscribe();
 
-              <p className="text-gray-500 mt-2">
-                Four-wheeled Vehicle
-              </p>
+}, []);
+const handleSubmit = async (e) => {
 
-              <p className="mt-8 text-4xl font-bold text-[var(--color-secondary)]">
-                ₱150
-              </p>
+  e.preventDefault();
 
-              <p className="text-gray-500 mt-2">
-                Valid for one calendar year.
-              </p>
+  if (!resident) {
+    alert("Resident information not found.");
+    return;
+  }
+  if (!formData.vehicleType) {
+    alert("Please select a vehicle type.");
+    return;
+  }
+  if (!formData.plateNumber.trim()) {
+    alert("Please enter your plate number.");
+    return;
+  }
+  if (!orcrFile) {
+    alert("Please upload your OR/CR.");
+    return;
+  }
+  if (!receiptFile) {
+    alert("Please upload your payment receipt.");
+    return;
+  }
+  try {
 
-            </div>
+    setSubmitting(true);
+    const uploadedOrcr =
+      await uploadImage(orcrFile, "vehicleSticker");
 
-            {/*Motor*/}
+    const uploadedReceipt =
+      await uploadImage(receiptFile, "vehicleSticker");
 
-            <div className="rounded-3xl shadow-lg border border-gray-200 p-10 hover:-translate-y-2 transition">
+    const applicationData = {
 
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-8">
+      residentId: resident.id,
 
-                <Bike
-                  size={32}
-                  className="text-[var(--color-primary)]"
-                />
+      residentInfo: {
 
-              </div>
+        firstName: resident.firstName,
 
-              <h3 className="text-2xl font-bold">
-                Motorcycle
-              </h3>
+        lastName: resident.lastName,
 
-              <p className="text-gray-500 mt-2">
-                Two-wheeled Vehicle
-              </p>
+        fullName:
+          `${resident.firstName} ${resident.lastName}`,
 
-              <p className="mt-8 text-4xl font-bold text-[var(--color-secondary)]">
-                ₱100
-              </p>
+        residentCategory:
+          resident.residentCategory,
 
-              <p className="text-gray-500 mt-2">
-                Valid for one calendar year.
-              </p>
+        contactNumber:
+          resident.contactNumber,
 
-            </div>
+        email:
+          resident.email,
 
-            {/*Tri-bike*/}
+      },
 
-            <div className="rounded-3xl shadow-lg border border-gray-200 p-10 hover:-translate-y-2 transition">
+      vehicleInfo: {
 
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-8">
+        vehicleType:
+          formData.vehicleType,
 
-                <Car
-                  size={32}
-                  className="text-[var(--color-primary)]"
-                />
+        plateNumber:
+          formData.plateNumber
+            .trim()
+            .toUpperCase(),
 
-              </div>
+      },
 
-              <h3 className="text-2xl font-bold">
-                Tri-Bike
-              </h3>
+      stickerFee: selectedFee,
 
-              <p className="text-gray-500 mt-2">
-                Three-wheeled Vehicle
-              </p>
+      orcrInfo: {
 
-              <p className="mt-8 text-4xl font-bold text-[var(--color-secondary)]">
-                ₱120
-              </p>
+        fileName:
+          orcrFile.name,
 
-              <p className="text-gray-500 mt-2">
-                Valid for one calendar year.
-              </p>
+        fileSize:
+          orcrFile.size,
 
-            </div>
+        fileType:
+          orcrFile.type,
 
-          </div>
+        secureUrl:
+          uploadedOrcr.secureUrl,
 
-        </div>
+        publicId:
+          uploadedOrcr.publicId,
 
-      </section>
-      {/*vehicle info*/}
+        resourceType:
+          uploadedOrcr.resourceType,
 
-      <section className="bg-white px-8 lg:px-28 pb-24">
+        uploadStatus:
+          "uploaded",
 
-        <div className="border-t border-[var(--color-primary)]/20 pt-20">
+      },
 
-          <div className="grid lg:grid-cols-2 gap-14">
+      receiptInfo: {
 
-            {/* LEFT SIDE */}
+        fileName:
+          receiptFile.name,
 
-            <div>
+        fileSize:
+          receiptFile.size,
 
-              <h2 className="text-4xl font-bold text-[var(--color-primary)]">
-                Vehicle Information
-              </h2>
+        fileType:
+          receiptFile.type,
 
-              <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mt-4 mb-10"></div>
+        secureUrl:
+          uploadedReceipt.secureUrl,
 
-              <form className="space-y-8">
+        publicId:
+          uploadedReceipt.publicId,
 
-                {/*vehicle type*/}
+        resourceType:
+          uploadedReceipt.resourceType,
 
-                <div>
+        uploadStatus:
+          "uploaded",
 
-                  <label className="block text-gray-700 font-semibold mb-3">
-                    Vehicle Type
-                  </label>
+      },
 
-                  <select
-                    required
-                    name="vehicleType"
-                    value={formData.vehicleType}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-xl px-5 py-4 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                  >
-                    <option value="">
-                      Select Vehicle Type
-                    </option>
+      status: "Pending",
 
-                    <option value="Car">
-                      Car (Four-wheeled Vehicle)
-                    </option>
+      remarks: "",
 
-                    <option value="Motorcycle">
-                      Motorcycle (Two-wheeled Vehicle)
-                    </option>
+      createdAt: serverTimestamp(),
 
-                    <option value="Tri-Bike">
-                      Tri-Bike (Three-wheeled Vehicle)
-                    </option>
+    };
 
-                  </select>
+    await addDoc(
 
-                </div>
+      collection(
+        db,
+        "vehicleStickerApplications"
+      ),
 
-                <div>
+      applicationData
 
-                  <label className="block text-gray-700 font-semibold mb-3">
-                    Plate Number
-                  </label>
+    );
+//check applications
 
-                  <input
-                    required
-                    type="text"
-                    name="plateNumber"
-                    value={formData.plateNumber}
-                    onChange={handleChange}
-                    placeholder="Enter Plate Number"
-                    className="w-full border border-gray-300 rounded-xl px-5 py-4 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                  />
+    const applicationQuery = query(
 
-                </div>
+      collection(
+        db,
+        "vehicleStickerApplications"
+      ),
 
-              </form>
+      where(
+        "residentId",
+        "==",
+        resident.id
+      ),
 
-            </div>
+      orderBy(
+        "createdAt",
+        "desc"
+      )
 
-            {/*right part*/}
+    );
+    const snapshot =
+      await getDocs(applicationQuery);
 
-            <div>
+    const data =
+      snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
 
-              <div className="bg-green-50 rounded-3xl shadow-lg p-10">
+      }));
 
-                <h2 className="text-3xl font-bold text-[var(--color-primary)]">
-                  Payment
-                </h2>
+    setApplications(data);
 
-                <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mt-4 mb-8"></div>
+    setFormData({
+      vehicleType: "",
+      plateNumber: "",
 
-                <p className="text-gray-600 leading-8">
+    });
 
-                  Scan the QR code below using GCash.
-                  After payment, upload your payment receipt
-                  together with your OR/CR in the next section.
+    setOrcrFile(null);
 
-                </p>
+    setReceiptFile(null);
 
-                <div className="flex justify-center mt-10">
+    alert(
+      "Vehicle Sticker Application Submitted Successfully!"
+    );
 
-                  <img
-                    src={gcash}
-                    alt="GCash QR"
-                    className="w-64 rounded-2xl shadow-md border"
-                  />
+  }
 
-                </div>
+  catch (error) {
 
-                <div className="mt-10 rounded-2xl bg-white border border-gray-200 p-8">
+    console.error(error);
 
-                  <h3 className="text-xl font-semibold text-gray-800 mb-6">
-                    Payment Summary
-                  </h3>
+    alert(
+      "Unable to submit application."
+    );
+  }
+  finally {setSubmitting(false);}
+};
+return (
+  <div className="pt-20">
 
-                  <div className="flex justify-between py-3 border-b">
+    {/* Header */}
 
-                    <span className="text-gray-600">
-                      Vehicle Type
-                    </span>
+    <section className="bg-white pt-10 pb-20 px-8 lg:px-28">
 
-                    <span className="font-semibold">
-                      {formData.vehicleType || "-"}
-                    </span>
+      <div className="text-center max-w-4xl mx-auto">
 
-                  </div>
+        <h1 className="text-5xl lg:text-6xl font-bold text-[var(--color-primary)]">
+          Vehicle Sticker Application
+        </h1>
 
-                  <div className="flex justify-between py-3">
+        <p className="mt-8 text-lg leading-8 text-gray-600">
+          Apply for a new vehicle sticker or renew your existing one.
+          Vehicle Stickers help identify authorized resident
+          vehicles and support subdivision security and access.
+        </p>
 
-                    <span className="text-gray-600">
-                      Sticker Fee
-                    </span>
+      </div>
 
-                    <span className="text-2xl font-bold text-[var(--color-secondary)]">
+    </section>
 
-                      {selectedFee
-                        ? `₱${selectedFee}`
-                        : "₱0"}
+    {/* Hero Image */}
 
-                    </span>
+    <section className="pb-24">
 
-                  </div>
+      <div className="overflow-hidden shadow-xl">
 
-                </div>
+        <img
+          src={stickerImg}
+          alt="Vehicle Sticker"
+          className="w-full h-[500px] object-cover"
+        />
 
-              </div>
+      </div>
 
-            </div>
+    </section>
 
-          </div>
+    {/* Vehicle Sticker Fee */}
 
-        </div>
+    <section className="bg-white px-8 lg:px-28 pb-24">
 
-      </section>
-      {/*required docu to submit*/}
+      <div className="border-t border-[var(--color-primary)]/20 pt-20">
 
-      <section className="bg-white px-8 lg:px-28 pb-24">
+        <h2 className="text-4xl font-bold text-[var(--color-primary)] text-center">
+          Vehicle Sticker Fee
+        </h2>
 
-        <div className="border-t border-[var(--color-primary)]/20 pt-20">
+        <div className="w-24 h-1 bg-[var(--color-primary)] rounded-full mx-auto mt-4 mb-14"></div>
 
-          <h2 className="text-4xl font-bold text-[var(--color-primary)] text-center">
-            Required Documents
-          </h2>
+        <div className="grid md:grid-cols-3 gap-8">
 
-          <div className="w-24 h-1 bg-[var(--color-primary)] rounded-full mx-auto mt-4 mb-14"></div>
+          {/* Car */}
 
-          <div className="grid lg:grid-cols-2 gap-10">
+          <div className="rounded-3xl shadow-lg border border-gray-200 p-10 hover:-translate-y-2 transition">
 
-            {/*OR/CR*/}
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-8">
 
-            <div className="bg-white border border-gray-200 rounded-3xl shadow-lg p-10">
-
-              <div className="flex items-center gap-4 mb-6">
-
-                <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
-
-                  <FileText
-                    size={28}
-                    className="text-[var(--color-primary)]"
-                  />
-
-                </div>
-
-                <h3 className="text-2xl font-bold">
-                  OR / CR
-                </h3>
-
-              </div>
-
-              <p className="text-gray-600 mb-8 leading-7">
-                Upload a clear copy of your Official Receipt (OR)
-                and Certificate of Registration (CR).
-              </p>
-
-              <input
-                required
-                type="file"
-                accept=".jpg,.jpeg,.png,.pdf"
-                onChange={(e) => setOrcrFile(e.target.files[0])}
-                className="block w-full text-gray-700
-                file:mr-4
-                file:rounded-lg
-                file:border-0
-                file:bg-[var(--color-primary)]
-                file:px-5
-                file:py-3
-                file:text-white
-                hover:file:bg-green-700"
-              />
-
-            </div>
-
-            {/*receipt dropbox*/}
-
-            <div className="bg-white border border-gray-200 rounded-3xl shadow-lg p-10">
-
-              <div className="flex items-center gap-4 mb-6">
-
-                <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
-
-                  <Upload
-                    size={28}
-                    className="text-[var(--color-secondary)]"
-                  />
-
-                </div>
-
-                <h3 className="text-2xl font-bold">
-                  Payment Receipt
-                </h3>
-
-              </div>
-
-              <p className="text-gray-600 mb-8 leading-7">
-                Upload your GCash payment receipt after completing
-                the required payment.
-              </p>
-
-              <input
-                required
-                type="file"
-                accept=".jpg,.jpeg,.png,.pdf"
-                onChange={(e) => setReceiptFile(e.target.files[0])}
-                className="block w-full text-gray-700
-                file:mr-4
-                file:rounded-lg
-                file:border-0
-                file:bg-[var(--color-secondary)]
-                file:px-5
-                file:py-3
-                file:text-white
-                hover:file:bg-orange-600"
-              />
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      {/*application status (pending, approved, rejected - soon backend firebase apply here and fees incase admin want to update)*/}
-
-      <section className="px-8 lg:px-28 pb-24">
-
-        <div className="bg-green-50 rounded-3xl shadow-lg p-12">
-
-          <div className="flex items-center gap-5 mb-8">
-
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-
-              <BadgeCheck
+              <Car
                 size={32}
                 className="text-[var(--color-primary)]"
               />
 
             </div>
 
-            <div>
+            <h3 className="text-2xl font-bold">
+              Car
+            </h3>
 
-              <h2 className="text-3xl font-bold text-[var(--color-primary)]">
-                Application Status
-              </h2>
+            <p className="text-gray-500 mt-2">
+              Four-wheeled Vehicle
+            </p>
 
-              <p className="text-gray-500 mt-1">
-                The status of your application will be displayed here.
-              </p>
+            <p className="mt-8 text-4xl font-bold text-[var(--color-secondary)]">
 
-            </div>
+              ₱{pricing.homeownerCarPrice}
+
+            </p>
+
+            <p className="text-gray-500 mt-2">
+              Starting price (depends on Resident Category)
+            </p>
 
           </div>
 
-          <div className="border-2 border-dashed border-gray-300 rounded-2xl p-10 text-center bg-white">
+          {/* Motorcycle */}
 
-            <p className="text-gray-500 text-lg">
+          <div className="rounded-3xl shadow-lg border border-gray-200 p-10 hover:-translate-y-2 transition">
 
-              Your application status will appear here after submission.
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-8">
 
+              <Bike
+                size={32}
+                className="text-[var(--color-primary)]"
+              />
+
+            </div>
+
+            <h3 className="text-2xl font-bold">
+              Motorcycle
+            </h3>
+
+            <p className="text-gray-500 mt-2">
+              Two-wheeled Vehicle
+            </p>
+
+            <p className="mt-8 text-4xl font-bold text-[var(--color-secondary)]">
+
+              ₱{pricing.homeownerMotorcyclePrice}
+
+            </p>
+
+            <p className="text-gray-500 mt-2">
+              Starting price (depends on Resident Category)
+            </p>
+
+          </div>
+
+          {/* Tri-bike */}
+
+          <div className="rounded-3xl shadow-lg border border-gray-200 p-10 hover:-translate-y-2 transition">
+
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-8">
+
+              <Car
+                size={32}
+                className="text-[var(--color-primary)]"
+              />
+
+            </div>
+
+            <h3 className="text-2xl font-bold">
+              Tri-Bike
+            </h3>
+
+            <p className="text-gray-500 mt-2">
+              Three-wheeled Vehicle
+            </p>
+
+            <p className="mt-8 text-4xl font-bold text-[var(--color-secondary)]">
+
+              ₱{pricing.homeownerTribikePrice}
+
+            </p>
+
+            <p className="text-gray-500 mt-2">
+              Starting price (depends on Resident Category)
             </p>
 
           </div>
 
         </div>
 
-      </section>
+      </div>
 
-      <section className="pb-28 text-center">
+    </section>
 
-        <button
-          onClick={handleSubmit}
-          className="btn-reservation"
-        >
-          Submit Application
-        </button>
+    {/* Vehicle Information */}
 
-      </section>
+    <section className="bg-white px-8 lg:px-28 pb-24">
+
+      <div className="border-t border-[var(--color-primary)]/20 pt-20">
+
+        <div className="grid lg:grid-cols-2 gap-14">
+
+          {/* LEFT */}
+
+          <div>
+
+            <h2 className="text-4xl font-bold text-[var(--color-primary)]">
+              Vehicle Information
+            </h2>
+
+            <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mt-4 mb-10"></div>
+
+            {/* Resident Information */}
+
+            <div className="mb-8 rounded-2xl border border-green-100 bg-green-50 p-6">
+
+              <h3 className="font-bold text-lg text-[var(--color-primary)] mb-4">
+                Resident Information
+              </h3>
+
+              {loadingResident ? (
+
+                <div className="flex justify-center">
+
+                  <LoaderCircle
+                    className="animate-spin text-[var(--color-primary)]"
+                  />
+
+                </div>
+
+              ) : resident && (
+
+                <div className="space-y-3 text-gray-700">
+
+                  <div className="flex justify-between">
+
+                    <span>Name</span>
+
+                    <span className="font-semibold">
+
+                      {resident.firstName} {resident.lastName}
+
+                    </span>
+
+                  </div>
+
+                  <div className="flex justify-between">
+
+                    <span>Resident Category</span>
+
+                    <span className="font-semibold">
+
+                      {resident.residentCategory}
+
+                    </span>
+
+                  </div>
+
+                  <div className="flex justify-between">
+
+                    <span>Contact Number</span>
+
+                    <span className="font-semibold">
+
+                      {resident.contactNumber}
+
+                    </span>
+
+                  </div>
+
+                </div>
+
+              )}
+
+            </div>
+
+            <form className="space-y-8">
+
+              {/* Vehicle Type */}
+
+              <div>
+
+                <label className="block text-gray-700 font-semibold mb-3">
+                  Vehicle Type
+                </label>
+
+                <select
+                  required
+                  name="vehicleType"
+                  value={formData.vehicleType}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-xl px-5 py-4 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                >
+
+                  <option value="">
+                    Select Vehicle Type
+                  </option>
+
+                  <option value="Car">
+                    Car (Four-wheeled Vehicle)
+                  </option>
+
+                  <option value="Motorcycle">
+                    Motorcycle (Two-wheeled Vehicle)
+                  </option>
+
+                  <option value="Tri-Bike">
+                    Tri-Bike (Three-wheeled Vehicle)
+                  </option>
+
+                </select>
+
+              </div>
+
+              <div>
+
+                <label className="block text-gray-700 font-semibold mb-3">
+                  Plate Number
+                </label>
+
+                <input
+                  required
+                  type="text"
+                  name="plateNumber"
+                  value={formData.plateNumber}
+                  onChange={handleChange}
+                  placeholder="Enter Plate Number"
+                  className="w-full border border-gray-300 rounded-xl px-5 py-4 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                />
+
+              </div>
+
+            </form>
+
+          </div>
+          {/* RIGHT */}
+
+          <div>
+
+            <div className="bg-green-50 rounded-3xl shadow-lg p-10">
+
+              <h2 className="text-3xl font-bold text-[var(--color-primary)]">
+                Payment
+              </h2>
+
+              <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mt-4 mb-8"></div>
+
+              <p className="text-gray-600 leading-8">
+
+                Scan the QR code below using GCash.
+                After payment, upload your payment receipt
+                together with your OR/CR in the next section.
+
+              </p>
+
+              <div className="flex justify-center mt-10">
+
+                <img
+                  src={gcash}
+                  alt="GCash QR"
+                  className="w-64 rounded-2xl shadow-md border"
+                />
+
+              </div>
+
+              <div className="mt-10 rounded-2xl bg-white border border-gray-200 p-8">
+
+                <h3 className="text-xl font-semibold text-gray-800 mb-6">
+                  Payment Summary
+                </h3>
+
+                <div className="flex justify-between py-3 border-b">
+
+                  <span className="text-gray-600">
+                    Resident Category
+                  </span>
+
+                  <span className="font-semibold">
+                    {resident?.residentCategory || "-"}
+                  </span>
+
+                </div>
+
+                <div className="flex justify-between py-3 border-b">
+
+                  <span className="text-gray-600">
+                    Vehicle Type
+                  </span>
+
+                  <span className="font-semibold">
+                    {formData.vehicleType || "-"}
+                  </span>
+
+                </div>
+
+                <div className="flex justify-between py-3">
+
+                  <span className="text-gray-600">
+                    Sticker Fee
+                  </span>
+
+                  <span className="text-2xl font-bold text-[var(--color-secondary)]">
+
+                    {selectedFee
+                      ? `₱${selectedFee}`
+                      : "₱0"}
+
+                  </span>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    {/* Required Documents */}
+
+    <section className="bg-white px-8 lg:px-28 pb-24">
+
+      <div className="border-t border-[var(--color-primary)]/20 pt-20">
+
+        <h2 className="text-4xl font-bold text-[var(--color-primary)] text-center">
+          Required Documents
+        </h2>
+
+        <div className="w-24 h-1 bg-[var(--color-primary)] rounded-full mx-auto mt-4 mb-14"></div>
+
+        <div className="grid lg:grid-cols-2 gap-10">
+
+          {/* OR/CR */}
+
+          <div className="bg-white border border-gray-200 rounded-3xl shadow-lg p-10">
+
+            <div className="flex items-center gap-4 mb-6">
+
+              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+
+                <FileText
+                  size={28}
+                  className="text-[var(--color-primary)]"
+                />
+
+              </div>
+
+              <h3 className="text-2xl font-bold">
+                OR / CR
+              </h3>
+
+            </div>
+
+            <p className="text-gray-600 mb-8 leading-7">
+
+              Upload a clear copy of your Official Receipt (OR)
+              and Certificate of Registration (CR).
+
+            </p>
+
+            <input
+              required
+              type="file"
+              accept=".jpg,.jpeg,.png,.pdf"
+              onChange={(e) => setOrcrFile(e.target.files[0])}
+              className="block w-full text-gray-700
+              file:mr-4
+              file:rounded-lg
+              file:border-0
+              file:bg-[var(--color-primary)]
+              file:px-5
+              file:py-3
+              file:text-white
+              hover:file:bg-green-700"
+            />
+
+            {orcrFile && (
+
+              <p className="mt-4 text-sm text-green-700 font-medium">
+
+                ✓ {orcrFile.name}
+
+              </p>
+
+            )}
+
+          </div>
+
+          {/* Receipt */}
+
+          <div className="bg-white border border-gray-200 rounded-3xl shadow-lg p-10">
+
+            <div className="flex items-center gap-4 mb-6">
+
+              <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
+
+                <Upload
+                  size={28}
+                  className="text-[var(--color-secondary)]"
+                />
+
+              </div>
+
+              <h3 className="text-2xl font-bold">
+                Payment Receipt
+              </h3>
+
+            </div>
+
+            <p className="text-gray-600 mb-8 leading-7">
+
+              Upload your GCash payment receipt after completing
+              the required payment.
+
+            </p>
+
+            <input
+              required
+              type="file"
+              accept=".jpg,.jpeg,.png,.pdf"
+              onChange={(e) => setReceiptFile(e.target.files[0])}
+              className="block w-full text-gray-700
+              file:mr-4
+              file:rounded-lg
+              file:border-0
+              file:bg-[var(--color-secondary)]
+              file:px-5
+              file:py-3
+              file:text-white
+              hover:file:bg-orange-600"
+            />
+
+            {receiptFile && (
+
+              <p className="mt-4 text-sm text-green-700 font-medium">
+
+                ✓ {receiptFile.name}
+
+              </p>
+
+            )}
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+{/* Application Status */}
+
+<section className="px-8 lg:px-28 pb-24">
+
+  <div className="bg-green-50 rounded-3xl shadow-lg p-12">
+
+    <div className="flex items-center gap-5 mb-8">
+
+      <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+
+        <BadgeCheck
+          size={32}
+          className="text-[var(--color-primary)]"
+        />
+
+      </div>
+
+      <div>
+
+        <h2 className="text-3xl font-bold text-[var(--color-primary)]">
+          Application Status
+        </h2>
+
+        <p className="text-gray-500 mt-1">
+          View the status of all your submitted vehicle sticker applications.
+        </p>
+
+      </div>
 
     </div>
-  );
+
+    {loadingResident ? (
+
+      <div className="flex justify-center py-12">
+
+        <LoaderCircle
+          size={42}
+          className="animate-spin text-[var(--color-primary)]"
+        />
+
+      </div>
+
+    ) : applications.length === 0 ? (
+
+      <div className="border-2 border-dashed border-gray-300 rounded-2xl p-10 text-center bg-white">
+
+        <p className="text-gray-500 text-lg">
+
+          Your vehicle sticker applications will appear here after submission.
+
+        </p>
+
+      </div>
+
+    ) : (
+
+      <div className="space-y-6">
+
+        {applications.map((application) => (
+
+          <div
+            key={application.id}
+            className="bg-white border border-gray-200 rounded-2xl shadow p-8 hover:shadow-lg transition"
+          >
+
+            <div className="flex flex-col lg:flex-row justify-between gap-8">
+
+              <div>
+
+                <h3 className="text-2xl font-bold text-gray-800">
+
+                  {application.vehicleInfo.vehicleType}
+
+                </h3>
+
+                <p className="text-gray-500 mt-2">
+
+                  Plate Number
+
+                </p>
+
+                <p className="font-semibold text-lg">
+
+                  {application.vehicleInfo.plateNumber}
+
+                </p>
+
+                <p className="text-gray-500 mt-4">
+
+                  Sticker Fee
+
+                </p>
+
+                <p className="text-2xl font-bold text-[var(--color-secondary)]">
+
+                  ₱{application.stickerFee}
+
+                </p>
+
+              </div>
+
+              <div className="lg:text-right">
+
+                {application.status === "Pending" && (
+
+                  <div className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full">
+
+                    <Clock3 size={18} />
+
+                    <span className="font-semibold">
+                      Pending
+                    </span>
+
+                  </div>
+
+                )}
+
+                {application.status === "Approved" && (
+
+                  <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full">
+
+                    <CircleCheckBig size={18} />
+
+                    <span className="font-semibold">
+                      Approved
+                    </span>
+
+                  </div>
+
+                )}
+
+                {application.status === "Rejected" && (
+
+                  <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded-full">
+
+                    <CircleX size={18} />
+
+                    <span className="font-semibold">
+                      Rejected
+                    </span>
+
+                  </div>
+
+                )}
+
+                <div className="mt-6">
+
+                  <p className="text-sm text-gray-500">
+
+                    Admin Remarks
+
+                  </p>
+
+                  <p className="font-medium text-gray-800">
+
+                    {application.remarks || "No remarks yet."}
+
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        ))}
+
+      </div>
+
+    )}
+
+  </div>
+
+</section>
+
+{/* Submit */}
+
+<section className="pb-28 text-center">
+
+  <button
+    onClick={handleSubmit}
+    disabled={submitting}
+    className="btn-reservation disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 mx-auto"
+  >
+
+    {submitting ? (
+
+      <>
+        <LoaderCircle
+          size={20}
+          className="animate-spin"
+        />
+
+        <span>
+          Submitting...
+        </span>
+      </>
+
+    ) : (
+
+      <>
+        <Plus size={20} />
+
+        <span>
+          Submit Application
+        </span>
+      </>
+
+    )}
+
+  </button>
+
+</section>
+
+</div>
+
+);
 }

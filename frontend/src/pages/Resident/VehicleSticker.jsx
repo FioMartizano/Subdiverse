@@ -55,7 +55,7 @@ export default function VehicleSticker() {
     const category = resident.residentCategory?.toLowerCase();
     const vehicle = formData.vehicleType.toLowerCase();
 
-    if (category === "homeowner") {
+    if (category === "owner") {
       if (vehicle === "car") return pricing.homeownerCarPrice;
       if (vehicle === "motorcycle") return pricing.homeownerMotorcyclePrice;
       if (vehicle === "tri-bike") return pricing.homeownerTribikePrice;

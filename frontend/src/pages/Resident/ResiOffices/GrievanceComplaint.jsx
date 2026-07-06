@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Upload, X, FileText, Image as ImageIcon, Paperclip, ChevronRight, ChevronLeft } from "lucide-react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../../firebase";
+import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth"; 
+import { db, auth } from "../../../firebase"; // 
+import { uploadImage } from "../../../services/cloudinary"; //add this to link cloudinary.js
 
 const CATEGORIES = [
     { value: "noise", label: "Noise complaint" },
@@ -25,9 +27,9 @@ const MAX_SIZE_MB = 10;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 /**
- * Formats file size bytes into a human-readable string.
- * @param {number} bytes - The size of the file in bytes.
- * @returns {string} Formatted size (B, KB, MB).
+ * 
+   @param {number} bytes - The size of the file in bytes.
+   @returns {string} 
  */
 function formatBytes(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -35,13 +37,17 @@ function formatBytes(bytes) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function GrievanceComplaintForm({ userId }) {
+function GrievanceComplaintForm() {
     const [currentStep, setCurrentStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [fileError, setFileError] = useState("");
+    const [isDraggingFile, setIsDraggingFile] = useState(false);
 
-    // Local form state designed to align with the target Firestore document schema
+    const [userId, setUserId] = useState(null);
+    const [residentName, setResidentName] = useState("");
+    const [loadingAuth, setLoadingAuth] = useState(true);
+
     const [formData, setFormData] = useState({
         category: "",
         title: "",
@@ -51,12 +57,44 @@ function GrievanceComplaintForm({ userId }) {
         incidentTime: "",
         description: "",
         isAnonymous: false,
-        attachments: [], // Holds raw File objects locally before Storage upload is integrated
+        attachments: [],
     });
 
-    /**
-     * Updates a specific field in the local form state.
-     */
+    
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                setUserId(user.uid);
+
+                const userDocRef = doc(db, "residents", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists()) {
+                    const profileData = userDocSnap.data();
+                    
+                    let officialName = "";
+                    if (profileData.firstName && profileData.lastName) {
+                        officialName = `${profileData.firstName} ${profileData.lastName}`;
+                    } else {
+                        officialName = profileData.name || profileData.fullName || profileData.firstName || "";
+                    }
+
+                    setResidentName(officialName || user.displayName || user.email || "Resident");
+
+                } else {
+                    setResidentName(user.displayName || user.email || "Resident");
+                }
+            } else {
+                setUserId(null);
+                setResidentName("");
+            }
+            setLoadingAuth(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+
     const updateField = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
@@ -91,16 +129,34 @@ function GrievanceComplaintForm({ userId }) {
         }
     };
 
-    /**
-     * Removes an attachment from the local form state by index.
-     */
+
+
     const removeFile = (index) => {
         updateField("attachments", formData.attachments.filter((_, i) => i !== index));
     };
 
-    /**
-     * Determines if the user has completed required fields for the current step.
-     */
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingFile(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingFile(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingFile(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length) {
+            validateAndAddFiles(e.dataTransfer.files);
+        }
+    };
+
+
     const canGoNext = () => {
         if (currentStep === 1) return formData.category && formData.title.trim();
         if (currentStep === 2) return formData.description.trim().length > 0;
@@ -112,14 +168,27 @@ function GrievanceComplaintForm({ userId }) {
 
     /**
      * Submits the complaint payload to Firestore.
-     * Note: Attachments will store local metadata placeholders until Firebase Storage is configured.
+     * Attachments are uploaded to Cloudinary first, then their URLs are stored.
      */
     const handleSubmit = async () => {
         setSubmitting(true);
         try {
+
+            const uploadedAttachments = await Promise.all(
+                formData.attachments.map(async (file) => {
+                    const url = await uploadImage(file, "complaints"); //cloudinary
+                    return {
+                        url,
+                        name: file.name,
+                        type: file.type,
+                    };
+                })
+            );
+
             await addDoc(collection(db, "complaints"), {
                 residentId: userId || "anonymous",
                 isAnonymous: formData.isAnonymous,
+                residentName: formData.isAnonymous ? "Anonymous" : (residentName || "Unknown Resident"),
                 category: formData.category,
                 title: formData.title,
                 description: formData.description,
@@ -127,11 +196,7 @@ function GrievanceComplaintForm({ userId }) {
                 hasIncidentTime: formData.hasIncidentTime,
                 incidentDate: formData.hasIncidentTime ? formData.incidentDate : null,
                 incidentTime: formData.hasIncidentTime ? formData.incidentTime : null,
-                attachmentUrls: formData.attachments.map((f) => ({
-                    url: null, // Placeholder until Cloud Storage upload logic is implemented
-                    name: f.name,
-                    type: f.type,
-                })),
+                attachmentUrls: uploadedAttachments,
                 status: "pending",
                 assignedOfficer: null,
                 officeRemarks: "",
@@ -146,6 +211,14 @@ function GrievanceComplaintForm({ userId }) {
             setSubmitting(false);
         }
     };
+
+    if (loadingAuth) {
+        return (
+            <div className="h-screen flex items-center justify-center font-bold text-gray-700">
+                Loading...
+            </div>
+        );
+    }
 
     if (submitted) {
         return (
@@ -164,12 +237,12 @@ function GrievanceComplaintForm({ userId }) {
 
     return (
         <>
-            {/* CHANGED: Stepper form now comes FIRST */}
+
             <div className="max-w-5xl mx-auto py-16 px-6 md:px-8">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8">File a complaint</h1>
 
                 <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-8">
-                    {/* Step Tracker sidebar */}
+
                     <div>
                         <ol className="space-y-1">
                             {STEPS.map((step) => {
@@ -336,12 +409,27 @@ function GrievanceComplaintForm({ userId }) {
                                             Optional — photos or documents that support your complaint.
                                         </p>
 
-                                        <label className="rounded-xl border-2 border-dashed border-gray-200 hover:border-primary/40 hover:bg-gray-50 cursor-pointer transition-colors flex flex-col items-center justify-center text-center px-6 py-8">
-                                            <div className="w-10 h-10 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mb-3">
+                                        <label
+                                            onDragOver={handleDragOver}
+                                            onDragEnter={handleDragOver}
+                                            onDragLeave={handleDragLeave}
+                                            onDrop={handleDrop}
+                                            className={`rounded-xl border-2 border-dashed cursor-pointer transition-colors flex flex-col items-center justify-center text-center px-6 py-8 ${isDraggingFile
+                                                ? "border-primary bg-primary/5"
+                                                : "border-gray-200 hover:border-primary/40 hover:bg-gray-50"
+                                                }`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 ${isDraggingFile ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400"}`}>
                                                 <Upload size={18} />
                                             </div>
                                             <p className="text-sm text-gray-600">
-                                                <span className="text-primary font-medium">Click to upload</span> or drag and drop
+                                                {isDraggingFile ? (
+                                                    <span className="text-primary font-medium">Drop your files here</span>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-primary font-medium">Click to upload</span> or drag and drop
+                                                    </>
+                                                )}
                                             </p>
                                             <p className="text-xs text-gray-400 mt-1">
                                                 JPG, PNG, WEBP, or PDF · up to {MAX_SIZE_MB}MB each · max {MAX_FILES} files
@@ -429,7 +517,7 @@ function GrievanceComplaintForm({ userId }) {
                             </motion.div>
                         </AnimatePresence>
 
-                        {/* Navigation Actions */}
+
                         <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100">
                             <button
                                 type="button"
@@ -464,7 +552,7 @@ function GrievanceComplaintForm({ userId }) {
                 </div>
             </div>
 
-            {/* CHANGED: Roadmap section now comes AFTER the form */}
+            {/*How the complaints process works section */}
             <div className="w-full">
                 <section className="w-full py-20 bg-gray-50 px-6 md:px-24">
                     <div className="max-w-6xl mx-auto">

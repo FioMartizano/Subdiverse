@@ -47,13 +47,14 @@ function ResidentCalendar() {
                 </div>
             )}
 
-            {/* TODO: only show this for officer/admin roles once auth exists */}
+            {/*  only show this sa  admin side
             <button
                 onClick={() => setShowForm(true)}
                 className="mt-4 text-sm text-primary font-semibold self-start"
             >
                 + Add Event
             </button>
+            */}
 
             {showForm && (
                 <div className="mt-2 flex gap-2">

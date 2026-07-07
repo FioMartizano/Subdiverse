@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, User, Phone, MapPin, Lock, Eye, EyeOff, Calendar, ShieldCheck, CreditCard, Image, Users, Upload, FileText, AlertCircle } from "lucide-react";
+import { Mail, User, Phone, MapPin, Lock, Eye, EyeOff, Calendar, ShieldCheck, CreditCard, Image, Users, Upload, FileText, AlertCircle, X } from "lucide-react";
 import { auth, db, storage } from "../../firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
@@ -63,7 +63,7 @@ function SignUp() {
     const [userType, setUserType] = useState("owner"); // "owner", "renter", or "household"
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [idFile, setIdFile] = useState(null);
+    const [idFiles, setIdFiles] = useState([]); // array of up to 2 files: [front, back]
     const [isDraggingFile, setIsDraggingFile] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [passwordStrength, setPasswordStrength] = useState("Weak");
@@ -83,9 +83,12 @@ function SignUp() {
 
     const [formData, setFormData] = useState({
         firstName: "",
+        middleName: "",
         lastName: "",
+        suffix: "",
         email: "",
         contactNumber: "",
+        emergencyContactNumber: "",
         block: "",
         lot: "",
         street: "",
@@ -102,6 +105,22 @@ function SignUp() {
         otherIdType: "",
         idNumber: "",
     });
+
+    // Phone number formatting function
+    const formatPhoneNumber = (value) => {
+        // Remove all non-digit characters
+        const digits = value.replace(/\D/g, '');
+        
+        // Format as +63 XXX XXX XXXX
+        if (digits.length <= 3) {
+            return digits;
+        } else if (digits.length <= 6) {
+            return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+        } else if (digits.length <= 10) {
+            return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+        }
+        return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)}`;
+    };
 
     const getAccountTypeLabel = () => {
         if (userType === "owner") return "Property Owner Account";
@@ -134,11 +153,37 @@ function SignUp() {
         const { id, value } = e.target;
         setTouched((prev) => ({ ...prev, [id]: true }));
 
-        if (id === "contactNumber") {
-            const numbersOnly = value.replace(/\D/g, "");
+        // Letters (and spaces) only for name fields
+        if (id === "firstName" || id === "middleName" || id === "lastName") {
+            const lettersOnly = value.replace(/[^A-Za-z\s]/g, "");
             setFormData((prev) => ({
                 ...prev,
-                contactNumber: numbersOnly.slice(0, 11),
+                [id]: lettersOnly,
+            }));
+            return;
+        }
+
+        // +63 is implied, user only types the 10 digits after it
+        if (id === "contactNumber" || id === "emergencyContactNumber") {
+            const numbersOnly = value.replace(/\D/g, '');
+            // Limit to 10 digits
+            const limited = numbersOnly.slice(0, 10);
+            setFormData((prev) => ({
+                ...prev,
+                [id]: limited,
+            }));
+            return;
+        }
+
+        // ID Number validation - limit to 25 characters
+        if (id === "idNumber") {
+            // Allow alphanumeric characters, spaces, hyphens, and slashes
+            const cleaned = value.replace(/[^A-Za-z0-9\s\-/]/g, '');
+            // Limit to 25 characters
+            const limited = cleaned.slice(0, 25);
+            setFormData((prev) => ({
+                ...prev,
+                [id]: limited,
             }));
             return;
         }
@@ -153,17 +198,18 @@ function SignUp() {
         }
     };
 
-    const handleFileSelected = (file) => {
-        setTouched((prev) => ({ ...prev, idFile: true }));
-        if (file) {
-            setIdFile(file);
-        }
+    const handleFilesSelected = (fileList) => {
+        setTouched((prev) => ({ ...prev, idFiles: true }));
+        const incoming = Array.from(fileList || []);
+        if (incoming.length === 0) return;
+        setIdFiles((prev) => [...prev, ...incoming].slice(0, 2));
     };
 
     const handleFileChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            handleFileSelected(e.target.files[0]);
+        if (e.target.files) {
+            handleFilesSelected(e.target.files);
         }
+        e.target.value = ""; // allow re-selecting the same file after removal
     };
 
     const handleDragOver = (e) => {
@@ -182,16 +228,34 @@ function SignUp() {
         e.preventDefault();
         e.stopPropagation();
         setIsDraggingFile(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFileSelected(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files) {
+            handleFilesSelected(e.dataTransfer.files);
         }
+    };
+
+    const removeIdFile = (index) => {
+        setIdFiles((prev) => prev.filter((_, i) => i !== index));
     };
 
     const validateForm = () => {
         const errors = {};
+        const nameRegex = /^[A-Za-z\s]+$/;
 
-        if (!formData.firstName.trim()) errors.firstName = "First name is required.";
-        if (!formData.lastName.trim()) errors.lastName = "Last name is required.";
+        if (!formData.firstName.trim()) {
+            errors.firstName = "First name is required.";
+        } else if (!nameRegex.test(formData.firstName)) {
+            errors.firstName = "First name can only contain letters.";
+        }
+
+        if (formData.middleName.trim() && !nameRegex.test(formData.middleName)) {
+            errors.middleName = "Middle name can only contain letters.";
+        }
+
+        if (!formData.lastName.trim()) {
+            errors.lastName = "Last name is required.";
+        } else if (!nameRegex.test(formData.lastName)) {
+            errors.lastName = "Last name can only contain letters.";
+        }
 
         if (!formData.email.trim()) {
             errors.email = "Email address is required.";
@@ -202,8 +266,16 @@ function SignUp() {
 
         if (!formData.contactNumber.trim()) {
             errors.contactNumber = "Contact number is required.";
-        } else if (!/^09\d{9}$/.test(formData.contactNumber)) {
-            errors.contactNumber = "Please enter a valid Philippine mobile number.";
+        } else if (!/^9\d{9}$/.test(formData.contactNumber)) {
+            errors.contactNumber = "Please enter a valid 10-digit mobile number.";
+        }
+
+        if (!formData.emergencyContactNumber.trim()) {
+            errors.emergencyContactNumber = "Emergency contact number is required.";
+        } else if (!/^9\d{9}$/.test(formData.emergencyContactNumber)) {
+            errors.emergencyContactNumber = "Please enter a valid 10-digit mobile number.";
+        } else if (formData.emergencyContactNumber === formData.contactNumber) {
+            errors.emergencyContactNumber = "Emergency contact should be different from your own number.";
         }
 
         if (!formData.block.trim()) errors.block = "Block is required.";
@@ -244,16 +316,26 @@ function SignUp() {
         if (formData.idType === "Other" && !formData.otherIdType.trim()) {
             errors.otherIdType = "Please specify the ID type.";
         }
-        if (!formData.idNumber.trim()) errors.idNumber = "ID number is required.";
+        
+        // Updated ID number validation with 25 character limit
+        if (!formData.idNumber.trim()) {
+            errors.idNumber = "ID number is required.";
+        } else if (formData.idNumber.length > 25) {
+            errors.idNumber = "ID number must not exceed 25 characters.";
+        }
 
-        if (!idFile) {
-            errors.idFile = "Please upload your valid ID.";
+        if (idFiles.length === 0) {
+            errors.idFiles = "Please upload the front and back photos of your valid ID.";
         } else {
             const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
-            if (!allowedTypes.includes(idFile.type)) {
-                errors.idFile = "Only JPG, JPEG, PNG, and WEBP files are allowed.";
-            } else if (idFile.size > 5 * 1024 * 1024) {
-                errors.idFile = "Image must not exceed 5 MB.";
+            const hasInvalidType = idFiles.some((f) => !allowedTypes.includes(f.type));
+            const hasTooLarge = idFiles.some((f) => f.size > 5 * 1024 * 1024);
+            if (hasInvalidType) {
+                errors.idFiles = "Only JPG, JPEG, PNG, and WEBP files are allowed.";
+            } else if (hasTooLarge) {
+                errors.idFiles = "Each image must not exceed 5 MB.";
+            } else if (idFiles.length < 2) {
+                errors.idFiles = "Please upload both the front and back of your ID.";
             }
         }
 
@@ -264,7 +346,7 @@ function SignUp() {
         const errors = validateForm();
         setFieldErrors(errors);
   
-    }, [formData, idFile, userType]);
+    }, [formData, idFiles, userType]);
 
     const isFormValid = Object.keys(fieldErrors).length === 0;
 
@@ -281,7 +363,7 @@ function SignUp() {
                 Object.keys(formData).forEach((k) => {
                     all[k] = true;
                 });
-                all.idFile = true;
+                all.idFiles = true;
                 return all;
             });
             setFieldErrors(errors);
@@ -299,9 +381,11 @@ function SignUp() {
             );
             const userId = userCredential.user.uid;
 
-            let uploadedIdUrl = "";
-            if (idFile) {
-                uploadedIdUrl = await uploadImage(idFile, "authentication/valid-ids"); //cloudinary
+            let idImageUrls = [];
+            if (idFiles.length > 0) {
+                idImageUrls = await Promise.all(
+                    idFiles.map((file) => uploadImage(file, "authentication/valid-ids")) //cloudinary
+                );
             }
 
             await setDoc(doc(db, "users", userId), {
@@ -314,8 +398,11 @@ function SignUp() {
 
             await setDoc(doc(db, "residents", userId), {
                 firstName: formData.firstName,
+                middleName: formData.middleName,
                 lastName: formData.lastName,
-                contactNumber: formData.contactNumber,
+                suffix: formData.suffix,
+                contactNumber: `+63${formData.contactNumber}`,
+                emergencyContactNumber: `+63${formData.emergencyContactNumber}`,
                 email: formData.email,
                 block: formData.block,
                 lot: formData.lot,
@@ -337,7 +424,8 @@ function SignUp() {
 
                 idType: formData.idType === "Other" ? formData.otherIdType : formData.idType,
                 idNumber: formData.idNumber,
-                idImageUrl: uploadedIdUrl,
+                idImageFrontUrl: idImageUrls[0] || "",
+                idImageBackUrl: idImageUrls[1] || "",
                 verificationStatus: "unverified",
                 createdAt: new Date().toISOString()
             });
@@ -373,13 +461,13 @@ function SignUp() {
             if (fieldErrors.confirmPassword) return "error";
             return "default";
         }
-        if (field === "contactNumber") {
-            if (formData.contactNumber.length > 0 && !/^09\d{9}$/.test(formData.contactNumber)) {
-
-                const isPossiblyStillTyping = formData.contactNumber.length < 11 && /^0?9?\d*$/.test(formData.contactNumber);
+        if (field === "contactNumber" || field === "emergencyContactNumber") {
+            const val = formData[field];
+            if (val.length > 0 && !/^9\d{9}$/.test(val)) {
+                const isPossiblyStillTyping = val.length < 10 && /^9?\d*$/.test(val);
                 if (!isPossiblyStillTyping) return "error";
             }
-            if (fieldErrors.contactNumber) return "error";
+            if (fieldErrors[field]) return "error";
             return "default";
         }
         if (field === "email") {
@@ -456,8 +544,8 @@ function SignUp() {
                     </motion.div>
                 </div>
 
-                {/* Right Column*/}
-                <div className="col-span-1 md:col-span-7 lg:col-span-7 flex flex-col justify-center items-center px-6 pt-24 pb-12 sm:px-16 sm:pt-28 md:px-16 lg:px-24 bg-white h-full overflow-hidden">
+                {/* Right Column - Fixed layout for wider width and scrollbar at edge */}
+                <div className="col-span-1 md:col-span-7 lg:col-span-7 flex flex-col justify-center items-center px-4 pt-24 pb-12 sm:px-6 sm:pt-28 md:px-6 lg:px-8 bg-white h-full overflow-hidden">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -465,7 +553,7 @@ function SignUp() {
                         className="max-w-2xl w-full mx-auto"
                     ></motion.div>
 
-                    <div className="flex-shrink-0 w-full text-left max-w-xl mx-auto pl-1">
+                    <div className="flex-shrink-0 w-full text-left max-w-2xl mx-auto pl-1">
                         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-secondary font-heading">
                             Sign Up
                         </h1>
@@ -474,7 +562,7 @@ function SignUp() {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3 mb-4 max-w-xl w-full flex-shrink-0">
+                    <div className="grid grid-cols-3 gap-3 mb-4 max-w-2xl w-full flex-shrink-0">
                         <button
                             type="button"
                             onClick={() => setUserType("owner")}
@@ -509,7 +597,7 @@ function SignUp() {
 
                     <form
                         onSubmit={handleSubmit}
-                        className="flex flex-col w-full max-w-xl mx-auto md:mx-0 overflow-y-auto pr-4 flex-grow space-y-6 scrollbar-thin transition-all duration-300"
+                        className="flex flex-col w-full max-w-2xl mx-auto md:mx-0 overflow-y-auto flex-grow space-y-6 scrollbar-thin transition-all duration-300 pr-2"
                         style={{
                             scrollbarWidth: 'thin',
                             scrollbarColor: '#f3f4f6',
@@ -518,10 +606,23 @@ function SignUp() {
 
                         <style dangerouslySetInnerHTML={{
                             __html: `
-                        form::-webkit-scrollbar {
-                            width: 6px;
-                        }
-                    `}} />
+                                form::-webkit-scrollbar {
+                                    width: 8px;
+                                    background: transparent;
+                                }
+                                form::-webkit-scrollbar-track {
+                                    background: #f1f1f1;
+                                    border-radius: 4px;
+                                }
+                                form::-webkit-scrollbar-thumb {
+                                    background: #c1c1c1;
+                                    border-radius: 4px;
+                                }
+                                form::-webkit-scrollbar-thumb:hover {
+                                    background: #a8a8a8;
+                                }
+                            `
+                        }} />
 
                         <div className="pt-2">
                             <span className="bg-gray-100 text-primary text-xs font-bold tracking-wider uppercase px-3 py-1.5 rounded">
@@ -561,6 +662,18 @@ function SignUp() {
                                             <FieldError field="firstName" />
                                         </div>
                                         <div className="flex flex-col gap-1.5">
+                                            <label htmlFor="middleName" className="text-xs font-semibold text-gray-600">Middle name <span className="text-gray-400 font-normal">(optional)</span></label>
+                                            <div className="relative">
+                                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                <input id="middleName" value={formData.middleName} onChange={handleInputChange} type="text" placeholder="Santos" className={inputClasses("middleName", "pl-10")} />
+                                                <FieldStatusIcon field="middleName" />
+                                            </div>
+                                            <FieldError field="middleName" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="col-span-2 flex flex-col gap-1.5">
                                             <label htmlFor="lastName" className="text-xs font-semibold text-gray-600">Last name</label>
                                             <div className="relative">
                                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -568,6 +681,25 @@ function SignUp() {
                                                 <FieldStatusIcon field="lastName" />
                                             </div>
                                             <FieldError field="lastName" />
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                            <label htmlFor="suffix" className="text-xs font-semibold text-gray-600">Suffix <span className="text-gray-400 font-normal">(optional)</span></label>
+                                            <div className="relative">
+                                                <select
+                                                    id="suffix"
+                                                    value={formData.suffix}
+                                                    onChange={handleInputChange}
+                                                    className={inputClasses("suffix", "px-3 bg-white appearance-none cursor-pointer")}
+                                                >
+                                                    <option value="">None</option>
+                                                    <option value="Jr.">Jr.</option>
+                                                    <option value="Sr.">Sr.</option>
+                                                    <option value="II">II</option>
+                                                    <option value="III">III</option>
+                                                    <option value="IV">IV</option>
+                                                    <option value="V">V</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -580,14 +712,45 @@ function SignUp() {
                                         </div>
                                         <FieldError field="email" />
                                     </div>
+
                                     <div className="flex flex-col gap-1.5">
                                         <label htmlFor="contactNumber" className="text-xs font-semibold text-gray-600">Contact Number</label>
                                         <div className="relative">
-                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input id="contactNumber" value={formData.contactNumber} onChange={handleInputChange} type="tel" inputMode="numeric" maxLength={11} placeholder="+63 XXX XXX XXXX" className={inputClasses("contactNumber", "pl-10")} />
+                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+                                            <span className="absolute left-9 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 pointer-events-none">+63</span>
+                                            <input 
+                                                id="contactNumber" 
+                                                value={formatPhoneNumber(formData.contactNumber)} 
+                                                onChange={handleInputChange} 
+                                                type="text" 
+                                                inputMode="numeric" 
+                                                maxLength={14} 
+                                                placeholder="917 123 4567" 
+                                                className={inputClasses("contactNumber", "pl-16")} 
+                                            />
                                             <FieldStatusIcon field="contactNumber" />
                                         </div>
                                         <FieldError field="contactNumber" />
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <label htmlFor="emergencyContactNumber" className="text-xs font-semibold text-gray-600">Emergency Contact Number</label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+                                            <span className="absolute left-9 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 pointer-events-none">+63</span>
+                                            <input 
+                                                id="emergencyContactNumber" 
+                                                value={formatPhoneNumber(formData.emergencyContactNumber)} 
+                                                onChange={handleInputChange} 
+                                                type="text" 
+                                                inputMode="numeric" 
+                                                maxLength={14} 
+                                                placeholder="917 123 4567" 
+                                                className={inputClasses("emergencyContactNumber", "pl-16")} 
+                                            />
+                                            <FieldStatusIcon field="emergencyContactNumber" />
+                                        </div>
+                                        <FieldError field="emergencyContactNumber" />
                                     </div>
 
                                     <div className="space-y-3">
@@ -877,47 +1040,86 @@ function SignUp() {
                                         )}
                                     </AnimatePresence>
 
+                                    {/* Updated ID Number input with character counter */}
                                     <div className="flex flex-col gap-1.5">
                                         <label htmlFor="idNumber" className="text-xs font-semibold text-gray-600">ID Number</label>
                                         <div className="relative">
                                             <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input id="idNumber" value={formData.idNumber} onChange={handleInputChange} type="text" placeholder="Enter ID Number" className={inputClasses("idNumber", "pl-10")} />
+                                            <input 
+                                                id="idNumber" 
+                                                value={formData.idNumber} 
+                                                onChange={handleInputChange} 
+                                                type="text" 
+                                                placeholder="Enter ID Number (max 25 characters)" 
+                                                maxLength={25}
+                                                className={inputClasses("idNumber", "pl-10 pr-16")} 
+                                            />
                                             <FieldStatusIcon field="idNumber" />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-medium">
+                                                {formData.idNumber.length}/25
+                                            </span>
                                         </div>
                                         <FieldError field="idNumber" />
                                     </div>
 
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-xs font-semibold text-gray-600">Upload ID Copy</label>
-                                        <label
-                                            onDragOver={handleDragOver}
-                                            onDragEnter={handleDragOver}
-                                            onDragLeave={handleDragLeave}
-                                            onDrop={handleDrop}
-                                            className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors duration-200 ${
-                                            isDraggingFile
-                                                ? "border-primary bg-primary/5"
-                                                : touched.idFile && fieldErrors.idFile
-                                                    ? "border-red-400 bg-gray-50/50 hover:bg-gray-50"
-                                                    : "border-gray-300 bg-gray-50/50 hover:bg-gray-50"
-                                        }`}>
-                                            <input
-                                                type="file"
-                                                accept="image/*,.pdf"
-                                                onChange={handleFileChange}
-                                                className="hidden"
-                                            />
-                                            <Upload className={`w-5 h-5 ${isDraggingFile ? "text-primary" : touched.idFile && fieldErrors.idFile ? "text-red-400" : "text-gray-400"}`} />
-                                            <span className="text-xs text-gray-600 font-medium">
-                                                {isDraggingFile
-                                                    ? "Drop your file here"
-                                                    : idFile
-                                                        ? idFile.name
-                                                        : "Click to upload or drag image/PDF"}
-                                            </span>
-                                            <span className="text-[10px] text-gray-400">Max size: 5MB</span>
-                                        </label>
-                                        <FieldError field="idFile" />
+                                        <label className="text-xs font-semibold text-gray-600">Upload Valid ID (Front & Back)</label>
+
+                                        {idFiles.length < 2 && (
+                                            <label
+                                                onDragOver={handleDragOver}
+                                                onDragEnter={handleDragOver}
+                                                onDragLeave={handleDragLeave}
+                                                onDrop={handleDrop}
+                                                className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors duration-200 ${
+                                                isDraggingFile
+                                                    ? "border-primary bg-primary/5"
+                                                    : touched.idFiles && fieldErrors.idFiles
+                                                        ? "border-red-400 bg-gray-50/50 hover:bg-gray-50"
+                                                        : "border-gray-300 bg-gray-50/50 hover:bg-gray-50"
+                                            }`}>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    multiple
+                                                    onChange={handleFileChange}
+                                                    className="hidden"
+                                                />
+                                                <Upload className={`w-5 h-5 ${isDraggingFile ? "text-primary" : touched.idFiles && fieldErrors.idFiles ? "text-red-400" : "text-gray-400"}`} />
+                                                <span className="text-xs text-gray-600 font-medium">
+                                                    {isDraggingFile
+                                                        ? "Drop your photo here"
+                                                        : idFiles.length === 0
+                                                            ? "Click to upload or drag the front photo"
+                                                            : "Click to upload or drag the back photo"}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400">2 photos max (front &amp; back) · 5MB each</span>
+                                            </label>
+                                        )}
+
+                                        {idFiles.length > 0 && (
+                                            <div className="space-y-2 mt-1">
+                                                {idFiles.map((file, index) => (
+                                                    <div key={`${file.name}-${index}`} className="flex items-center justify-between gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-gray-50/50">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <Image className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                                            <span className="text-xs text-gray-600 font-medium truncate">
+                                                                {index === 0 ? "Front: " : "Back: "}{file.name}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeIdFile(index)}
+                                                            className="text-gray-400 hover:text-red-500 flex-shrink-0 cursor-pointer"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <FieldError field="idFiles" />
                                     </div>
 
                                     <p className="text-[11px] text-gray-500 italic mt-1">

@@ -7,6 +7,7 @@ import { doc, setDoc } from "firebase/firestore";
 import signUpImage from "../../assets/signUp.jpg";
 import { uploadImage } from "../../services/cloudinary"; //add this to link cloudinary.js
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const SuccessModal = ({ isOpen, message, onClose }) => {
     if (!isOpen) return null;

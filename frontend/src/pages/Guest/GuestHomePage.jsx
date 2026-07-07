@@ -32,7 +32,7 @@ function GuestHomePage() {
     const yellowY = useTransform(scrollYProgress, [0, 1], [0, -200]);
     const yellowRotate = useTransform(scrollYProgress, [0, 1], [0, 45]);
 
- 
+
     const contactRef = useRef(null);
 
     const { scrollYProgress: contactProgress } = useScroll({
@@ -90,9 +90,10 @@ function GuestHomePage() {
                         transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
                         className="mt-8 flex gap-4"
                     >
-                        <button className="btn-primary">
+
+                        <Link to="/signup" className="btn-glow">
                             Sign Up
-                        </button>
+                        </Link>
                     </motion.div>
                 </div>
             </section>

@@ -32,19 +32,13 @@ function GuestHomePage() {
     const yellowY = useTransform(scrollYProgress, [0, 1], [0, -200]);
     const yellowRotate = useTransform(scrollYProgress, [0, 1], [0, 45]);
 
-    // CHANGED: instead of a ref around just the offices section (which shortened
-    // the shape's travel distance), this ref sits on the Contact section only.
-    // We use it purely to detect "how close is Contact to being in view" so we
-    // can fade the shape right before it would visually collide with the
-    // Contact text — without touching the wrapper structure, so the shape's
-    // full original travel path (offices -> contact) is preserved.
+ 
     const contactRef = useRef(null);
 
     const { scrollYProgress: contactProgress } = useScroll({
         target: contactRef,
         offset: ["start end", "start center"],
-        // progress 0: top of Contact section touches bottom of viewport (not visible yet)
-        // progress 1: top of Contact section reaches vertical center of viewport (well in view)
+
     });
 
     const [isLargeScreen, setIsLargeScreen] = useState(false);
@@ -57,10 +51,7 @@ function GuestHomePage() {
         return () => mq.removeEventListener("change", updateMatch);
     }, []);
 
-    // CHANGED: on lg+, output stays [1, 1] the whole time — shape never fades,
-    // travels the full original distance from Contact up through Offices.
-    // On smaller screens, it fades to 0 as Contact scrolls toward view, so it
-    // disappears before overlapping the green Contact text in the stacked layout.
+
     const shapeOpacity = useTransform(
         contactProgress,
         [0, 1],
@@ -90,7 +81,7 @@ function GuestHomePage() {
                         transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
                         className="text-white text-sm md:text-base mt-6 leading-relaxed drop-shadow-md"
                     >
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                        Experience a smarter way to connect with Windward Hills Subdivision through digital services, reservations, announcements, and community engagement.
                     </motion.p>
 
                     <motion.div
@@ -174,7 +165,7 @@ function GuestHomePage() {
                         </h2>
 
                         <p className="mt-6 text-sm md:text-base lg:text-lg leading-relaxed">
-                            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                            Developed by Filinvest Group Corporation, Windward Hills Subdivision is a thriving residential community composed of four phases—Phase 1, Phase 2, Phase D, and Phase E. Conveniently located near schools, universities, markets, and essential establishments, it also features its own businesses, parish church, and community organizations. Guided by its vision of fostering camaraderie and unity, Windward Hills continues to provide a safe, connected, and welcoming environment for its residents.
                         </p>
                     </motion.div>
                 </div>

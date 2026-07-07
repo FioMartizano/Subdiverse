@@ -37,8 +37,15 @@ import ParkingReservation from "./pages/Resident/ParkingReservation";
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
 
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
+
+//BBALL COURT FLOW
 import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
+import BballReservationForm from "./pages/Resident/Reservation/BballReservationForm";
+import BballPayment from "./pages/Resident/Reservation/BballPayment";
+
 import Community from "./pages/Resident/Community";
+
+
 
 
 /* PENDING PAGES */
@@ -53,14 +60,14 @@ import MonthlyDues from "./pages/Resident/MonthlyDues";
 function AppRoutes() {
   return (
     <>
-    <ScrollToTop />
-    <Routes>
+      <ScrollToTop />
+      <Routes>
 
         <Route path="/login" element={<Login />} />
 
         <Route path="/signup" element={<SignUp />} />
 
-      {/* GUEST ROUTING */}
+        {/* GUEST ROUTING */}
 
         <Route path="/" element={<GuestHomePage />} />
         <Route path="/about" element={<AboutUs />} />
@@ -80,7 +87,7 @@ function AppRoutes() {
         <Route path="/hoa" element={<HOA />} />
 
         <Route path="/grievance" element={<Grievance />} />
-          <Route path="/grievanceComplaint" element={<GrievanceComplaint />} />
+        <Route path="/grievanceComplaint" element={<GrievanceComplaint />} />
 
         <Route path="/elderly" element={<Elderly />} />
         <Route path="/healthcare" element={<Healthcare />} />
@@ -91,16 +98,22 @@ function AppRoutes() {
         <Route path="/reservation" element={<ReservationHome />} />
         <Route path="/vehicleSticker" element={<VehicleSticker />} />
         <Route path="/parkingReservation" element={<ParkingReservation />} />
-      {/*<Route path="/monthlyDues" element={<MonthlyDues />} />*/}
+        {/*<Route path="/monthlyDues" element={<MonthlyDues />} />*/}
 
 
         {/*SERVICES / RESIDENT / RESERVATION*/}
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
 
         <Route path="/reservation/pool" element={<SwimmingPool />} />
+        
         <Route path="/reservation/court" element={<BasketballCourt />} />
+        <Route path="/reservation/court/reserve" element={<BballReservationForm />} />
+        <Route path="/reservation/court/payment" element={<BballPayment />}/>
+      
 
-    </Routes>
+        
+
+      </Routes>
     </>
   );
 }

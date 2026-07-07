@@ -93,7 +93,7 @@ function BasketballCourt() {
 
             <div className="mt-12 flex justify-center">
 
-              <Link to="/reservation/courtPaymentS1" className="btn-reservation px-12 py-4 text-lg shadow-lg hover:shadow-xl">Reserve</Link>
+              <Link to="../reservation/court/reserve" className="btn-reservation px-12 py-4 text-lg shadow-lg hover:shadow-xl">Reserve</Link>
 
             </div>
 

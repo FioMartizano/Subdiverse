@@ -1,3 +1,4 @@
+// ReservationFlow.jsx
 import { useState, useEffect, useMemo } from "react";
 import DateStep from "./DateStep";
 import TimeSlotStep from "./TimeSlotStep";
@@ -34,6 +35,7 @@ export default function ReservationFlow({
   onSubmit,
   onBack,
   confirmButtonLabel = "Confirm Reservation",
+  customFields = [], // NEW: Array of custom field configurations
 }) {
   const { venueName, slots, rates, requireContiguous = true, allowMultiple = true } = config;
   const rate = rates[residentType] ?? Object.values(rates)[0] ?? 0;
@@ -44,6 +46,7 @@ export default function ReservationFlow({
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [customFieldValues, setCustomFieldValues] = useState({}); // NEW: Store custom field values
 
   useEffect(() => {
     setSelectedSlotIds([]);
@@ -93,9 +96,32 @@ export default function ReservationFlow({
 
   const handleSubmit = async () => {
     if (!selectedDate || duration === 0) return;
+    
+    // Validate custom fields
+    const hasErrors = customFields.some(field => {
+      if (field.required && !customFieldValues[field.id]?.trim()) {
+        setError(`Please fill in ${field.label}`);
+        return true;
+      }
+      return false;
+    });
+    
+    if (hasErrors) {
+      return;
+    }
+    
     setSubmitting(true);
     setError("");
-    const booking = { venue: venueName, date: selectedDate, slotIds: orderedSelected, duration, rate, total, note: note || null };
+    const booking = { 
+      venue: venueName, 
+      date: selectedDate, 
+      slotIds: orderedSelected, 
+      duration, 
+      rate, 
+      total, 
+      note: note || null,
+      ...customFieldValues // NEW: Include custom fields in booking
+    };
     try {
       if (onSubmit) await onSubmit(booking);
       setStep("done");
@@ -149,7 +175,29 @@ export default function ReservationFlow({
           <div className="w-full">
             {step === "date" && <DateStep selectedDate={selectedDate} onSelectDate={setSelectedDate} onContinue={() => setStep("time")} onBack={onBack} />}
             {step === "time" && <TimeSlotStep slots={slots} selectedSlotIds={selectedSlotIds} bookedSlotIds={bookedSlotIds} onToggleSlot={toggleSlot} allowMultiple={allowMultiple} requireContiguous={requireContiguous} error={error} dateLabel={dateLabel} duration={duration} total={total} onBack={() => setStep("date")} onContinue={() => setStep("confirm")} />}
-            {step === "confirm" && <ConfirmStep venueName={venueName} dateLabel={dateLabel} timeRangeLabel={timeRangeLabel()} duration={duration} rate={rate} residentType={residentType} total={total} note={note} onNoteChange={setNote} error={error} submitting={submitting} confirmButtonLabel={confirmButtonLabel} onBack={() => setStep("time")} onSubmit={handleSubmit} />}
+            {step === "confirm" && (
+              <ConfirmStep 
+                venueName={venueName} 
+                dateLabel={dateLabel} 
+                timeRangeLabel={timeRangeLabel()} 
+                duration={duration} 
+                rate={rate} 
+                residentType={residentType} 
+                total={total} 
+                note={note} 
+                onNoteChange={setNote} 
+                error={error} 
+                submitting={submitting} 
+                confirmButtonLabel={confirmButtonLabel} 
+                onBack={() => setStep("time")} 
+                onSubmit={handleSubmit}
+                customFields={customFields} // NEW: Pass custom fields
+                customFieldValues={customFieldValues} // NEW: Pass custom field values
+                onCustomFieldChange={(id, value) => 
+                  setCustomFieldValues(prev => ({ ...prev, [id]: value }))
+                }
+              />
+            )}
             {step === "done" && (
               <div className="text-center py-12 md:py-24">
                 <div className="w-16 h-16 md:w-24 md:h-24 bg-accent text-primary rounded-full flex items-center justify-center mx-auto mb-5 md:mb-8 text-3xl md:text-5xl">✓</div>

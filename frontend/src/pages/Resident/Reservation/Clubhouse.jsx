@@ -34,7 +34,7 @@ function Clubhouse() {
               Reserve our subdivision clubhouse for birthdays, family gatherings, meetings, and memorable celebrations with your loved ones.
             </p>
 
-            <Link to="/reservation/clubhousePaymentS1" className="btn-reservation inline-block mt-10 shadow-xl">
+            <Link to="../reservation/clubhouse/reserve" className="btn-reservation inline-block mt-10 shadow-xl">
               Reserve Now
             </Link>
 

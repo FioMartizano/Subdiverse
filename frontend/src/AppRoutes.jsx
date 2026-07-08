@@ -35,6 +35,8 @@ import ParkingReservation from "./pages/Resident/ParkingReservation";
 
 /*SERVICES / RESIDENT / RESERVATION*/
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
+import ClubhouseReservationForm from "./pages/Resident/Reservation/ClubhouseReservationForm";
+import ClubhousePayment from "./pages/Resident/Reservation/ClubhousePayment"; 
 
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
 
@@ -103,6 +105,10 @@ function AppRoutes() {
 
         {/*SERVICES / RESIDENT / RESERVATION*/}
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
+        <Route path="/reservation/clubhouse/reserve" element={<ClubhouseReservationForm />} />
+        <Route path="/reservation/clubhouse/payment" element={<ClubhousePayment />} />
+      
+
 
         <Route path="/reservation/pool" element={<SwimmingPool />} />
         

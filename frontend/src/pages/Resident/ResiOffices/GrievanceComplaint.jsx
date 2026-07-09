@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Upload, X, FileText, Image as ImageIcon, Paperclip, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, Upload, X, FileText, Image as ImageIcon, Video, Paperclip, ChevronRight, ChevronLeft, Download, ArrowLeft } from "lucide-react";
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth"; 
-import { db, auth } from "../../../firebase"; // 
-import { uploadImage } from "../../../services/cloudinary"; //add this to link cloudinary.js
+import { db, auth } from "../../../firebase";
+import { uploadImage } from "../../../services/cloudinary";
 
 const CATEGORIES = [
     { value: "noise", label: "Noise complaint" },
     { value: "maintenance", label: "Maintenance issue" },
     { value: "security", label: "Security concern" },
     { value: "billing", label: "Billing dispute" },
-    { value: "personal", label: "Personal / neighbor dispute" },
     { value: "other", label: "Other" },
 ];
 
@@ -24,20 +24,29 @@ const STEPS = [
 
 const MAX_FILES = 5;
 const MAX_SIZE_MB = 10;
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const MAX_VIDEO_SIZE_MB = 50;
 
-/**
- * 
-   @param {number} bytes - The size of the file in bytes.
-   @returns {string} 
- */
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPTED_DOC_TYPES = ["application/pdf"];
+const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
+const ACCEPTED_TYPES = [...ACCEPTED_IMAGE_TYPES, ...ACCEPTED_DOC_TYPES, ...ACCEPTED_VIDEO_TYPES];
+
+const DISPUTE_FORM_PATH = "/forms/personal-neighbor-dispute-report-form.pdf";
+
 function formatBytes(bytes) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function GrievanceComplaintForm() {
+function getFileKind(type) {
+    if (ACCEPTED_VIDEO_TYPES.includes(type)) return "video";
+    if (type === "application/pdf") return "pdf";
+    return "image";
+}
+
+function GrievanceComplaint() {
+    const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -60,7 +69,9 @@ function GrievanceComplaintForm() {
         attachments: [],
     });
 
-    
+    // Get today's date in YYYY-MM-DD format for the max attribute
+    const today = new Date().toISOString().split('T')[0];
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -94,15 +105,10 @@ function GrievanceComplaintForm() {
         return () => unsubscribe();
     }, []);
 
-
     const updateField = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-    /**
-     * Validates incoming files against size, type, and quantity limits.
-     * @param {FileList} incoming - Files selected by the user.
-     */
     const validateAndAddFiles = (incoming) => {
         setFileError("");
         const incomingArr = Array.from(incoming);
@@ -115,11 +121,13 @@ function GrievanceComplaintForm() {
         const valid = [];
         for (const file of incomingArr) {
             if (!ACCEPTED_TYPES.includes(file.type)) {
-                setFileError("Only JPG, PNG, WEBP, or PDF files are allowed.");
+                setFileError("Only JPG, PNG, WEBP, PDF, or video files (MP4, MOV, WEBM) are allowed.");
                 continue;
             }
-            if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-                setFileError(`Each file must be under ${MAX_SIZE_MB}MB.`);
+            const isVideo = ACCEPTED_VIDEO_TYPES.includes(file.type);
+            const sizeLimitMb = isVideo ? MAX_VIDEO_SIZE_MB : MAX_SIZE_MB;
+            if (file.size > sizeLimitMb * 1024 * 1024) {
+                setFileError(`${isVideo ? "Videos" : "Photos and documents"} must be under ${sizeLimitMb}MB.`);
                 continue;
             }
             valid.push(file);
@@ -128,8 +136,6 @@ function GrievanceComplaintForm() {
             updateField("attachments", [...formData.attachments, ...valid]);
         }
     };
-
-
 
     const removeFile = (index) => {
         updateField("attachments", formData.attachments.filter((_, i) => i !== index));
@@ -156,7 +162,6 @@ function GrievanceComplaintForm() {
         }
     };
 
-
     const canGoNext = () => {
         if (currentStep === 1) return formData.category && formData.title.trim();
         if (currentStep === 2) return formData.description.trim().length > 0;
@@ -166,17 +171,12 @@ function GrievanceComplaintForm() {
     const goNext = () => setCurrentStep((s) => Math.min(s + 1, STEPS.length));
     const goBack = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
-    /**
-     * Submits the complaint payload to Firestore.
-     * Attachments are uploaded to Cloudinary first, then their URLs are stored.
-     */
     const handleSubmit = async () => {
         setSubmitting(true);
         try {
-
             const uploadedAttachments = await Promise.all(
                 formData.attachments.map(async (file) => {
-                    const url = await uploadImage(file, "complaints"); //cloudinary
+                    const url = await uploadImage(file, "complaints");
                     return {
                         url,
                         name: file.name,
@@ -212,6 +212,10 @@ function GrievanceComplaintForm() {
         }
     };
 
+    const handleBackToGrievance = () => {
+        navigate('/grievance');
+    };
+
     if (loadingAuth) {
         return (
             <div className="h-screen flex items-center justify-center font-bold text-gray-700">
@@ -222,27 +226,160 @@ function GrievanceComplaintForm() {
 
     if (submitted) {
         return (
-            <div className="max-w-2xl mx-auto py-24 px-6 text-center">
-                <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-5">
-                    <Check size={26} />
+            <>
+                <div className="max-w-5xl mx-auto py-16 px-6 md:px-8">
+                    {/* Back button */}
+                    <div className="mb-8">
+                        <button
+                            type="button"
+                            onClick={handleBackToGrievance}
+                            className="inline-flex items-center gap-2 text-gray-600 hover:text-primary transition-colors px-3 py-2 -ml-3 rounded-lg hover:bg-primary/5"
+                        >
+                            <ArrowLeft size={20} />
+                            <span className="text-sm font-medium">Back to Grievance</span>
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-8">
+                        {/* Left sidebar - shows all steps as completed */}
+                        <div>
+                            <ol className="space-y-1">
+                                {STEPS.map((step) => {
+                                    return (
+                                        <li
+                                            key={step.id}
+                                            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors text-gray-500`}
+                                        >
+                                            <span
+                                                className={`flex items-center justify-center w-5 h-5 rounded-full text-[11px] shrink-0 bg-primary text-white`}
+                                            >
+                                                <Check size={12} />
+                                            </span>
+                                            {step.label}
+                                        </li>
+                                    );
+                                })}
+                            </ol>
+                        </div>
+
+                        {/* Main content - Success message */}
+                        <div className="border border-gray-100 rounded-2xl p-6 md:p-8 flex flex-col items-center justify-center min-h-[400px]">
+                            <div className="w-16 h-16 rounded-full bg-green-50 text-green-600 flex items-center justify-center mx-auto mb-6">
+                                <Check size={32} />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-3">Complaint Submitted Successfully!</h2>
+                            <p className="text-gray-600 text-center max-w-md mb-2">
+                                Your complaint has been received and is marked as <span className="font-medium text-gray-700">pending</span>.
+                            </p>
+                            <p className="text-sm text-gray-500 text-center max-w-md">
+                                You'll be notified once it's reviewed by the office.
+                            </p>
+                            
+                            <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                                <button
+                                    type="button"
+                                    onClick={handleBackToGrievance}
+                                    className="btn-primary"
+                                >
+                                    Back to Grievance
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => window.location.reload()}
+                                    className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                >
+                                    File Another Complaint
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <h2 className="text-xl font-bold text-gray-800 mb-2">Complaint submitted</h2>
-                <p className="text-sm text-gray-500">
-                    Your complaint has been received and is marked as <span className="font-medium text-gray-700">pending</span>.
-                    You'll be notified once it's reviewed by the office.
-                </p>
-            </div>
+
+                {/* Personal / neighbor dispute — downloadable template section */}
+                <div className="w-full bg-orange-50/60 border-y border-orange-100">
+                    <section className="max-w-5xl mx-auto py-14 px-6 md:px-8">
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-8 items-center">
+                            <div>
+                                <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-secondary bg-secondary/10 px-2.5 py-1 rounded-full mb-3">
+                                    Personal or neighbor dispute?
+                                </span>
+                                <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
+                                    Handle sensitive concerns in person
+                                </h2>
+                                <p className="text-sm text-gray-600 leading-relaxed max-w-xl">
+                                    Personal disputes, neighbor conflicts, and other sensitive or blotter-related
+                                    concerns aren't filed through this online form. Instead, download and fill out
+                                    the report form below, then bring it in our Grievance Office during office hours along with any photo,
+                                    video, or document evidence. This lets an officer properly document your case and begin mediation.
+                                </p>
+                            </div>
+
+                            <a
+                                href={DISPUTE_FORM_PATH}
+                                download
+                                className="btn-primary flex items-center gap-2 whitespace-nowrap justify-center"
+                            >
+                                <Download size={16} />
+                                Download the form
+                            </a>
+                        </div>
+                    </section>
+                </div>
+
+                {/* How the complaints process works section */}
+                <div className="w-full">
+                    <section className="w-full py-20 bg-gray-50 px-6 md:px-24">
+                        <div className="max-w-6xl mx-auto">
+                            <h2 className="text-3xl md:text-4xl font-bold text-[var(--color-black)] mb-12">
+                                How the Complaint Process Works
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                                {[
+                                    { id: "01", title: "Submission", desc: "The complainer submits details about the issue and the person involved." },
+                                    { id: "02", title: "Mediation Call", desc: "The grievance officer contacts both parties to initiate the process." },
+                                    { id: "03", title: "Escalation", desc: "If the respondent fails to appear after three invitations, the matter is referred to the Barangay." },
+                                    { id: "04", title: "Resolution", desc: "If the respondent attends, the officer mediates a face-to-face conversation to resolve the issue." }
+                                ].map((step, index) => (
+                                    <motion.div
+                                        key={step.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ duration: 0.5, delay: index * 0.15 }}
+                                        className="relative border-t-4 border-[var(--color-primary)] pt-6"
+                                    >
+                                        <span className="text-[var(--color-secondary)] font-bold text-xl block mb-2">{step.id}</span>
+                                        <h3 className="text-lg font-bold text-[var(--color-black)] mb-2">{step.title}</h3>
+                                        <p className="text-zinc-600 text-sm leading-relaxed">{step.desc}</p>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </>
         );
     }
 
     return (
         <>
-
             <div className="max-w-5xl mx-auto py-16 px-6 md:px-8">
+                {/* Back button */}
+                <div className="mb-8">
+                    <button
+                        type="button"
+                        onClick={handleBackToGrievance}
+                        className="inline-flex items-center gap-2 text-gray-600 hover:text-primary transition-colors px-3 py-2 -ml-3 rounded-lg hover:bg-primary/5"
+                    >
+                        <ArrowLeft size={20} />
+                        <span className="text-sm font-medium">Back to Grievance</span>
+                    </button>
+                </div>
+                
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8">File a complaint</h1>
 
                 <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-8">
-
                     <div>
                         <ol className="space-y-1">
                             {STEPS.map((step) => {
@@ -265,16 +402,6 @@ function GrievanceComplaintForm() {
                                 );
                             })}
                         </ol>
-
-                        <div className="mt-8 border border-gray-100 rounded-xl p-4">
-                            <p className="text-xs font-semibold text-gray-700 mb-1">Need help filing?</p>
-                            <p className="text-[11px] text-gray-500 leading-relaxed mb-3">
-                                Check common questions about anonymity, confidentiality, and timelines.
-                            </p>
-                            <button type="button" className="text-xs font-medium text-primary hover:underline">
-                                View FAQ
-                            </button>
-                        </div>
                     </div>
 
                     {/* Form body card */}
@@ -346,6 +473,7 @@ function GrievanceComplaintForm() {
                                                         type="date"
                                                         value={formData.incidentDate}
                                                         onChange={(e) => updateField("incidentDate", e.target.value)}
+                                                        max={today}
                                                         className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                                                     />
                                                 </div>
@@ -366,18 +494,6 @@ function GrievanceComplaintForm() {
                                 {/* STEP 2: Description & Anonymity */}
                                 {currentStep === 2 && (
                                     <div className="space-y-4">
-                                        {/* CHANGED: notice copy updated to your exact wording */}
-                                        <div className="flex items-start gap-2.5 bg-orange-50 border border-orange-100 rounded-lg px-4 py-3">
-                                            <span className="text-secondary text-sm mt-0.5">⚠</span>
-                                            <div>
-                                                <p className="text-xs font-semibold text-gray-700 mb-0.5">Important notice</p>
-                                                <p className="text-xs text-gray-600 leading-relaxed">
-                                                    Personal disputes, sensitive concerns, and blotter-related cases should be reported
-                                                    directly to the Grievance Office for proper documentation and assistance.
-                                                </p>
-                                            </div>
-                                        </div>
-
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
                                             <textarea
@@ -401,12 +517,12 @@ function GrievanceComplaintForm() {
                                     </div>
                                 )}
 
-                                {/* STEP 3: Attachments (Client-side validation) */}
+                                {/* STEP 3: Attachments */}
                                 {currentStep === 3 && (
                                     <div>
                                         <p className="text-sm font-medium text-gray-700 mb-1">Attachments</p>
                                         <p className="text-xs text-gray-500 mb-4">
-                                            Optional — photos or documents that support your complaint.
+                                            Optional — photos, videos, or documents that support your complaint.
                                         </p>
 
                                         <label
@@ -432,7 +548,10 @@ function GrievanceComplaintForm() {
                                                 )}
                                             </p>
                                             <p className="text-xs text-gray-400 mt-1">
-                                                JPG, PNG, WEBP, or PDF · up to {MAX_SIZE_MB}MB each · max {MAX_FILES} files
+                                                JPG, PNG, WEBP, PDF, or video (MP4, MOV, WEBM)
+                                            </p>
+                                            <p className="text-xs text-gray-400">
+                                                Photos/PDF up to {MAX_SIZE_MB}MB · videos up to {MAX_VIDEO_SIZE_MB}MB · max {MAX_FILES} files
                                             </p>
                                             <input
                                                 type="file"
@@ -447,22 +566,27 @@ function GrievanceComplaintForm() {
 
                                         {formData.attachments.length > 0 ? (
                                             <ul className="mt-4 space-y-2">
-                                                {formData.attachments.map((file, i) => (
-                                                    <li key={`${file.name}-${i}`} className="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2.5">
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="w-8 h-8 rounded-md bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
-                                                                {file.type === "application/pdf" ? <FileText size={15} /> : <ImageIcon size={15} />}
+                                                {formData.attachments.map((file, i) => {
+                                                    const kind = getFileKind(file.type);
+                                                    return (
+                                                        <li key={`${file.name}-${i}`} className="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2.5">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="w-8 h-8 rounded-md bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                                                                    {kind === "pdf" && <FileText size={15} />}
+                                                                    {kind === "video" && <Video size={15} />}
+                                                                    {kind === "image" && <ImageIcon size={15} />}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs font-medium text-gray-700 truncate max-w-[220px] sm:max-w-[320px]">{file.name}</p>
+                                                                    <p className="text-[11px] text-gray-400">{formatBytes(file.size)}</p>
+                                                                </div>
                                                             </div>
-                                                            <div className="min-w-0">
-                                                                <p className="text-xs font-medium text-gray-700 truncate max-w-[220px] sm:max-w-[320px]">{file.name}</p>
-                                                                <p className="text-[11px] text-gray-400">{formatBytes(file.size)}</p>
-                                                            </div>
-                                                        </div>
-                                                        <button type="button" onClick={() => removeFile(i)} className="w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0">
-                                                            <X size={14} />
-                                                        </button>
-                                                    </li>
-                                                ))}
+                                                            <button type="button" onClick={() => removeFile(i)} className="w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0">
+                                                                <X size={14} />
+                                                            </button>
+                                                        </li>
+                                                    );
+                                                })}
                                             </ul>
                                         ) : (
                                             <p className="mt-3 flex items-center gap-1.5 text-[11px] text-gray-400">
@@ -517,7 +641,6 @@ function GrievanceComplaintForm() {
                             </motion.div>
                         </AnimatePresence>
 
-
                         <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100">
                             <button
                                 type="button"
@@ -552,7 +675,38 @@ function GrievanceComplaintForm() {
                 </div>
             </div>
 
-            {/*How the complaints process works section */}
+            {/* Personal / neighbor dispute — downloadable template section */}
+            <div className="w-full bg-orange-50/60 border-y border-orange-100">
+                <section className="max-w-5xl mx-auto py-14 px-6 md:px-8">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-8 items-center">
+                        <div>
+                            <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-secondary bg-secondary/10 px-2.5 py-1 rounded-full mb-3">
+                                Personal or neighbor dispute?
+                            </span>
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
+                                Handle sensitive concerns in person
+                            </h2>
+                            <p className="text-sm text-gray-600 leading-relaxed max-w-xl">
+                                Personal disputes, neighbor conflicts, and other sensitive or blotter-related
+                                concerns aren't filed through this online form. Instead, download and fill out
+                                the report form below, then bring it in our Grievance Office during office hours along with any photo,
+                                video, or document evidence. This lets an officer properly document your case and begin mediation.
+                            </p>
+                        </div>
+
+                        <a
+                            href={DISPUTE_FORM_PATH}
+                            download
+                            className="btn-primary flex items-center gap-2 whitespace-nowrap justify-center"
+                        >
+                            <Download size={16} />
+                            Download the form
+                        </a>
+                    </div>
+                </section>
+            </div>
+
+            {/* How the complaints process works section */}
             <div className="w-full">
                 <section className="w-full py-20 bg-gray-50 px-6 md:px-24">
                     <div className="max-w-6xl mx-auto">
@@ -588,4 +742,4 @@ function GrievanceComplaintForm() {
     );
 }
 
-export default GrievanceComplaintForm;
+export default GrievanceComplaint;

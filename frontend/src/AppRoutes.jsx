@@ -36,14 +36,13 @@ import ParkingReservation from "./pages/Resident/ParkingReservation";
 /*SERVICES / RESIDENT / RESERVATION*/
 import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
 import ClubhouseReservationForm from "./pages/Resident/Reservation/ClubhouseReservationForm";
-import ClubhousePayment from "./pages/Resident/Reservation/ClubhousePayment"; 
 
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
 
 //BBALL COURT FLOW
 import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
 import BballReservationForm from "./pages/Resident/Reservation/BballReservationForm";
-import BballPayment from "./pages/Resident/Reservation/BballPayment";
+
 
 import Community from "./pages/Resident/Community";
 

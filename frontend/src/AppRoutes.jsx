@@ -105,7 +105,6 @@ function AppRoutes() {
         {/*SERVICES / RESIDENT / RESERVATION*/}
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
         <Route path="/reservation/clubhouse/reserve" element={<ClubhouseReservationForm />} />
-        <Route path="/reservation/clubhouse/payment" element={<ClubhousePayment />} />
       
 
 
@@ -113,8 +112,7 @@ function AppRoutes() {
         
         <Route path="/reservation/court" element={<BasketballCourt />} />
         <Route path="/reservation/court/reserve" element={<BballReservationForm />} />
-        <Route path="/reservation/court/payment" element={<BballPayment />}/>
-      
+
 
         
 

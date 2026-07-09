@@ -1,9 +1,9 @@
-import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ReservationFlow from "../../../components/ReservationComponents/ReservationFlow";
 
 // import { db } from "@/firebase/config";
-// import { collection, query, where, getDocs } from "firebase/firestore";
+// import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 
 
 const courtConfig = {
@@ -17,6 +17,10 @@ const courtConfig = {
     rates: { homeowner: 100, renter: 120 },
     requireContiguous: true,
     allowMultiple: true,
+    payment: {
+        methods: ["gcash", "cash"],
+        allowDownpayment: false,
+    },
 };
 
 export function BballReservationForm() {
@@ -39,14 +43,23 @@ export function BballReservationForm() {
     };
 
     // ==========================================
-    // TODO (Firebase Dev): Handle Reservation Submission
-    // Triggered when 'Proceed to Payment' is clicked.
-    // The 'booking' object contains the user's selected slots and pricing.
-    // You can write a temporary/pending reservation to Firestore here, 
-    // or pass it to the payment page state to save after successful checkout.
+    // TODO (Firebase Dev): Handle Final Reservation Submission
+    // CHANGED: This now fires AFTER the Payment step inside ReservationFlow
+    // (once the resident picks a payment method and hits "Finish Reservation"),
+    // not right after Confirm.
+    //
+    // The 'booking' object already includes a 'paymentMethod' field
+    // (see PaymentStep.jsx / handleFinalSubmit in ReservationFlow.jsx).
+    //
+    // Steps needed:
+    // 1. Write the booking to the reservations collection in Firestore.
+    // 2. Include the logged-in user's uid so it can be tied to their account.
+    // 3. Throw an error here if the write fails — ReservationFlow already
+    //    catches it and displays it via the 'error' prop.
     // ==========================================
-    const handleProceedToPayment = async (booking) => {
-        navigate("/reservation/court/payment", { state: { booking } });
+    const handleSubmitReservation = async (booking) => {
+        console.log("Booking ready to save (includes paymentMethod):", booking);
+        // e.g. await addDoc(collection(db, "reservations"), { ...booking, uid: currentUser.uid });
     };
 
     return (
@@ -57,7 +70,7 @@ export function BballReservationForm() {
             residentType={"homeowner"} 
             bookedSlotIds={bookedSlotIds}
             onDateChange={handleDateChange}
-            onSubmit={handleProceedToPayment}
+            onSubmit={handleSubmitReservation}
             onBack={() => navigate(-1)}
             confirmButtonLabel="Proceed to Payment"
         />

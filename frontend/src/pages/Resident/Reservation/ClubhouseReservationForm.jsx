@@ -1,9 +1,9 @@
-import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ReservationFlow from "../../../components/ReservationComponents/ReservationFlow";
 
 // import { db } from "@/firebase/config";
-// import { collection, query, where, getDocs } from "firebase/firestore";
+// import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 
 const clubhouseConfig = {
     venueName: "Function Hall",
@@ -21,11 +21,16 @@ const clubhouseConfig = {
             "17-22": 3700, // ₱250/hr for evening block
         }
     },
-    requireContiguous: false, // Not needed since only 2 slots
-    allowMultiple: true,     // Only one block can be selected
+    requireContiguous: false, 
+    allowMultiple: true,     
+    payment: {
+        methods: ["cash", "gcash", "cheque"],
+        allowDownpayment: true,
+        // downpaymentPercent: to be added — lagyan kapag may rules na tayo for downpayment
+    },
 };
 
-// NEW: Define custom fields for the clubhouse
+// Custom fields for the clubhouse
 const customFields = [
     {
         id: "occasion",
@@ -43,29 +48,6 @@ const customFields = [
             "Other"
         ],
         helpText: "Select the type of event you're hosting"
-    },
-    {
-        id: "paymentMode",
-        label: "Payment Mode",
-        type: "select",
-        required: true,
-        options: [
-            "Cash",
-            "Downpayment"
-        ],
-        helpText: "Select your preferred payment method"
-    },
-    {
-        id: "paymentOption",
-        label: "Payment Option",
-        type: "select",
-        required: true,
-        options: [
-            "Cash",
-            "GCash",
-            "Cheque"
-        ],
-        helpText: "Select how you will pay"
     }
 ];
 
@@ -90,16 +72,24 @@ export function ClubhouseReservationForm() {
     };
 
     // ==========================================
-    // TODO (Firebase Dev): Handle Reservation Submission
-    // Triggered when 'Proceed to Payment' is clicked.
-    // The 'booking' object contains the user's selected slots and pricing.
-    // You can write a temporary/pending reservation to Firestore here, 
-    // or pass it to the payment page state to save after successful checkout.
+    // TODO (Firebase Dev): Handle Final Reservation Submission
+    // CHANGED: This now fires AFTER the Payment step inside ReservationFlow
+    // (once the resident picks a payment method and hits "Finish Reservation"),
+    // not right after Confirm.
+    //
+    // The 'booking' object includes occasion from custom fields,
+    // PLUS 'paymentMethod'/'paymentType'/'amountDue' from the Payment step
+    // (see PaymentStep.jsx / handleFinalSubmit in ReservationFlow.jsx).
+    //
+    // Steps needed:
+    // 1. Write the booking to the reservations collection in Firestore.
+    // 2. Include the logged-in user's uid so it can be tied to their account.
+    // 3. Throw an error here if the write fails — ReservationFlow already
+    //    catches it and displays it via the 'error' prop.
     // ==========================================
-    const handleProceedToPayment = async (booking) => {
-        // The booking object now includes occasion, paymentMode, and paymentOption from custom fields
-        console.log("Booking with custom fields:", booking);
-        navigate("/reservation/clubhouse/payment", { state: { booking } });
+    const handleSubmitReservation = async (booking) => {
+        console.log("Booking ready to save (occasion + paymentMethod/paymentType):", booking);
+        // e.g. await addDoc(collection(db, "reservations"), { ...booking, uid: currentUser.uid });
     };
 
     return (
@@ -110,10 +100,10 @@ export function ClubhouseReservationForm() {
             residentType={"homeowner"} 
             bookedSlotIds={bookedSlotIds}
             onDateChange={handleDateChange}
-            onSubmit={handleProceedToPayment}
+            onSubmit={handleSubmitReservation}
             onBack={() => navigate(-1)}
             confirmButtonLabel="Proceed to Payment"
-            customFields={customFields} // NEW: Pass custom fields to the flow
+            customFields={customFields}
         />
     );
 }

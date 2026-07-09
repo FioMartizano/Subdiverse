@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo } from "react";
 import DateStep from "./DateStep";
 import TimeSlotStep from "./TimeSlotStep";
 import ConfirmStep from "./ConfirmStep";
+import PaymentStep from "./PaymentStep";
+import ReservationReceipt from "./ReservationReceipt"; // NEW
 
 /*
 |--------------------------------------------------------------------------
@@ -17,13 +19,15 @@ import ConfirmStep from "./ConfirmStep";
 |      ↓
 | Confirmation
 |      ↓
-| Payment / Completion
+| Payment
+|      ↓
+| Completion
 |
 | This component DOES NOT communicate directly with Firestore. PARENT PAGE AY ANG BBALLRESERVATIONFORM.JSX
 | Firestore integration should be handled through:
 |
 | onDateChange() -> Fetch booked slots
-| onSubmit()     -> Save reservation / proceed to payment 
+| onSubmit()     -> Save reservation (now called from PaymentStep, after payment method is chosen)
 |--------------------------------------------------------------------------
 */
 
@@ -35,10 +39,11 @@ export default function ReservationFlow({
   onSubmit,
   onBack,
   confirmButtonLabel = "Confirm Reservation",
-  customFields = [], // NEW: Array of custom field configurations
+  customFields = [], // Array of custom field configurations
 }) {
-  const { venueName, slots, rates, requireContiguous = true, allowMultiple = true } = config;
+  const { venueName, slots, rates, requireContiguous = true, allowMultiple = true, payment: paymentConfig = {} } = config;
   const rate = rates[residentType] ?? Object.values(rates)[0] ?? 0;
+  // paymentConfig shape: { methods: string[], allowDownpayment: bool, downpaymentPercent?: number }
 
   const [step, setStep] = useState("date");
   const [selectedDate, setSelectedDate] = useState(null);
@@ -46,7 +51,9 @@ export default function ReservationFlow({
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [customFieldValues, setCustomFieldValues] = useState({}); // NEW: Store custom field values
+  const [customFieldValues, setCustomFieldValues] = useState({});
+  const [paymentDetails, setPaymentDetails] = useState(null); // { method, paymentType, amountDue }
+  const [receiptMeta, setReceiptMeta] = useState(null); // NEW: { id, submittedAt } for the receipt
 
   useEffect(() => {
     setSelectedSlotIds([]);
@@ -94,36 +101,52 @@ export default function ReservationFlow({
 
   const dateLabel = selectedDate?.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
 
-  const handleSubmit = async () => {
-    if (!selectedDate || duration === 0) return;
-    
-    // Validate custom fields
-    const hasErrors = customFields.some(field => {
+  // CHANGED: this used to validate + submit in one go from ConfirmStep.
+  // Now it only validates custom fields, then advances to the Payment step.
+  const handleContinueToPayment = () => {
+    const hasErrors = customFields.some((field) => {
       if (field.required && !customFieldValues[field.id]?.trim()) {
         setError(`Please fill in ${field.label}`);
         return true;
       }
       return false;
     });
-    
-    if (hasErrors) {
-      return;
-    }
-    
+
+    if (hasErrors) return;
+
+    setError("");
+    setStep("payment");
+  };
+
+  // The actual Firestore submit, triggered from PaymentStep once payment
+  // details are chosen (placeholder logic for now).
+  // details = { method, paymentType, amountDue }
+  const handleFinalSubmit = async (details) => {
     setSubmitting(true);
     setError("");
-    const booking = { 
-      venue: venueName, 
-      date: selectedDate, 
-      slotIds: orderedSelected, 
-      duration, 
-      rate, 
-      total, 
+    const booking = {
+      venue: venueName,
+      date: selectedDate,
+      slotIds: orderedSelected,
+      duration,
+      rate,
+      total,
       note: note || null,
-      ...customFieldValues // NEW: Include custom fields in booking
+      paymentMethod: details.method,
+      paymentType: details.paymentType, // "full" | "downpayment"
+      amountDue: details.amountDue,
+      ...customFieldValues,
     };
     try {
-      if (onSubmit) await onSubmit(booking);
+      // Capture whatever onSubmit returns. Once Firestore's addDoc()
+      // is wired up in the parent form, it resolves to a DocumentReference
+      // with a real `.id` — until then we fall back to a placeholder id.
+      const result = onSubmit ? await onSubmit(booking) : null;
+      setPaymentDetails(details);
+      setReceiptMeta({
+        id: result?.id || `TEMP-${Date.now()}`,
+        submittedAt: new Date(),
+      });
       setStep("done");
     } catch (err) {
       setError(err?.message || "Something went wrong.");
@@ -132,8 +155,9 @@ export default function ReservationFlow({
     }
   };
 
-  const stepOrder = ["date", "time", "confirm"];
-  const stepLabels = ["Date", "Time", "Confirm"];
+  // CHANGED: added "payment" to both arrays
+  const stepOrder = ["date", "time", "confirm", "payment"];
+  const stepLabels = ["Date", "Time", "Confirm", "Payment"];
 
   return (
 
@@ -176,34 +200,62 @@ export default function ReservationFlow({
             {step === "date" && <DateStep selectedDate={selectedDate} onSelectDate={setSelectedDate} onContinue={() => setStep("time")} onBack={onBack} />}
             {step === "time" && <TimeSlotStep slots={slots} selectedSlotIds={selectedSlotIds} bookedSlotIds={bookedSlotIds} onToggleSlot={toggleSlot} allowMultiple={allowMultiple} requireContiguous={requireContiguous} error={error} dateLabel={dateLabel} duration={duration} total={total} onBack={() => setStep("date")} onContinue={() => setStep("confirm")} />}
             {step === "confirm" && (
-              <ConfirmStep 
-                venueName={venueName} 
-                dateLabel={dateLabel} 
-                timeRangeLabel={timeRangeLabel()} 
-                duration={duration} 
-                rate={rate} 
-                residentType={residentType} 
-                total={total} 
-                note={note} 
-                onNoteChange={setNote} 
-                error={error} 
-                submitting={submitting} 
-                confirmButtonLabel={confirmButtonLabel} 
-                onBack={() => setStep("time")} 
-                onSubmit={handleSubmit}
-                customFields={customFields} // NEW: Pass custom fields
-                customFieldValues={customFieldValues} // NEW: Pass custom field values
-                onCustomFieldChange={(id, value) => 
-                  setCustomFieldValues(prev => ({ ...prev, [id]: value }))
+              <ConfirmStep
+                venueName={venueName}
+                dateLabel={dateLabel}
+                timeRangeLabel={timeRangeLabel()}
+                duration={duration}
+                rate={rate}
+                residentType={residentType}
+                total={total}
+                note={note}
+                onNoteChange={setNote}
+                error={error}
+                submitting={false} // CHANGED: no longer submits from here
+                confirmButtonLabel={confirmButtonLabel}
+                onBack={() => setStep("time")}
+                onSubmit={handleContinueToPayment} // CHANGED: was handleSubmit
+                customFields={customFields}
+                customFieldValues={customFieldValues}
+                onCustomFieldChange={(id, value) =>
+                  setCustomFieldValues((prev) => ({ ...prev, [id]: value }))
                 }
               />
             )}
-            {step === "done" && (
-              <div className="text-center py-12 md:py-24">
-                <div className="w-16 h-16 md:w-24 md:h-24 bg-accent text-primary rounded-full flex items-center justify-center mx-auto mb-5 md:mb-8 text-3xl md:text-5xl">✓</div>
-                <h2 className="font-heading text-2xl md:text-4xl font-bold text-foreground">Reservation Confirmed!</h2>
-                <button className="mt-6 md:mt-10 px-6 py-3 md:px-10 md:py-4 btn-primary" onClick={() => window.location.reload()}>Book Another</button>
-              </div>
+            {step === "payment" && (
+              <PaymentStep
+                venueName={venueName}
+                dateLabel={dateLabel}
+                timeRangeLabel={timeRangeLabel()}
+                total={total}
+                methods={paymentConfig.methods || ["cash"]}
+                allowDownpayment={paymentConfig.allowDownpayment || false}
+                downpaymentPercent={paymentConfig.downpaymentPercent} // may be undefined — pricing TBD
+                error={error}
+                submitting={submitting}
+                onBack={() => setStep("confirm")}
+                onFinish={handleFinalSubmit}
+              />
+            )}
+            {step === "done" && ( // CHANGED: now renders the receipt instead of a plain checkmark
+              <ReservationReceipt
+                reservationId={receiptMeta?.id}
+                submittedAt={receiptMeta?.submittedAt}
+                venueName={venueName}
+                dateLabel={dateLabel}
+                timeRangeLabel={timeRangeLabel()}
+                duration={duration}
+                rate={rate}
+                residentType={residentType}
+                total={total}
+                note={note}
+                customFields={customFields}
+                customFieldValues={customFieldValues}
+                paymentMethod={paymentDetails?.method}
+                paymentType={paymentDetails?.paymentType}
+                amountDue={paymentDetails?.amountDue}
+                onBookAnother={() => window.location.reload()}
+              />
             )}
           </div>
         </div>

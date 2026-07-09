@@ -14,6 +14,7 @@ function App() {
     "/businesshub",
     "/hoa",
     "/grievance",
+    "/grievanceComplaint",
     "/elderly",
     "/healthcare",
     "/parishchurch",

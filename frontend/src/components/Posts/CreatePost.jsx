@@ -1,77 +1,141 @@
 // frontend/src/components/posts/CreatePost.jsx
 import { useState } from 'react';
-import { X, Image, Send, Pin, Calendar, AlertCircle } from 'lucide-react';
+import { X, Image, Send, Pin } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { createPost } from '../../services/postService';
+import { uploadImages, validateImage } from '../../utils/imageCompression';
 
-const CreatePost = ({ isOpen, onClose, onPostCreated, officeName }) => {
+const CreatePost = ({ isOpen, onClose, onPostCreated, officeName = 'HOA Main Office' }) => {
+  const { user, isAdmin } = useAuth();
   const [content, setContent] = useState('');
-  const [images, setImages] = useState([]);
-  const [imageUrls, setImageUrls] = useState([]);
+  const [imageFiles, setImageFiles] = useState([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [category, setCategory] = useState('announcement');
   const [isPinned, setIsPinned] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState('');
+
+  // Check if user can post
+  if (!user || !isAdmin) {
+    return null;
+  }
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    const selectedFiles = files.slice(0, 3 - images.length);
+    const validFiles = [];
+    const previews = [];
+
+    // Validate each file
+    for (const file of files) {
+      const validation = validateImage(file);
+      if (validation.valid) {
+        validFiles.push(file);
+        previews.push(URL.createObjectURL(file));
+      } else {
+        setError(validation.error);
+        setTimeout(() => setError(''), 3000);
+      }
+    }
+
+    // Limit to max 3 images total
+    const remainingSlots = 3 - imageFiles.length;
+    const filesToAdd = validFiles.slice(0, remainingSlots);
     
-    // Create preview URLs
-    const newImageUrls = selectedFiles.map(file => URL.createObjectURL(file));
-    setImageUrls(prev => [...prev, ...newImageUrls]);
-    setImages(prev => [...prev, ...selectedFiles]);
+    setImageFiles(prev => [...prev, ...filesToAdd]);
+    setImagePreviewUrls(prev => [...prev, ...previews.slice(0, remainingSlots)]);
   };
 
   const handleRemoveImage = (index) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-    setImageUrls(prev => prev.filter((_, i) => i !== index));
+    // Revoke the object URL to free memory
+    URL.revokeObjectURL(imagePreviewUrls[index]);
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     
-    if (!content.trim()) return;
-    
+    if (!content.trim()) {
+      setError('Please enter some content');
+      return;
+    }
+
     setIsSubmitting(true);
+    setUploadProgress(0);
 
-    // Build post data
-    const newPost = {
-      id: `post_${Date.now()}`,
-      author: {
-        id: 'hoa-main-office',
-        name: officeName || 'HOA Main Office',
-        avatar: `https://ui-avatars.com/api/?name=HOA&background=F98300&color=fff&size=40`,
-        role: 'officer'
-      },
-      content: {
-        text: content,
-        images: imageUrls, // These would be uploaded to Cloudinary later
-        embedUrl: null
-      },
-      engagement: {
-        likes: 0,
-        comments: 0,
-        views: Math.floor(Math.random() * 100) + 10,
-        isLiked: false
-      },
-      metadata: {
-        createdAt: new Date().toISOString(),
-        isPinned: isPinned,
-        category: category,
-        source: 'office'
+    try {
+      let uploadedImageUrls = [];
+
+      // Upload images if any
+      if (imageFiles.length > 0) {
+        setUploadProgress(10);
+        const uploadedUrls = await uploadImages(
+          imageFiles,
+          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET_HOA || 'hoa-posts',
+          (progress) => {
+            setUploadProgress(10 + (progress * 80));
+          }
+        );
+        uploadedImageUrls = uploadedUrls;
+        setUploadProgress(90);
       }
-    };
 
-    // Simulate network delay
-    setTimeout(() => {
-      onPostCreated(newPost);
-      onClose();
-      // Reset form
-      setContent('');
-      setImages([]);
-      setImageUrls([]);
-      setCategory('announcement');
-      setIsPinned(false);
+      // Prepare post data
+      const postData = {
+        author: {
+          name: officeName,
+          avatar: 'https://ui-avatars.com/api/?name=HOA&background=F98300&color=fff&size=80',
+          role: user.role,
+          postedBy: user.uid
+        },
+        content: {
+          text: content.trim(),
+          images: uploadedImageUrls
+        },
+        engagement: {
+          likes: 0,
+          views: 0
+        },
+        metadata: {
+          isPinned: isPinned,
+          source: 'office',
+          officeId: 'hoa'
+        },
+        // Store the user ID for reference
+        userId: user.uid
+      };
+
+      const result = await createPost(postData);
+
+      if (result.success) {
+        setUploadProgress(100);
+        
+        // Add the new post to the feed with a temporary ID
+        const newPost = {
+          id: result.id,
+          ...postData,
+          createdAt: new Date().toISOString()
+        };
+        
+        onPostCreated(newPost);
+        onClose();
+        
+        // Reset form
+        setContent('');
+        setImageFiles([]);
+        setImagePreviewUrls([]);
+        setIsPinned(false);
+        setUploadProgress(0);
+      } else {
+        setError(result.error || 'Failed to create post');
+      }
+    } catch (err) {
+      console.error('Error creating post:', err);
+      setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
       setIsSubmitting(false);
-    }, 500);
+    }
   };
 
   if (!isOpen) return null;
@@ -94,6 +158,23 @@ const CreatePost = ({ isOpen, onClose, onPostCreated, officeName }) => {
 
         {/* Post Form */}
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Upload Progress */}
+          {isSubmitting && uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div 
+                className="bg-[var(--color-secondary)] h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
+
           {/* Posting As */}
           <div className="flex items-center gap-3 pb-3 border-b">
             <div className="w-10 h-10 rounded-full bg-[var(--color-secondary)] flex items-center justify-center text-white font-bold text-sm">
@@ -101,7 +182,7 @@ const CreatePost = ({ isOpen, onClose, onPostCreated, officeName }) => {
             </div>
             <div>
               <p className="font-semibold text-sm text-[var(--color-primary)]">
-                {officeName || 'HOA Main Office'}
+                {officeName}
               </p>
               <p className="text-xs text-gray-500">
                 Posting as office • Your name won't appear
@@ -116,6 +197,7 @@ const CreatePost = ({ isOpen, onClose, onPostCreated, officeName }) => {
             placeholder="What would you like to announce to the community?"
             className="w-full p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-secondary)] min-h-[120px] text-sm"
             required
+            disabled={isSubmitting}
           />
 
           {/* Image Upload */}
@@ -126,15 +208,16 @@ const CreatePost = ({ isOpen, onClose, onPostCreated, officeName }) => {
             </div>
             
             {/* Image Preview Grid */}
-            {imageUrls.length > 0 && (
+            {imagePreviewUrls.length > 0 && (
               <div className="grid grid-cols-3 gap-2 mb-3">
-                {imageUrls.map((url, index) => (
+                {imagePreviewUrls.map((url, index) => (
                   <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
                     <img src={url} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(index)}
                       className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition text-xs"
+                      disabled={isSubmitting}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -143,7 +226,7 @@ const CreatePost = ({ isOpen, onClose, onPostCreated, officeName }) => {
               </div>
             )}
 
-            {imageUrls.length < 3 && (
+            {imagePreviewUrls.length < 3 && !isSubmitting && (
               <label className="inline-flex items-center px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[var(--color-secondary)] hover:bg-gray-50 transition">
                 <span className="text-sm text-gray-600">Upload Images</span>
                 <input
@@ -152,45 +235,25 @@ const CreatePost = ({ isOpen, onClose, onPostCreated, officeName }) => {
                   multiple
                   onChange={handleImageUpload}
                   className="hidden"
+                  disabled={isSubmitting}
                 />
               </label>
             )}
           </div>
 
-          {/* Category & Options */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">
-                Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-secondary)] text-sm"
-              >
-                <option value="announcement">📢 Announcement</option>
-                <option value="event">🎉 Event</option>
-                <option value="advisory">⚠️ Advisory</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">
-                Options
-              </label>
-              <div className="flex items-center gap-4 mt-1.5">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isPinned}
-                    onChange={(e) => setIsPinned(e.target.checked)}
-                    className="w-4 h-4 rounded text-[var(--color-secondary)] focus:ring-[var(--color-secondary)]"
-                  />
-                  <Pin className="w-3.5 h-3.5" />
-                  Pin Post
-                </label>
-              </div>
-            </div>
+          {/* Options */}
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isPinned}
+                onChange={(e) => setIsPinned(e.target.checked)}
+                className="w-4 h-4 rounded text-[var(--color-secondary)] focus:ring-[var(--color-secondary)]"
+                disabled={isSubmitting}
+              />
+              <Pin className="w-3.5 h-3.5" />
+              Pin Post (stays at top)
+            </label>
           </div>
 
           {/* Submit Buttons */}
@@ -199,6 +262,7 @@ const CreatePost = ({ isOpen, onClose, onPostCreated, officeName }) => {
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition text-sm"
+              disabled={isSubmitting}
             >
               Cancel
             </button>

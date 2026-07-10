@@ -1,56 +1,191 @@
 // frontend/src/components/posts/Post.jsx
 import { useState } from 'react';
-import { Heart, MessageCircle, Pin, Eye } from 'lucide-react';
+import { Heart, Pin, MoreVertical } from 'lucide-react';
 import { formatDate, formatFullDate } from '../../utils/formatDate';
+import { toggleLike, deletePost } from '../../services/postService';
+import { useAuth } from '../../hooks/useAuth';
 
-const Post = ({ post, onLike, onComment, variant = 'default' }) => {
-  const [isLiked, setIsLiked] = useState(post.engagement?.isLiked || false);
+const Post = ({ post, onLikeUpdate, onPostDelete }) => {
+  const { user, isAdmin } = useAuth();
+  const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [likesCount, setLikesCount] = useState(post.engagement?.likes || 0);
+  const [isLiking, setIsLiking] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleLike = () => {
+  const handleLike = async () => {
+    if (!user) {
+      alert('Please log in to like posts');
+      return;
+    }
+
+    if (isLiking) return;
+    setIsLiking(true);
+
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
     setLikesCount(prev => newLikedState ? prev + 1 : prev - 1);
-    if (onLike) onLike(post.id, newLikedState);
+
+    try {
+      const result = await toggleLike(post.id, user.uid);
+      if (result.success) {
+        if (onLikeUpdate) {
+          onLikeUpdate(post.id, result.isLiked);
+        }
+      } else {
+        setIsLiked(!newLikedState);
+        setLikesCount(prev => !newLikedState ? prev + 1 : prev - 1);
+        console.error('Failed to toggle like:', result.error);
+      }
+    } catch (error) {
+      setIsLiked(!newLikedState);
+      setLikesCount(prev => !newLikedState ? prev + 1 : prev - 1);
+      console.error('Error toggling like:', error);
+    } finally {
+      setIsLiking(false);
+    }
   };
 
-  const handleComment = () => {
-    if (onComment) onComment(post.id);
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const result = await deletePost(post.id);
+      if (result.success) {
+        if (onPostDelete) {
+          onPostDelete(post.id);
+        }
+        setShowMenu(false);
+      } else {
+        console.error('Failed to delete post:', result.error);
+        alert('Failed to delete post. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Failed to delete post. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const renderImages = () => {
-    const images = post.content.images || [];
+    const images = post.content?.images || [];
     if (images.length === 0) return null;
 
-    const gridClass = 
-      images.length === 1 ? 'grid-cols-1' :
-      images.length === 2 ? 'grid-cols-2' :
-      'grid-cols-2';
+    // Facebook-style layouts
+    if (images.length === 1) {
+      return (
+        <div className="mt-3 rounded-lg overflow-hidden bg-gray-100">
+          <img 
+            src={images[0]} 
+            alt="Post image" 
+            className="w-full max-h-[600px] object-contain"
+            loading="lazy"
+          />
+        </div>
+      );
+    }
 
+    if (images.length === 2) {
+      return (
+        <div className="grid grid-cols-2 gap-1 mt-3">
+          {images.map((image, index) => (
+            <div key={index} className="overflow-hidden bg-gray-100">
+              <img 
+                src={image} 
+                alt={`Post image ${index + 1}`} 
+                className="w-full h-64 object-cover hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+              />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (images.length === 3) {
+      return (
+        <div className="grid grid-cols-2 gap-1 mt-3">
+          {/* First image takes full left column */}
+          <div className="row-span-2 overflow-hidden bg-gray-100">
+            <img 
+              src={images[0]} 
+              alt="Post image 1" 
+              className="w-full h-[400px] object-cover hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          </div>
+          {/* Right column - 2 images stacked */}
+          <div className="grid grid-rows-2 gap-1">
+            {[1, 2].map((index) => (
+              <div key={index} className="overflow-hidden bg-gray-100">
+                <img 
+                  src={images[index]} 
+                  alt={`Post image ${index + 1}`} 
+                  className="w-full h-[198px] object-cover hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // 4 images - 2x2 grid
+    if (images.length === 4) {
+      return (
+        <div className="grid grid-cols-2 gap-1 mt-3">
+          {images.map((image, index) => (
+            <div key={index} className="overflow-hidden bg-gray-100">
+              <img 
+                src={image} 
+                alt={`Post image ${index + 1}`} 
+                className="w-full h-64 object-cover hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+              />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // 5+ images - 2x2 grid with +N overlay
     return (
-      <div className={`grid ${gridClass} gap-2 mt-3`}>
-        {images.map((image, index) => (
-          <div 
-            key={index} 
-            className={`overflow-hidden rounded-lg bg-gray-100 ${
-              images.length === 3 && index === 0 ? 'col-span-2' : ''
-            }`}
-          >
+      <div className="grid grid-cols-2 gap-1 mt-3">
+        {images.slice(0, 4).map((image, index) => (
+          <div key={index} className="overflow-hidden bg-gray-100">
             <img 
               src={image} 
               alt={`Post image ${index + 1}`} 
-              className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
+              className="w-full h-64 object-cover hover:scale-105 transition-transform duration-300"
               loading="lazy"
             />
           </div>
         ))}
+        {images.length > 4 && (
+          <div className="relative overflow-hidden bg-gray-100">
+            <img 
+              src={images[4]} 
+              alt="More images" 
+              className="w-full h-64 object-cover blur-sm opacity-50"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-3xl bg-black/50">
+              +{images.length - 4}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
 
-  // Check if post has a poll
-  const hasPoll = post.poll && post.poll.options && post.poll.options.length > 0;
+  const isPinned = post.metadata?.isPinned || false;
+  const canDelete = isAdmin || post.userId === user?.uid;
 
   return (
     <div 
@@ -58,8 +193,8 @@ const Post = ({ post, onLike, onComment, variant = 'default' }) => {
         bg-white rounded-xl shadow-sm border border-gray-100 p-5 
         transition-all duration-200
         ${isHovered ? 'shadow-md border-gray-200' : ''}
-        ${post.metadata?.isPinned ? 'border-l-4 border-l-[var(--color-secondary)]' : ''}
-        ${variant === 'compact' ? 'p-3' : ''}
+        ${isPinned ? 'border-l-4 border-l-[var(--color-secondary)]' : ''}
+        ${isDeleting ? 'opacity-50 pointer-events-none' : ''}
       `}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -70,8 +205,8 @@ const Post = ({ post, onLike, onComment, variant = 'default' }) => {
           {/* Avatar */}
           <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
             <img 
-              src={post.author.avatar} 
-              alt={post.author.name} 
+              src={post.author?.avatar || 'https://ui-avatars.com/api/?name=HOA&background=F98300&color=fff&size=40'} 
+              alt={post.author?.name || 'HOA'} 
               className="w-full h-full object-cover"
             />
           </div>
@@ -80,140 +215,85 @@ const Post = ({ post, onLike, onComment, variant = 'default' }) => {
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-semibold text-[var(--color-primary)] text-sm">
-                {post.author.name}
+                {post.author?.name || 'HOA Main Office'}
               </h4>
-              {post.metadata?.isPinned && (
+              {isPinned && (
                 <Pin className="w-3.5 h-3.5 text-[var(--color-secondary)]" />
               )}
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span>{formatDate(post.metadata.createdAt)}</span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <Eye className="w-3 h-3" />
-                {post.engagement?.views || 0}
-              </span>
+              <span>{formatDate(post.createdAt?.toDate?.() || post.createdAt)}</span>
             </div>
           </div>
         </div>
 
-        {/* Category Badge */}
-        {post.metadata?.category && (
-          <span className={`
-            text-xs px-2 py-1 rounded-full font-medium
-            ${post.metadata.category === 'announcement' ? 'bg-blue-100 text-blue-700' : ''}
-            ${post.metadata.category === 'event' ? 'bg-purple-100 text-purple-700' : ''}
-            ${post.metadata.category === 'advisory' ? 'bg-orange-100 text-orange-700' : ''}
-            ${post.metadata.category === 'discussion' ? 'bg-green-100 text-green-700' : ''}
-          `}>
-            {post.metadata.category.charAt(0).toUpperCase() + post.metadata.category.slice(1)}
-          </span>
+        {/* Three Dots Menu */}
+        {canDelete && (
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Post menu"
+            >
+              <MoreVertical className="w-5 h-5 text-gray-400" />
+            </button>
+            
+            {showMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-10" 
+                  onClick={() => setShowMenu(false)}
+                />
+                <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-20 py-1">
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <span className="inline-block w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></span>
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete Post'
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
 
       {/* Content */}
       <div className="mt-3">
         <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
-          {post.content.text}
+          {post.content?.text || ''}
         </p>
         {renderImages()}
-        
-        {/* Poll Section */}
-        {hasPoll && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="font-semibold text-[var(--color-primary)] text-sm mb-3">
-              📊 {post.poll.question}
-            </h4>
-            <div className="space-y-2">
-              {post.poll.options.map((option, index) => {
-                const percentage = post.poll.totalVotes > 0 
-                  ? Math.round((post.poll.votes[index] / post.poll.totalVotes) * 100) 
-                  : 0;
-                const isSelected = post.poll.selectedOption === index;
-                const hasVoted = post.poll.hasVoted || false;
-
-                return (
-                  <div key={index} className="relative">
-                    <div 
-                      className={`
-                        flex items-center justify-between p-2 rounded-lg border-2 transition-all cursor-pointer
-                        ${isSelected 
-                          ? 'border-[var(--color-secondary)] bg-orange-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                        }
-                        ${hasVoted ? 'cursor-default' : 'hover:bg-gray-50'}
-                      `}
-                      onClick={() => {
-                        if (!hasVoted && post.onPollVote) {
-                          post.onPollVote(post.id, index);
-                        }
-                      }}
-                    >
-                      <span className={`text-sm ${isSelected ? 'font-semibold' : ''}`}>
-                        {option}
-                      </span>
-                      {hasVoted && (
-                        <span className="text-sm font-medium text-[var(--color-secondary)]">
-                          {percentage}%
-                        </span>
-                      )}
-                    </div>
-                    {hasVoted && (
-                      <div 
-                        className="absolute inset-0 rounded-lg pointer-events-none"
-                        style={{
-                          background: `linear-gradient(to right, #FED7AA ${percentage}%, transparent ${percentage}%)`,
-                          opacity: 0.3
-                        }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {hasVoted && (
-              <p className="text-xs text-gray-400 mt-2">
-                {post.poll.totalVotes} vote{post.poll.totalVotes !== 1 ? 's' : ''} • Results visible
-              </p>
-            )}
-            {!hasVoted && (
-              <p className="text-xs text-gray-400 mt-2">
-                Click an option to vote
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Actions - Like and Comment only */}
-      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-around">
-        {/* Like Button */}
+      {/* Actions - Like on the LEFT */}
+      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-start">
         <button 
           onClick={handleLike}
+          disabled={isLiking}
           className={`flex items-center gap-2 text-sm transition-colors ${
             isLiked 
               ? 'text-red-500' 
               : 'text-gray-500 hover:text-red-500'
-          }`}
+          } ${isLiking ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
           <span>{likesCount > 0 ? likesCount : 'Like'}</span>
-        </button>
-
-        {/* Comment Button */}
-        <button 
-          onClick={handleComment}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-[var(--color-secondary)] transition-colors"
-        >
-          <MessageCircle className="w-5 h-5" />
-          <span>{post.engagement?.comments > 0 ? post.engagement.comments : 'Comment'}</span>
         </button>
       </div>
 
       {/* Full timestamp at bottom */}
       <div className="mt-3 pt-2 border-t border-gray-50">
         <span className="text-xs text-gray-400">
-          {formatFullDate(post.metadata.createdAt)}
+          {formatFullDate(post.createdAt?.toDate?.() || post.createdAt)}
         </span>
       </div>
     </div>

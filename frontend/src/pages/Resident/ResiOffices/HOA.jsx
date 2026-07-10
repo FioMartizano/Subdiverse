@@ -1,8 +1,11 @@
+// frontend/src/pages/Resident/ResiOffices/HOA.jsx
 import HOA_bg from "../../../assets/officesMedia/HOApage_bg.jpg";
 import { useState } from "react";
-import { Contact, HeartPulse, UserRound, Clock, MapPin, Phone, Mail,Building2, Users, FileText, AlertTriangle,
-    Shield, CalendarDays, Megaphone, Home, FileCheck, MoveRight, HardHat,
-    Lightbulb, Droplets, Trash2, Car, Bell, Plus } from "lucide-react";
+import { 
+    Contact, Clock, MapPin, Phone, Mail, Building2, Users, FileText, 
+    AlertTriangle, Shield, Megaphone, Home, FileCheck, MoveRight, 
+    HardHat, Lightbulb, Droplets, Trash2, Car, Plus 
+} from "lucide-react";
 
 import hoaOfficer1 from "../../../assets/hoaOfficer.jpg";
 import hoaOfficer2 from "../../../assets/hoaOfficer2.jpg";
@@ -12,12 +15,15 @@ import hoaService1 from "../../../assets/hoaService1.jpg";
 import hoaService2 from "../../../assets/hoaService2.jpg";
 import hoaService3 from "../../../assets/hoaService3.jpg";
 
+// Components
 import Post from "../../../components/posts/Post";
 import CreatePost from "../../../components/posts/CreatePost";
-import CommentModal from "../../../components/posts/CommentModal";
-import { hoaAnnouncements } from "../../../data/mockPosts";
 
-// Mock data array for the officers grid - Updated with real positions
+// Hooks
+import { useAuth } from "../../../hooks/useAuth";
+import { usePosts } from "../../../hooks/usePosts";
+
+// Data - Officers and Board (static)
 const officersData = [
     { id: 1, name: "Juan Dela Cruz", position: "President", image: hoaOfficer1 },
     { id: 2, name: "Maria Santos", position: "Vice President", image: hoaOfficer2 },
@@ -25,7 +31,6 @@ const officersData = [
     { id: 4, name: "Ana Gonzales", position: "Treasurer", image: hoaOfficer4 },
 ];
 
-// Board of Directors (15 Members)
 const boardMembers = [
     { id: 1, name: "Pedro Martinez", committee: "Infrastructure" },
     { id: 2, name: "Luz Fernandez", committee: "Security" },
@@ -46,16 +51,23 @@ const boardMembers = [
 
 function HOA() {
     const [hoveredTile, setHoveredTile] = useState(null);
-    const [activeTab, setActiveTab] = useState("announcements");
-    const [announcements, setAnnouncements] = useState(hoaAnnouncements);
     const [showCreatePost, setShowCreatePost] = useState(false);
-    const [selectedPost, setSelectedPost] = useState(null);
-    const [showComments, setShowComments] = useState(false);
+    
+    // Auth and Posts hooks
+    const { user, isAdmin, loading: authLoading } = useAuth();
+    const { 
+        posts, 
+        loading: postsLoading, 
+        error,
+        hasMore,
+        isLoadingMore,
+        loadMore,
+        setPosts 
+    } = usePosts();
 
-    // Handler functions for post interactions
-      // Handler functions for post interactions
-    const handleLike = (postId, isLiked) => {
-        setAnnouncements(prev => 
+    // Handler for like updates
+    const handleLikeUpdate = (postId, isLiked) => {
+        setPosts(prev => 
             prev.map(post => 
                 post.id === postId 
                     ? {
@@ -63,48 +75,27 @@ function HOA() {
                         engagement: {
                             ...post.engagement,
                             likes: isLiked 
-                                ? post.engagement.likes + 1 
-                                : post.engagement.likes - 1,
-                            isLiked
-                        }
+                                ? (post.engagement?.likes || 0) + 1 
+                                : (post.engagement?.likes || 0) - 1
+                        },
+                        isLiked: isLiked
                     }
                     : post
             )
         );
     };
 
-    const handleComment = (postId) => {
-        // Find the post and open comment modal
-        const post = announcements.find(p => p.id === postId);
-        if (post) {
-            setSelectedPost(post);
-            setShowComments(true);
-        }
-    };
-
-
+    // Handler for new post created
     const handlePostCreated = (newPost) => {
-        // Add the new post to the top of the feed
-        setAnnouncements(prev => [newPost, ...prev]);
+        setPosts(prev => [newPost, ...prev]);
     };
 
-    const handleAddComment = (postId, newComment) => {
-        setAnnouncements(prev => 
-            prev.map(post => 
-                post.id === postId
-                    ? {
-                        ...post,
-                        engagement: {
-                            ...post.engagement,
-                            comments: post.engagement.comments + 1
-                        }
-                    }
-                    : post
-            )
-        );
+    // Handler for post deletion
+    const handlePostDelete = (postId) => {
+        setPosts(prev => prev.filter(post => post.id !== postId));
     };
 
-    // Dynamic dataset containing icons, text data, and images
+    // Services data
     const tilesData = [
         {
             id: 1,
@@ -255,49 +246,89 @@ function HOA() {
                             </div>
                         </div>
                         
-                        <button
-                            onClick={() => setShowCreatePost(true)}
-                            className="px-4 py-2 bg-[var(--color-secondary)] text-white rounded-lg hover:bg-[var(--color-primary)] transition flex items-center gap-2 text-sm font-medium shadow-sm hover:shadow-md"
-                        >
-                            <Plus className="w-4 h-4" />
-                            New Post
-                        </button>
+                        {/* Only show New Post button if user is admin/officer */}
+                        {!authLoading && isAdmin && (
+                            <button
+                                onClick={() => setShowCreatePost(true)}
+                                className="px-4 py-2 bg-[var(--color-secondary)] text-white rounded-lg hover:bg-[var(--color-primary)] transition flex items-center gap-2 text-sm font-medium shadow-sm hover:shadow-md"
+                            >
+                                <Plus className="w-4 h-4" />
+                                New Post
+                            </button>
+                        )}
                     </div>
 
-                    {/* Posts Feed - Vertical layout */}
-                    <div className="space-y-6">
-                        {announcements.map((post) => (
-                            <Post 
-                                key={post.id}
-                                post={post}
-                                onLike={handleLike}
-                                onComment={handleComment}
-                            />
-                        ))}
-                    </div>
+                    {/* Loading State */}
+                    {postsLoading && (
+                        <div className="text-center py-8">
+                            <div className="inline-block w-8 h-8 border-4 border-[var(--color-secondary)] border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-gray-500 text-sm mt-2">Loading announcements...</p>
+                        </div>
+                    )}
+
+                    {/* Error State */}
+                    {error && (
+                        <div className="text-center py-8">
+                            <p className="text-red-500 text-sm">Error loading posts: {error}</p>
+                            <button 
+                                onClick={() => window.location.reload()}
+                                className="mt-2 text-[var(--color-secondary)] hover:underline"
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Posts Feed */}
+                    {!postsLoading && !error && (
+                        <>
+                            <div className="space-y-6">
+                                {posts.length === 0 ? (
+                                    <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
+                                        <Megaphone className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                        <p className="text-gray-500 text-sm">No announcements yet.</p>
+                                        {isAdmin && (
+                                            <p className="text-gray-400 text-xs mt-1">
+                                                Click the "New Post" button to create one.
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    posts.map((post) => (
+                                        <Post 
+                                            key={post.id}
+                                            post={post}
+                                            onLikeUpdate={handleLikeUpdate}
+                                            onPostDelete={handlePostDelete}
+                                        />
+                                    ))
+                                )}
+                            </div>
+
+                            {/* Load More Button */}
+                            {hasMore && posts.length > 0 && (
+                                <div className="text-center mt-6">
+                                    <button
+                                        onClick={loadMore}
+                                        disabled={isLoadingMore}
+                                        className="px-6 py-2 text-[var(--color-secondary)] hover:bg-orange-50 rounded-lg transition font-medium text-sm disabled:opacity-50"
+                                    >
+                                        {isLoadingMore ? 'Loading...' : 'Load More'}
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
             </section>
 
-            {/* CREATE POST MODAL - THIS WAS MISSING! */}
+            {/* CREATE POST MODAL */}
             <CreatePost
                 isOpen={showCreatePost}
                 onClose={() => setShowCreatePost(false)}
                 onPostCreated={handlePostCreated}
                 officeName="HOA Main Office"
             />
-
-               {/* COMMENT MODAL*/}
-            {selectedPost && (
-                <CommentModal
-                    isOpen={showComments}
-                    onClose={() => {
-                        setShowComments(false);
-                        setSelectedPost(null);
-                    }}
-                    post={selectedPost}
-                    onAddComment={handleAddComment}
-                />
-            )}
 
             {/* OFFICERS SECTION */}
             <section className="bg-[var(--color-secondary)] w-full py-16 px-4 md:px-12 flex flex-col items-center">

@@ -14,7 +14,8 @@ const courtConfig = {
         { id: "20-21", label: "8:00 - 9:00 PM" },
         { id: "21-22", label: "9:00 - 10:00 PM" },
     ],
-    rates: { homeowner: 100, renter: 120 },
+    // `residents` collection: "owner", "renter", "household"
+    rates: { owner: 100, renter: 120, household: 120 },
     requireContiguous: true,
     allowMultiple: true,
     payment: {
@@ -44,7 +45,7 @@ export function BballReservationForm() {
 
     // ==========================================
     // TODO (Firebase Dev): Handle Final Reservation Submission
-    // CHANGED: This now fires AFTER the Payment step inside ReservationFlow
+    // This fires AFTER the Payment step inside ReservationFlow
     // (once the resident picks a payment method and hits "Finish Reservation"),
     // not right after Confirm.
     //
@@ -65,9 +66,15 @@ export function BballReservationForm() {
     return (
         <ReservationFlow
             config={courtConfig}
-            // TODO (Firebase Dev): Dynamically pass user type ('homeowner' vs 'renter') 
-            // by checking the logged-in user's profile in Firebase Auth/Firestore.
-            residentType={"homeowner"} 
+            // TODO (Firebase Dev): Dynamically pass the logged-in user's
+            // residentCategory field by looking up their document in the
+            // `residents` Firestore collection.
+            // NOTE: key must match one of courtConfig.rates — "owner" | "renter" | "household"
+            residentCategory={"owner"}
+            // TODO (Firebase Dev): pass the actual resident's name fields
+            // (firstName/middleName/lastName/suffix) from their `residents`
+            // collection document, instead of this placeholder.
+            residentInfo={{ firstName: "", middleName: "", lastName: "", suffix: "" }}
             bookedSlotIds={bookedSlotIds}
             onDateChange={handleDateChange}
             onSubmit={handleSubmitReservation}

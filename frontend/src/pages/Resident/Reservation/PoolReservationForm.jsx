@@ -13,19 +13,19 @@ const poolConfig = {
         { id: "8-16", label: "8:00 AM - 4:00 PM" },
         { id: "17-22", label: "6:00 PM - 10:00 PM" },
     ],
-    
+    // `residents` collection: "owner", "renter", "household"
     rates: {
-        resident: 100,
+        owner: 100,
         renter: 150,
-        householdOwner: NaN, // idk pa
+        household: 150, // same rate as renter ba?
     },
-    pricingMode: "perHead",
-    kidsFree: true,
-    //  placeholder for future bulk/group discount tier — not wired up yet
+    pricingMode: "perHead", // rate × duration × paying adults
+    kidsFree: true, // kids 7 & below don't pay, only accompanying adults do
+    // Placeholder for future bulk/group discount tier — not wired up yet
     bigPax: {
         enabled: false,
         threshold: null,   // e.g. 15+ heads
-        discount: null,    // e.g. 0.1 for 10% off
+        discount: null,    // e.g. 0.1 for 10% off (kung meron?)
     },
     requireContiguous: false,
     allowMultiple: true,
@@ -71,18 +71,26 @@ export function PoolReservationForm() {
 
     // ==========================================
     // TODO (Firebase Dev): Handle Final Reservation Submission
-    // booking now also includes { adults, kids } from the headcount step
+    // booking now also includes { adults, kids, residentName } from
+    // ReservationFlow, plus { occasion } from custom fields and
+    // paymentMethod/paymentType/amountDue from the Payment step
     // ==========================================
     const handleSubmitReservation = async (booking) => {
-        console.log("Booking ready to save (occasion + headcount + payment):", booking);
+        console.log("Booking ready to save (occasion + headcount + payment + name):", booking);
     };
 
     return (
         <ReservationFlow
             config={poolConfig}
-            // TODO (Firebase Dev): Dynamically set based on logged-in user's profile.
-            // NOTE: key must match one of poolConfig.rates — "resident" | "renter" | "householdOwner"
-            residentType={"resident"}
+            // TODO (Firebase Dev): Dynamically pass the logged-in user's
+            // residentCategory field by looking up their document in the
+            // `residents` Firestore collection.
+            // NOTE: key must match one of poolConfig.rates — "owner" | "renter" | "household"
+            residentCategory={"owner"}
+            // TODO (Firebase Dev): pass the actual resident's name fields
+            // (firstName/middleName/lastName/suffix) from their `residents`
+            // collection document, instead of this placeholder.
+            residentInfo={{ firstName: "", middleName: "", lastName: "", suffix: "" }}
             bookedSlotIds={bookedSlotIds}
             onDateChange={handleDateChange}
             onSubmit={handleSubmitReservation}

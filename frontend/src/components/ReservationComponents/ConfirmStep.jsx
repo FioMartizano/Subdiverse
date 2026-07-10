@@ -2,7 +2,7 @@
  * Step: review summary and confirm/submit.
  *
  * Props:
- * - venueName, dateLabel, timeRangeLabel, duration, rate, residentType, total: display values
+ * - venueName, dateLabel, timeRangeLabel, duration, rate, residentCategory, total: display values
  * - note: string
  * - onNoteChange: (value: string) => void
  * - error: string
@@ -21,12 +21,13 @@
  */
 
 // Same label map as ReservationReceipt.jsx — keep these two in sync if a
-// venue ever adds a new residentType key.
-const residentTypeLabels = {
-  homeowner: "Homeowner",
-  resident: "Resident",
+// venue ever adds a new residentCategory key.
+// Keys match the actual `residentCategory` values stored in Firestore's
+// `residents` collection: "owner", "renter", "household".
+const residentCategoryLabels = {
+  owner: "Homeowner",
   renter: "Renter",
-  householdOwner: "Household Owner",
+  household: "Household Member",
 };
 
 export default function ConfirmStep({
@@ -35,7 +36,7 @@ export default function ConfirmStep({
   timeRangeLabel,
   duration,
   rate,
-  residentType,
+  residentCategory,
   total,
   note,
   onNoteChange,
@@ -53,8 +54,10 @@ export default function ConfirmStep({
   kidCount = 0,
   onAdultCountChange,
   onKidCountChange,
+  rateBreakdown = [],
 }) {
   const isPerHead = pricingMode === "perHead";
+  const isPerSlot = pricingMode === "perSlot";
 
   return (
     <div className="rounded-cards border border-border p-6">
@@ -63,14 +66,30 @@ export default function ConfirmStep({
         <Row label="Venue" value={venueName} />
         <Row label="Date" value={dateLabel} />
         <Row label="Time" value={timeRangeLabel} />
-        <Row label="Duration" value={`${duration} hour${duration > 1 ? "s" : ""}`} />
         <Row
-          label="Rate"
-          value={`₱${rate}${isPerHead ? "/head" : ""}/hr (${residentTypeLabels[residentType] || residentType})`}
+          label={isPerSlot ? "Blocks Selected" : "Duration"}
+          value={isPerSlot
+            ? `${duration} block${duration > 1 ? "s" : ""}`
+            : `${duration} hour${duration > 1 ? "s" : ""}`}
         />
+        {isPerSlot ? (
+          // NEW: each selected block priced individually (e.g. Clubhouse
+          // daytime vs evening), instead of a single flat "Rate" row
+          rateBreakdown.map((slot) => (
+            <Row
+              key={slot.id}
+              label={slot.label}
+              value={`₱${slot.price.toLocaleString()}`}
+            />
+          ))
+        ) : (
+          <Row
+            label="Rate"
+            value={`₱${rate}${isPerHead ? "/head" : ""}/hr (${residentCategoryLabels[residentCategory] || residentCategory})`}
+          />
+        )}
       </dl>
 
-      {/* NEW: Headcount Section — only for venues using per-head pricing (e.g. Pool) */}
       {isPerHead && (
         <div className="space-y-3 mb-4 border-t border-border pt-4">
           <h3 className="text-sm font-semibold text-foreground">Number of Attendees</h3>

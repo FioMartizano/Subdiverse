@@ -1,4 +1,27 @@
+// ReservationReceipt.jsx
 import { useMemo } from "react";
+import { composeFullName } from "./ReservationFlow";
+
+/*
+|--------------------------------------------------------------------------
+| Reservation Receipt
+|--------------------------------------------------------------------------
+| Shown after a successful reservation + payment (the "done" step in
+| ReservationFlow.jsx). Displays a summary of the booking and lets the
+| resident print it or save it as a PDF via the browser's native print
+| dialog (no extra library needed — every browser's print dialog has a
+| "Save as PDF" destination option).
+|
+| The #receipt-printable / @media print rule below hides everything else
+| on the page (sidebar, step indicator, nav) so only the receipt itself
+| gets printed.
+|
+| NEW (per-head pricing support):
+| adults / kids — only passed when the venue uses pricingMode "perHead"
+| (e.g. Pool). null/undefined for flat-rate venues, so the headcount rows
+| simply don't render for those.
+|--------------------------------------------------------------------------
+*/
 
 const paymentMethodLabels = {
   gcash: "GCash",
@@ -7,24 +30,28 @@ const paymentMethodLabels = {
   cheque: "Cheque",
 };
 
-const residentTypeLabels = {
-  homeowner: "Homeowner",
-  resident: "Resident",
+
+// `residents` collection: "owner", "renter", "household"
+const residentCategoryLabels = {
+  owner: "Homeowner",
   renter: "Renter",
-  householdOwner: "Household Owner",
+  household: "Household Member",
 };
 
 export default function ReservationReceipt({
   reservationId,
   submittedAt,
+  residentInfo = { firstName: "", middleName: "", lastName: "", suffix: "" },
   venueName,
   dateLabel,
   timeRangeLabel,
   duration,
   rate,
-  residentType,
+  residentCategory,
   total,
   note,
+  pricingMode = "flat",
+  rateBreakdown = [],
   customFields = [],
   customFieldValues = {},
   paymentMethod,
@@ -44,6 +71,8 @@ export default function ReservationReceipt({
 
 
   const isPerHead = typeof adults === "number";
+
+  const isPerSlot = pricingMode === "perSlot";
 
   return (
     <div className="py-6 md:py-10">
@@ -74,20 +103,34 @@ export default function ReservationReceipt({
         </div>
 
         <div className="space-y-3 text-sm">
+          <ReceiptRow label="Resident Name" value={composeFullName(residentInfo)} />
           <ReceiptRow label="Date" value={dateLabel} />
           <ReceiptRow label="Time" value={timeRangeLabel} />
-          <ReceiptRow label="Duration" value={`${duration} hour${duration === 1 ? "" : "s"}`} />
-          <ReceiptRow label="Resident Type" value={residentTypeLabels[residentType] || residentType} />
           <ReceiptRow
-            label="Rate"
-            value={
-              typeof rate === "number" && !Number.isNaN(rate)
-                ? isPerHead
-                  ? `₱${rate.toLocaleString()} / head / hour`
-                  : `₱${rate.toLocaleString()} / hour`
-                : "—"
-            }
+            label={isPerSlot ? "Blocks" : "Duration"}
+            value={isPerSlot
+              ? `${duration} block${duration === 1 ? "" : "s"}`
+              : `${duration} hour${duration === 1 ? "" : "s"}`}
           />
+          <ReceiptRow label="Resident Category" value={residentCategoryLabels[residentCategory] || residentCategory} />
+          {isPerSlot ? (
+
+            rateBreakdown.map((slot) => (
+              <ReceiptRow key={slot.id} label={slot.label} value={`₱${slot.price.toLocaleString()}`} />
+            ))
+          ) : (
+            <ReceiptRow
+              label="Rate"
+              value={
+                typeof rate === "number" && !Number.isNaN(rate)
+                  ? isPerHead
+                    ? `₱${rate.toLocaleString()} / head / hour`
+                    : `₱${rate.toLocaleString()} / hour`
+                  : "—"
+              }
+            />
+          )}
+
 
           {isPerHead && (
             <>

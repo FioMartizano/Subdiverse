@@ -14,7 +14,7 @@ import loginImage from "../../assets/login.avif";
 
 const googleProvider = new GoogleAuthProvider();
 
-//validation errors ui
+// Validation errors UI
 const getFriendlyAuthError = (error) => {
   switch (error.code) {
     case "auth/invalid-credential":
@@ -41,18 +41,62 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [fieldErrors, setFieldErrors] = useState({});
-
   const [touched, setTouched] = useState({});
- 
   const [submitError, setSubmitError] = useState("");
-
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
   const navigate = useNavigate();
 
+  // Check account status from Firestore
+  const checkAccountStatus = async (userId) => {
+    try {
+      const userDocRef = doc(db, "users", userId);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (!userDocSnap.exists()) {
+        return { exists: false, status: null, role: null };
+      }
+      
+      const data = userDocSnap.data();
+      return { 
+        exists: true, 
+        status: data.status || 'pending', // default to pending if not set
+        role: data.role || 'resident'
+      };
+    } catch (error) {
+      console.error("Error checking account status:", error);
+      return { exists: false, status: null, role: null, error: error.message };
+    }
+  };
+
+  // Route user based on profile with pending check
+  const routeUserByProfile = async (userId) => {
+    const { exists, status, role } = await checkAccountStatus(userId);
+    
+    if (!exists) {
+      return { success: false, reason: 'no_profile' };
+    }
+    
+    // Check if account is pending
+    if (status === 'pending') {
+      return { success: false, reason: 'pending' };
+    }
+    
+    // Route based on role
+    if (role === 'admin') {
+      navigate("/admin-dashboard");
+      return { success: true, role: 'admin' };
+    } else if (role === 'resident') {
+      navigate("/resident-home");
+      return { success: true, role: 'resident' };
+    }
+    
+    // Invalid role
+    return { success: false, reason: 'invalid_role' };
+  };
+
+  // Validate form
   const validateForm = () => {
     const errors = {};
 
@@ -70,11 +114,10 @@ function Login() {
     return errors;
   };
 
-
+  // Update errors on field changes
   useEffect(() => {
     const errors = validateForm();
     setFieldErrors(errors);
-
   }, [email, password]);
 
   const isFormValid = Object.keys(fieldErrors).length === 0;
@@ -89,28 +132,7 @@ function Login() {
     setPassword(e.target.value);
   };
 
-  // google sign in to firebase (checking user sa firebase)
-  const routeUserByProfile = async (userId) => {
-    const userDocRef = doc(db, "users", userId);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (!userDocSnap.exists()) {
-      return false;
-    }
-
-    const { role } = userDocSnap.data();
-
-    if (role === "admin") {
-      navigate("/admin-dashboard");
-    } else if (role === "resident") {
-      navigate("/resident-home");
-    } else {
-      return false;
-    }
-
-    return true;
-  };
-
+  // Email/Password Login
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError("");
@@ -131,36 +153,68 @@ function Login() {
         password
       );
 
-      const routed = await routeUserByProfile(userCredential.user.uid);
-      if (!routed) {
-        setSubmitError("User profile not found in our records.");
+      const { success, reason } = await routeUserByProfile(userCredential.user.uid);
+      
+      if (!success) {
+        // Immediately sign out if profile check fails
+        await signOut(auth);
+        
+        // Set appropriate error message
+        if (reason === 'pending') {
+          setSubmitError(
+            "Your account is pending approval. Please wait for admin verification before logging in."
+          );
+        } else if (reason === 'no_profile') {
+          setSubmitError("User profile not found in our records. Please contact support.");
+        } else {
+          setSubmitError("Unable to access this account. Please contact support.");
+        }
       }
-
     } catch (error) {
-      console.error(error);
+      console.error("Login error:", error);
       setSubmitError(getFriendlyAuthError(error));
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Google Login
   const handleGoogleLogin = async () => {
     setSubmitError("");
     setIsGoogleLoading(true);
 
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const routed = await routeUserByProfile(result.user.uid);
+      const { success, reason } = await routeUserByProfile(result.user.uid);
 
-      if (!routed) {
-        
+      if (!success) {
+        // Immediately sign out
         await signOut(auth);
-        setSubmitError(
-          "This Google account isn't linked to a registered resident yet. Please sign up first."
-        );
+        
+        // Clear any cached auth data
+        try {
+          localStorage.removeItem('firebase:authUser');
+        } catch (e) {
+          // Ignore if localStorage is not available
+        }
+        
+        // Set appropriate error message
+        if (reason === 'pending') {
+          setSubmitError(
+            "Your account is pending approval. Please wait for admin verification before logging in."
+          );
+        } else if (reason === 'no_profile') {
+          setSubmitError(
+            "This Google account isn't linked to a registered account yet. Please sign up first or contact support."
+          );
+        } else {
+          setSubmitError(
+            "Unable to access this account. Please contact support."
+          );
+        }
       }
     } catch (error) {
-      console.error(error);
+      console.error("Google login error:", error);
       setSubmitError(getFriendlyAuthError(error));
     } finally {
       setIsGoogleLoading(false);
@@ -187,7 +241,7 @@ function Login() {
 
   return (
     <div className="w-full h-screen min-h-screen bg-white grid grid-cols-1 md:grid-cols-12 overflow-hidden">
-
+      {/* Left Side - Hero Image */}
       <div className="hidden md:block md:col-span-5 lg:col-span-5 p-4 bg-white h-full">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
@@ -196,22 +250,18 @@ function Login() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="w-full h-full rounded-[24px] bg-slate-900 border border-slate-100 p-12 flex flex-col justify-between relative overflow-hidden shadow-lg group"
         >
-          {/* Background Image */}
           <div
             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
             style={{
               backgroundImage: `url(${loginImage})`,
             }}
           />
-
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20"></div>
-
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
           <div className="relative z-10 flex items-center justify-between">
             <span className="text-white/40 text-3xl font-light select-none transition-transform duration-500 group-hover:rotate-45">
               ✳
             </span>
           </div>
-
           <div className="relative z-10 space-y-3 max-w-sm mb-6">
             <span className="inline-block text-xs font-semibold uppercase tracking-widest bg-white/10 px-2.5 py-1 rounded-md text-white/90">
               Welcome Back,
@@ -223,7 +273,7 @@ function Login() {
         </motion.div>
       </div>
 
-
+      {/* Right Side - Login Form */}
       <div className="col-span-1 md:col-span-7 lg:col-span-7 flex flex-col justify-center items-center px-6 py-12 sm:px-16 md:px-16 lg:px-24 bg-white h-full overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -296,12 +346,13 @@ function Login() {
               <button
                 type="submit"
                 disabled={isLoading || !isFormValid}
-                className={`w-full text-white font-semibold py-3 rounded-full shadow-sm transition-all duration-200 ${isLoading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : !isFormValid
+                className={`w-full text-white font-semibold py-3 rounded-full shadow-sm transition-all duration-200 ${
+                  isLoading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : !isFormValid
                     ? "bg-primary/40 cursor-not-allowed"
                     : "bg-primary hover:brightness-105 active:scale-[0.99] cursor-pointer"
-                  }`}
+                }`}
               >
                 {isLoading ? "Logging in..." : "Login"}
               </button>

@@ -1,26 +1,17 @@
-// ReservationReceipt.jsx
 import { useMemo } from "react";
-
-/*
-|--------------------------------------------------------------------------
-| Reservation Receipt
-|--------------------------------------------------------------------------
-| Shown after a successful reservation + payment (the "done" step in
-| ReservationFlow.jsx). Displays a summary of the booking and lets the
-| resident print it or save it as a PDF via the browser's native print
-| dialog (no extra library needed — every browser's print dialog has a
-| "Save as PDF" destination option).
-|
-| The #receipt-printable / @media print rule below hides everything else
-| on the page (sidebar, step indicator, nav) so only the receipt itself
-| gets printed.
-|--------------------------------------------------------------------------
-*/
 
 const paymentMethodLabels = {
   gcash: "GCash",
   bank: "Bank Transfer",
   cash: "Cash on Site",
+  cheque: "Cheque",
+};
+
+const residentTypeLabels = {
+  homeowner: "Homeowner",
+  resident: "Resident",
+  renter: "Renter",
+  householdOwner: "Household Owner",
 };
 
 export default function ReservationReceipt({
@@ -39,6 +30,8 @@ export default function ReservationReceipt({
   paymentMethod,
   paymentType,
   amountDue,
+  adults = null,
+  kids = null,
   onBookAnother,
 }) {
   const submittedLabel = useMemo(() => {
@@ -48,6 +41,9 @@ export default function ReservationReceipt({
       timeStyle: "short",
     });
   }, [submittedAt]);
+
+
+  const isPerHead = typeof adults === "number";
 
   return (
     <div className="py-6 md:py-10">
@@ -81,8 +77,24 @@ export default function ReservationReceipt({
           <ReceiptRow label="Date" value={dateLabel} />
           <ReceiptRow label="Time" value={timeRangeLabel} />
           <ReceiptRow label="Duration" value={`${duration} hour${duration === 1 ? "" : "s"}`} />
-          <ReceiptRow label="Resident Type" value={residentType === "homeowner" ? "Homeowner" : "Renter"} />
-          <ReceiptRow label="Rate" value={typeof rate === "number" ? `₱${rate.toLocaleString()} / hour` : "—"} />
+          <ReceiptRow label="Resident Type" value={residentTypeLabels[residentType] || residentType} />
+          <ReceiptRow
+            label="Rate"
+            value={
+              typeof rate === "number" && !Number.isNaN(rate)
+                ? isPerHead
+                  ? `₱${rate.toLocaleString()} / head / hour`
+                  : `₱${rate.toLocaleString()} / hour`
+                : "—"
+            }
+          />
+
+          {isPerHead && (
+            <>
+              <ReceiptRow label="Adults (paying)" value={adults} />
+              <ReceiptRow label="Kids (7 & below, free)" value={kids ?? 0} />
+            </>
+          )}
 
           {customFields.map((field) => (
             <ReceiptRow

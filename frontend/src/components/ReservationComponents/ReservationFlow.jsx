@@ -4,7 +4,7 @@ import DateStep from "./DateStep";
 import TimeSlotStep from "./TimeSlotStep";
 import ConfirmStep from "./ConfirmStep";
 import PaymentStep from "./PaymentStep";
-import ReservationReceipt from "./ReservationReceipt"; // NEW
+import ReservationReceipt from "./ReservationReceipt";
 
 /*
 |--------------------------------------------------------------------------
@@ -17,17 +17,25 @@ import ReservationReceipt from "./ReservationReceipt"; // NEW
 |      ↓
 | Time Slot Selection
 |      ↓
-| Confirmation
+| Confirmation (+ headcount, if venue uses per-head pricing)
 |      ↓
 | Payment
 |      ↓
 | Completion
 |
-| This component DOES NOT communicate directly with Firestore. PARENT PAGE AY ANG BBALLRESERVATIONFORM.JSX
+| This component DOES NOT communicate directly with Firestore.
 | Firestore integration should be handled through:
 |
 | onDateChange() -> Fetch booked slots
-| onSubmit()     -> Save reservation (now called from PaymentStep, after payment method is chosen)
+| onSubmit()     -> Save reservation (called from PaymentStep, after payment method is chosen)
+|
+| NEW (per-head pricing support):
+| config.pricingMode: "flat" (default, existing behavior — rate × duration)
+|                      "perHead" (rate × duration × paying adults)
+| config.kidsFree: bool — if true, kids 7-and-below don't pay, only adults do
+| config.bigPax: { enabled, threshold, discount } — PLACEHOLDER ONLY.
+|                 Not wired into total calculation yet. Add the discount
+|                 logic here once HOA decides the group-size discount rules.
 |--------------------------------------------------------------------------
 */
 
@@ -41,7 +49,18 @@ export default function ReservationFlow({
   confirmButtonLabel = "Confirm Reservation",
   customFields = [], // Array of custom field configurations
 }) {
-  const { venueName, slots, rates, requireContiguous = true, allowMultiple = true, payment: paymentConfig = {} } = config;
+  const {
+    venueName,
+    slots,
+    rates,
+    requireContiguous = true,
+    allowMultiple = true,
+    payment: paymentConfig = {},
+    pricingMode = "flat", // NEW: "flat" | "perHead"
+    kidsFree = false, // NEW
+    bigPax = { enabled: false, threshold: null, discount: null }, // NEW: placeholder, not yet applied
+  } = config;
+
   const rate = rates[residentType] ?? Object.values(rates)[0] ?? 0;
   // paymentConfig shape: { methods: string[], allowDownpayment: bool, downpaymentPercent?: number }
 
@@ -53,7 +72,9 @@ export default function ReservationFlow({
   const [error, setError] = useState("");
   const [customFieldValues, setCustomFieldValues] = useState({});
   const [paymentDetails, setPaymentDetails] = useState(null); // { method, paymentType, amountDue }
-  const [receiptMeta, setReceiptMeta] = useState(null); // NEW: { id, submittedAt } for the receipt
+  const [receiptMeta, setReceiptMeta] = useState(null); // { id, submittedAt } for the receipt
+  const [adultCount, setAdultCount] = useState(1);
+  const [kidCount, setKidCount] = useState(0);
 
   useEffect(() => {
     setSelectedSlotIds([]);
@@ -87,7 +108,16 @@ export default function ReservationFlow({
   }, [selectedSlotIds, slots]);
 
   const duration = orderedSelected.length;
-  const total = duration * rate;
+
+  const payingHeads = pricingMode === "perHead" ? Math.max(adultCount, 0) : 1;
+
+  // CHANGED: total now factors in paying headcount for venues using "perHead" pricing.
+  // TODO (bigPax): once the HOA decides group-size discount rules, apply
+  // bigPax.discount here when (adultCount + kidCount) >= bigPax.threshold.
+  // e.g. const totalHeads = adultCount + kidCount;
+  //      const discount = bigPax.enabled && totalHeads >= bigPax.threshold ? bigPax.discount : 0;
+  //      total = duration * rate * payingHeads * (1 - discount);
+  const total = duration * rate * payingHeads;
 
   const timeRangeLabel = () => {
     if (duration === 0) return "";
@@ -101,8 +131,7 @@ export default function ReservationFlow({
 
   const dateLabel = selectedDate?.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
 
-  // CHANGED: this used to validate + submit in one go from ConfirmStep.
-  // Now it only validates custom fields, then advances to the Payment step.
+  // This validates custom fields, then advances to the Payment step.
   const handleContinueToPayment = () => {
     const hasErrors = customFields.some((field) => {
       if (field.required && !customFieldValues[field.id]?.trim()) {
@@ -132,6 +161,10 @@ export default function ReservationFlow({
       rate,
       total,
       note: note || null,
+      // NEW: only meaningful for perHead venues; null otherwise so Firestore
+      // docs stay consistent in shape across venue types.
+      adults: pricingMode === "perHead" ? adultCount : null,
+      kids: pricingMode === "perHead" ? kidCount : null,
       paymentMethod: details.method,
       paymentType: details.paymentType, // "full" | "downpayment"
       amountDue: details.amountDue,
@@ -155,7 +188,6 @@ export default function ReservationFlow({
     }
   };
 
-  // CHANGED: added "payment" to both arrays
   const stepOrder = ["date", "time", "confirm", "payment"];
   const stepLabels = ["Date", "Time", "Confirm", "Payment"];
 
@@ -211,15 +243,21 @@ export default function ReservationFlow({
                 note={note}
                 onNoteChange={setNote}
                 error={error}
-                submitting={false} // CHANGED: no longer submits from here
+                submitting={false}
                 confirmButtonLabel={confirmButtonLabel}
                 onBack={() => setStep("time")}
-                onSubmit={handleContinueToPayment} // CHANGED: was handleSubmit
+                onSubmit={handleContinueToPayment}
                 customFields={customFields}
                 customFieldValues={customFieldValues}
                 onCustomFieldChange={(id, value) =>
                   setCustomFieldValues((prev) => ({ ...prev, [id]: value }))
                 }
+                pricingMode={pricingMode}
+                kidsFree={kidsFree}
+                adultCount={adultCount}
+                kidCount={kidCount}
+                onAdultCountChange={setAdultCount}
+                onKidCountChange={setKidCount}
               />
             )}
             {step === "payment" && (
@@ -237,7 +275,7 @@ export default function ReservationFlow({
                 onFinish={handleFinalSubmit}
               />
             )}
-            {step === "done" && ( // CHANGED: now renders the receipt instead of a plain checkmark
+            {step === "done" && (
               <ReservationReceipt
                 reservationId={receiptMeta?.id}
                 submittedAt={receiptMeta?.submittedAt}
@@ -254,6 +292,8 @@ export default function ReservationFlow({
                 paymentMethod={paymentDetails?.method}
                 paymentType={paymentDetails?.paymentType}
                 amountDue={paymentDetails?.amountDue}
+                adults={pricingMode === "perHead" ? adultCount : null}
+                kids={pricingMode === "perHead" ? kidCount : null}
                 onBookAnother={() => window.location.reload()}
               />
             )}

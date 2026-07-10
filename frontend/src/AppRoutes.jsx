@@ -38,6 +38,7 @@ import Clubhouse from "./pages/Resident/Reservation/Clubhouse";
 import ClubhouseReservationForm from "./pages/Resident/Reservation/ClubhouseReservationForm";
 
 import SwimmingPool from "./pages/Resident/Reservation/SwimmingPool";
+import PoolReservationForm from "./pages/Resident/Reservation/PoolReservationForm";
 
 //BBALL COURT FLOW
 import BasketballCourt from "./pages/Resident/Reservation/BasketballCourt";
@@ -109,6 +110,7 @@ function AppRoutes() {
 
 
         <Route path="/reservation/pool" element={<SwimmingPool />} />
+        <Route path ="/reservation/pool/reserve" element={<PoolReservationForm />} />
         
         <Route path="/reservation/court" element={<BasketballCourt />} />
         <Route path="/reservation/court/reserve" element={<BballReservationForm />} />

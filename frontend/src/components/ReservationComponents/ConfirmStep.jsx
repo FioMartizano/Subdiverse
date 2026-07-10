@@ -2,7 +2,7 @@
  * Step: review summary and confirm/submit.
  *
  * Props:
- * - venueName, dateLabel, timeRangeLabel, duration, rate, residentType, total: display values
+ * - venueName, dateLabel, timeRangeLabel, duration, rate, residentCategory, total: display values
  * - note: string
  * - onNoteChange: (value: string) => void
  * - error: string
@@ -10,17 +10,33 @@
  * - confirmButtonLabel: string
  * - onBack: () => void
  * - onSubmit: () => void
- * - customFields: array of custom field configurations (NEW)
- * - customFieldValues: object with custom field values (NEW)
- * - onCustomFieldChange: (id, value) => void (NEW)
+ * - customFields: array of custom field configurations
+ * - customFieldValues: object with custom field values
+ * - onCustomFieldChange: (id, value) => void
+ * - pricingMode: "flat" | "perHead" (NEW) — when "perHead", shows the
+ *   adults/kids stepper below
+ * - kidsFree: boolean (NEW) — whether kids 7-and-below ride free
+ * - adultCount / kidCount: number (NEW)
+ * - onAdultCountChange / onKidCountChange: (count: number) => void (NEW)
  */
+
+// Same label map as ReservationReceipt.jsx — keep these two in sync if a
+// venue ever adds a new residentCategory key.
+// Keys match the actual `residentCategory` values stored in Firestore's
+// `residents` collection: "owner", "renter", "household".
+const residentCategoryLabels = {
+  owner: "Homeowner",
+  renter: "Renter",
+  household: "Household Member",
+};
+
 export default function ConfirmStep({
   venueName,
   dateLabel,
   timeRangeLabel,
   duration,
   rate,
-  residentType,
+  residentCategory,
   total,
   note,
   onNoteChange,
@@ -29,10 +45,20 @@ export default function ConfirmStep({
   confirmButtonLabel = "Confirm Reservation",
   onBack,
   onSubmit,
-  customFields = [], // NEW
-  customFieldValues = {}, // NEW
-  onCustomFieldChange, // NEW
+  customFields = [],
+  customFieldValues = {},
+  onCustomFieldChange,
+  pricingMode = "flat",
+  kidsFree = false,
+  adultCount = 1,
+  kidCount = 0,
+  onAdultCountChange,
+  onKidCountChange,
+  rateBreakdown = [],
 }) {
+  const isPerHead = pricingMode === "perHead";
+  const isPerSlot = pricingMode === "perSlot";
+
   return (
     <div className="rounded-cards border border-border p-6">
       <h2 className="font-heading text-lg font-semibold mb-4">Reservation summary</h2>
@@ -40,11 +66,95 @@ export default function ConfirmStep({
         <Row label="Venue" value={venueName} />
         <Row label="Date" value={dateLabel} />
         <Row label="Time" value={timeRangeLabel} />
-        <Row label="Duration" value={`${duration} hour${duration > 1 ? "s" : ""}`} />
-        <Row label="Rate" value={`₱${rate}/hr (${residentType === "renter" ? "Renter" : "Homeowner"})`} />
+        <Row
+          label={isPerSlot ? "Blocks Selected" : "Duration"}
+          value={isPerSlot
+            ? `${duration} block${duration > 1 ? "s" : ""}`
+            : `${duration} hour${duration > 1 ? "s" : ""}`}
+        />
+        {isPerSlot ? (
+          // NEW: each selected block priced individually (e.g. Clubhouse
+          // daytime vs evening), instead of a single flat "Rate" row
+          rateBreakdown.map((slot) => (
+            <Row
+              key={slot.id}
+              label={slot.label}
+              value={`₱${slot.price.toLocaleString()}`}
+            />
+          ))
+        ) : (
+          <Row
+            label="Rate"
+            value={`₱${rate}${isPerHead ? "/head" : ""}/hr (${residentCategoryLabels[residentCategory] || residentCategory})`}
+          />
+        )}
       </dl>
 
-      {/* NEW: Custom Fields Section */}
+      {isPerHead && (
+        <div className="space-y-3 mb-4 border-t border-border pt-4">
+          <h3 className="text-sm font-semibold text-foreground">Number of Attendees</h3>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm">Adults (paying)</span>
+              <p className="text-xs text-muted-foreground">Charged at the rate above, per head</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="w-8 h-8 rounded-buttons border border-border text-foreground font-semibold disabled:opacity-40"
+                onClick={() => onAdultCountChange(Math.max(1, adultCount - 1))}
+                disabled={submitting || adultCount <= 1}
+                aria-label="Decrease adult count"
+              >
+                −
+              </button>
+              <span className="w-6 text-center font-semibold">{adultCount}</span>
+              <button
+                type="button"
+                className="w-8 h-8 rounded-buttons border border-border text-foreground font-semibold disabled:opacity-40"
+                onClick={() => onAdultCountChange(adultCount + 1)}
+                disabled={submitting}
+                aria-label="Increase adult count"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {kidsFree && (
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm">Kids (7 & below)</span>
+                <p className="text-xs text-muted-foreground">Free of charge</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="w-8 h-8 rounded-buttons border border-border text-foreground font-semibold disabled:opacity-40"
+                  onClick={() => onKidCountChange(Math.max(0, kidCount - 1))}
+                  disabled={submitting || kidCount <= 0}
+                  aria-label="Decrease kid count"
+                >
+                  −
+                </button>
+                <span className="w-6 text-center font-semibold">{kidCount}</span>
+                <button
+                  type="button"
+                  className="w-8 h-8 rounded-buttons border border-border text-foreground font-semibold disabled:opacity-40"
+                  onClick={() => onKidCountChange(kidCount + 1)}
+                  disabled={submitting}
+                  aria-label="Increase kid count"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Custom Fields Section */}
       {customFields.length > 0 && (
         <div className="space-y-4 mb-4 border-t border-border pt-4">
           <h3 className="text-sm font-semibold text-foreground">Additional Details</h3>
@@ -54,7 +164,7 @@ export default function ConfirmStep({
                 {field.label}
                 {field.required && <span className="text-red-500 ml-1">*</span>}
               </label>
-              
+
               {field.type === "select" ? (
                 <select
                   id={field.id}

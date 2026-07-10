@@ -33,7 +33,7 @@ export default function SwimmingPool() {
 
             <div className="mt-10">
               <Link
-                to="/reservation/pool"
+                to="/reservation/pool/reserve"
                 className="btn-reservation inline-block"
               >
                 Reserve Now

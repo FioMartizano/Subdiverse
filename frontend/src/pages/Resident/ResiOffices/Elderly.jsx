@@ -1,29 +1,24 @@
-
 import guestHOAbg from "../../../assets/guestHOA_bg.jpg";
 import { useState } from "react";
 import { Contact, HeartPulse, UserRound } from "lucide-react";
+import ScrollGallery from "../../../components/ScrollGallery";
 
 import hoaOfficer1 from "../../../assets/hoaOfficer.jpg";
 import hoaOfficer2 from "../../../assets/hoaOfficer2.jpg";
-import hoaOfficer3 from "../../../assets/hoaOfficer3.jpg";
-import hoaOfficer4 from "../../../assets/hoaOfficer4.jpg";
 import hoaService1 from "../../../assets/hoaService1.jpg";
 import hoaService2 from "../../../assets/hoaService2.jpg";
 import hoaService3 from "../../../assets/hoaService3.jpg";
 
 
 
-// Mock data array for the officers grid
+
 const officersData = [
-    { id: 1, name: "Lorem Ipsum", position: "Position", image: hoaOfficer1 },
-    { id: 2, name: "Lorem Ipsum", position: "Position", image: hoaOfficer2 },
-    { id: 3, name: "Lorem Ipsum", position: "Position", image: hoaOfficer3 },
-    { id: 4, name: "Lorem Ipsum", position: "Position", image: hoaOfficer4 },
+    { id: 1, name: "Editha Cardel", position: "Head Coordinator", image: hoaOfficer1 },
+    { id: 2, name: "Elizabeth Saracho", position: "Treasurer", image: hoaOfficer2 },
 ];
 
 
 function Elderly() {
-
    
     const [hoveredTile, setHoveredTile] = useState(null);
 
@@ -33,7 +28,7 @@ function Elderly() {
             id: 1,
             type: "interactive",
             icon: <Contact className="text-white w-16 h-16 stroke-[1.5]" />,
-            title: "ID Assistance",
+            title: "Senior's ID Assistance",
             description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt"
         },
         {
@@ -86,7 +81,7 @@ function Elderly() {
                     </span>
                     
                     <h1 className="text-white text-4xl md:text-6xl font-bold leading-tight">
-                        WWHS <br /> <span className="whitespace-nowrap">Elderly Office</span>
+                        WWHS <br /> <span className="whitespace-nowrap">Senior Citizen's Office</span>
                     </h1>
 
                     <p className="text-gray-200 text-sm md:text-base mt-4 max-w-xl leading-relaxed">
@@ -114,7 +109,7 @@ function Elderly() {
                     {officersData.map((officer) => (
                         <div key={officer.id} className="flex flex-col items-center">
                             
-                            {/* Card Image Container with rounded corners and shadow */}
+        
                             <div className="w-full aspect-square rounded-3xl overflow-hidden shadow-lg bg-zinc-800">
                                 <img 
                                     src={officer.image} 
@@ -168,7 +163,6 @@ function Elderly() {
                                 );
                             }
 
-                            // Render interactive tile with mouse event triggers
                             const isHovered = hoveredTile === tile.id;
 
                             return (
@@ -183,7 +177,7 @@ function Elderly() {
                                     }`}
                                 >
                                     {isHovered ? (
-                                        /* HOVER STATE: Custom text copy layout matching the image */
+                                    
                                         <div className="animate-fadeIn">
                                             <h3 className="text-[var(--color-secondary)] text-base md:text-lg font-bold tracking-wide mb-1 md:mb-2">
                                                 {tile.title}
@@ -193,7 +187,7 @@ function Elderly() {
                                             </p>
                                         </div>
                                     ) : (
-                                        /* DEFAULT STATE: Large minimal icon design */
+                            
                                         <div className="transition-transform duration-200 transform scale-100">
                                             {tile.icon}
                                         </div>
@@ -203,7 +197,6 @@ function Elderly() {
                         })}
                     </div>
 
-                    {/* Right Hand Description Side Column */}
                     <div className="lg:col-span-1 pt-2">
                         <p className="text-[var(--color-primary)] text-lg md:text-xl font-medium leading-relaxed">
                             Services are available through scheduled visits, health programs, and community initiatives.
@@ -213,7 +206,10 @@ function Elderly() {
                 </div>
             </div>
         </section>
-            
+
+        {/* 4. EVENTS SCROLL GALLERY SECTION */}
+        <ScrollGallery />
+
         <p><a href="https://www.magnific.com/free-photo/close-up-beautiful-smiley-woman_18168017.htm">Image by freepik</a></p>
             
         </div>

@@ -230,7 +230,7 @@ export default function VehicleSticker() {
     );
     if(!proceed)return;
     }
-    
+
     try {
       setSubmitting(true);
 
@@ -395,6 +395,11 @@ export default function VehicleSticker() {
           app.paymentStatus === "Verified" || 
           app.paymentStatus === "Completed"
         );
+      case "rejected":
+        return applications.filter(app=>
+        app.status==="Rejected"
+        );
+
       default:
         return applications;
     }
@@ -863,7 +868,7 @@ export default function VehicleSticker() {
           </h2>
 
           {/* Filter Tabs */}
-          <div className="flex flex-wrap gap-2 mb-8">
+          <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
             <button
               onClick={() => setActiveTab('pending')}
               className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
@@ -924,7 +929,28 @@ export default function VehicleSticker() {
                 ).length}
               </span>
             </button>
-          </div>
+          
+          <button
+              onClick={() => setActiveTab('rejected')}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                activeTab === 'rejected'
+                  ? 'bg-red-600 text-white shadow-lg'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <CircleX className="w-5 h-5" />
+              Rejected
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                activeTab === 'rejected'
+                  ? 'bg-white/30'
+                  : 'bg-gray-400 text-white'
+              }`}>
+                {applications.filter(app =>
+                  app.status === "Rejected"
+                ).length}
+              </span>
+            </button>
+            </div>
 
           {loadingResident || loadingApps ? (
             <div className="bg-white rounded-xl shadow-md p-12 text-center">
@@ -959,7 +985,18 @@ export default function VehicleSticker() {
                     Your completed applications will appear here.
                   </p>
                 </>
-              )}
+              )} 
+
+              {/*REJECTED*/}
+              {activeTab === 'rejected' && (
+                <>
+                  <CircleX className="mx-auto w-16 h-16 text-gray-400 mb-4"/>
+                  <p className="text-lg text-gray-600">No rejected applications.</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                  Rejected applications will appear here.
+                </p>
+                </>
+                )}
             </div>
           ) : (
             <div className="space-y-6">

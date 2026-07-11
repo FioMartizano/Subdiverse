@@ -454,6 +454,7 @@ function SignUp() {
         }
     };
 
+    //end
     const getFieldStatus = (field) => {
         if (!touched[field]) return "default";
 

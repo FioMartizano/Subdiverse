@@ -5,6 +5,7 @@ import TimeSlotStep from "./TimeSlotStep";
 import ConfirmStep from "./ConfirmStep";
 import PaymentStep from "./PaymentStep";
 import ReservationReceipt from "./ReservationReceipt";
+import { Calendar, Clock, CreditCard, CheckCircle, Home } from "lucide-react";
 
 /*
 |--------------------------------------------------------------------------
@@ -69,7 +70,6 @@ export default function ReservationFlow({
     kidsFree = false, // NEW
     bigPax = { enabled: false, threshold: null, discount: null }, // NEW: placeholder, not yet applied
   } = config;
-
 
   const rate = pricingMode === "perSlot"
     ? null
@@ -141,7 +141,6 @@ export default function ReservationFlow({
   // and in "flat"/"perSlot" mode we don't multiply by heads at all (existing
   // behavior preserved).
   const payingHeads = pricingMode === "perHead" ? Math.max(adultCount, 0) : 1;
-
 
   // - perSlot: sum of each selected slot's own price (Clubhouse)
   // - perHead: duration × rate × paying adults (Pool)
@@ -223,16 +222,43 @@ export default function ReservationFlow({
   const stepLabels = ["Date", "Time", "Confirm", "Payment"];
 
   return (
-
     <div className="w-full min-h-screen pt-13 flex flex-col md:flex-row bg-background">
-
       {/* Sidebar*/}
       <div className="w-full md:w-80 flex-shrink-0 px-6 py-5 md:px-13 md:py-6 border-b md:border-b-0 md:border-r border-border flex flex-col bg-muted/20">
-        <h2 className="font-heading text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-10">{venueName}</h2>
-        <div className="grid grid-cols-3 gap-3 md:flex md:flex-col md:gap-6 md:space-y-0">
-          <SummaryItem label="Selected Date" value={dateLabel || "Select a date"} />
-          <SummaryItem label="Time Slots" value={timeRangeLabel() || "None"} />
-          <SummaryItem label="Total Amount" value={duration > 0 ? `₱${total.toLocaleString()}` : "—"} />
+        <div className="flex items-center gap-2 mb-4 md:mb-10">
+          <Home className="w-5 h-5 text-secondary" />
+          <h2 className="font-heading text-xl md:text-2xl font-bold text-foreground">{venueName}</h2>
+        </div>
+        <div className="grid grid-cols-3 gap-3 md:flex md:flex-col md:gap-4 md:space-y-0">
+          <SummaryItem 
+            icon={<Calendar className="w-4 h-4 text-secondary" />}
+            label="Selected Date" 
+            value={dateLabel || "Select a date"} 
+          />
+          <SummaryItem 
+            icon={<Clock className="w-4 h-4 text-secondary" />}
+            label="Time Slots" 
+            value={timeRangeLabel() || "None"} 
+          />
+          <SummaryItem 
+            icon={<CreditCard className="w-4 h-4 text-secondary" />}
+            label="Total Amount" 
+            value={duration > 0 ? `₱${total.toLocaleString()}` : "—"} 
+          />
+        </div>
+        <div className="relative overflow-hidden rounded-3xl shadow-xl mb-10 mt-6">
+          <img
+            src={config.banner}
+            alt={venueName}
+            className="w-full h-64 object-cover"
+          />
+          <div className="absolute inset-0 bg-black/45"/>
+          <div className="absolute inset-0 flex flex-col justify-center px-10 text-white">
+            <h1 className="text-4xl font-bold drop-shadow-lg">{venueName}</h1>
+            <p className="mt-3 max-w-xl text-white/90 drop-shadow">
+              Complete your reservation by selecting your preferred date, schedule and payment option.
+            </p>
+          </div>
         </div>
         <div className="mt-auto">
         </div>
@@ -247,11 +273,17 @@ export default function ReservationFlow({
                 const done = stepOrder.indexOf(step) > i;
                 return (
                   <div key={label} className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-                    <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-xs md:text-sm
-                      ${done ? "bg-primary text-primary-foreground" : active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                      {done ? "✓" : i + 1}
+                    <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-xs md:text-sm transition-all duration-300
+                      ${done ? "bg-secondary text-secondary-foreground shadow-lg shadow-secondary/30" : 
+                        active ? "bg-secondary text-secondary-foreground shadow-lg shadow-secondary/30 ring-4 ring-secondary/20" : 
+                        "bg-muted text-muted-foreground"}`}>
+                      {done ? <CheckCircle className="w-4 h-4 md:w-5 md:h-5" /> : i + 1}
                     </div>
-                    <span className={`text-sm md:text-base ${active ? "font-bold text-foreground" : "text-muted-foreground"}`}>{label}</span>
+                    <span className={`text-sm md:text-base transition-colors ${
+                      active ? "font-bold text-foreground" : done ? "text-primary" : "text-muted-foreground"
+                    }`}>
+                      {label}
+                    </span>
                     {i < stepLabels.length - 1 && <div className="w-6 md:w-16 h-px bg-border ml-1 md:ml-2" />}
                   </div>
                 );
@@ -350,11 +382,14 @@ export function composeFullName({ firstName = "", middleName = "", lastName = ""
   return trimmedSuffix ? `${base} ${trimmedSuffix}` : base;
 }
 
-function SummaryItem({ label, value }) {
+function SummaryItem({ icon, label, value }) {
   return (
-    <div className="border-b md:border-b border-border pb-2 md:pb-4">
-      <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 md:mb-2">{label}</p>
-      <p className="font-semibold text-foreground text-sm md:text-lg truncate">{value}</p>
+    <div className="border-b md:border-b border-border pb-2 md:pb-4 hover:border-secondary/20 transition-colors group">
+      <div className="flex items-center gap-2 mb-1 md:mb-2">
+        {icon && <span className="text-secondary transition-transform group-hover:scale-110">{icon}</span>}
+        <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{label}</p>
+      </div>
+      <p className="font-semibold text-foreground text-sm md:text-lg truncate group-hover:text-secondary transition-colors">{value}</p>
     </div>
   );
 }

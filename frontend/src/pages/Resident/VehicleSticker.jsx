@@ -218,7 +218,19 @@ export default function VehicleSticker() {
       alert("Please upload your OR/CR.");
       return;
     }
+    // Check for duplicate plate number in previous applications instead of blocking (defend nlng)
+    const plateQuery=query(collection(db,"vehicleStickerApplications"),
+    where("vehicleInfo.plateNumber","==",formData.plateNumber.trim().toUpperCase())
+    );
+    const plateSnapshot=await getDocs(plateQuery);
 
+    if(!plateSnapshot.empty){
+    const proceed=window.confirm(
+    "This plate number already exists in previous applications.\n\nPress OK if this is a renewal or reapplication."
+    );
+    if(!proceed)return;
+    }
+    
     try {
       setSubmitting(true);
 

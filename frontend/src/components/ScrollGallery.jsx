@@ -1,55 +1,75 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 
 import senior1 from "../assets/officesMedia/Seniors1.jpg";
-import senior2 from "../assets/officesMedia/Seniors2.jpg";
+import senior7 from "../assets/officesMedia/Seniors7.jpg";
 import senior3 from "../assets/officesMedia/Seniors3.jpg";
-import senior4 from "../assets/officesMedia/Seniors4.png";
-import senior5 from "../assets/officesMedia/Seniors5.png";
+import senior2 from "../assets/officesMedia/Seniors2.jpg";
+import senior8 from "../assets/officesMedia/Seniors8.jpg";
 
 const officeInfoData = [
     {
         id: 1,
-        title: "Our Mission",
+        title: "Mission & Vision",
         description:
-            "To provide dedicated care, support, and meaningful programs for senior residents, ensuring their well-being and dignity within the community.",
+            "To bring senior citizens together by providing opportunities for companionship, community involvement, health support, and access to services that promote their well-being.",
         image: senior1,
     },
     {
         id: 2,
-        title: "Our Vision",
+        title: "Events & Community Activities",
         description:
-            "A community where every senior citizen feels valued, supported, and actively engaged in community life.",
-        image: senior2,
+            "We organizes regular activities that encourage active and meaningful participation among members. Weekly Zumba sessions are held every Saturday morning, while monthly meetings and birthday celebrations provide opportunities for seniors to socialize and stay connected. During the Christmas season, the office also hosts Bingo games and raffles for members to enjoy.",
+        image: senior7,
     },
     {
         id: 3,
-        title: "Our Objectives",
+        title: "Community Outreach",
         description:
-            "To coordinate healthcare access, social activities, and welfare assistance tailored to the needs of senior residents.",
+            "The office extends its support by visiting sick and bedridden senior citizens, ensuring they remain connected to the community and receive care and encouragement from fellow members.",
         image: senior3,
     },
     {
         id: 4,
-        title: "Core Values",
+        title: "Health & Wellness",
         description:
-            "Compassion, respect, and inclusivity guide every program and service we provide to our senior community.",
-        image: senior4,
+            "To promote healthy living, the office provides basic health services such as blood pressure and blood sugar monitoring, helping senior citizens keep track of their overall well-being.",
+        image: senior2,
     },
     {
         id: 5,
-        title: "Our Commitment",
+        title: "Why Join?",
         description:
-            "We are committed to building lasting relationships with our senior residents and fostering a supportive, connected community.",
-        image: senior5,
+            "Becoming a member of the Senior Citizens Office allows older adults to stay socially connected, participate in recreational and wellness activities, receive assistance with government programs, and become part of a supportive community that values their well-being and contributions.",
+        image: senior8,
     },
 ];
 
-function ScrollGallery() {
+function ScrollGallery({ stopBeforeId = "visit-office" }) {
     const [activeIndex, setActiveIndex] = useState(0);
+    const [stopSectionInView, setStopSectionInView] = useState(false);
 
     const sectionRef = useRef(null);
     const sectionInView = useInView(sectionRef, { margin: "-10% 0px -10% 0px" });
+
+    // Watch the section that should make the floating counter disappear
+    // (e.g. the "Visit Our Office" / contact section right below the gallery)
+    useEffect(() => {
+        if (!stopBeforeId) return;
+
+        const target = document.getElementById(stopBeforeId);
+        if (!target) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => setStopSectionInView(entry.isIntersecting),
+            { threshold: 0, rootMargin: "0px 0px -60% 0px" }
+        );
+
+        observer.observe(target);
+        return () => observer.disconnect();
+    }, [stopBeforeId]);
+
+    const showCounter = sectionInView && !stopSectionInView;
 
     return (
         <section
@@ -113,7 +133,7 @@ function ScrollGallery() {
 
 
             <AnimatePresence>
-                {sectionInView && (
+                {showCounter && (
                     <motion.div
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}

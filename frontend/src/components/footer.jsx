@@ -24,6 +24,18 @@ function Footer() {
             
             
         <div className="flex gap-20 mt-8 md:mt-0 ml-auto">
+
+          {/* Emergency */}
+            <div>
+               <h3 className="font-bold gap-60 text-lg text-green-200 mb-4">Emergency Contacts
+              </h3>
+
+               <ul className="font-semibold space-y-2 text-s">
+               <li>Barangay Hall: (02) 8XXX-XXXX</li>
+               <li>Police Station: (02) 8XXX-XXXX</li>
+               <li>Fire Station: (02) 8XXX-XXXX</li>
+              </ul>
+            </div>
             
             {/* Services */}
             <div>

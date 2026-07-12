@@ -53,8 +53,7 @@ function BasketballCourt() {
               Enjoy our basketball court for friendly games, tournaments,
               training sessions, and community activities. Residents may
               reserve the facility in advance to ensure their preferred
-              schedule. Evening lighting is available during designated
-              hours for night games.
+              schedule. This reservation is for lighting for night games.
             </p>
 
             {/*TIME (adjust AFTER interview)*/}
@@ -65,17 +64,17 @@ function BasketballCourt() {
 
                 <div className="p-8 border-b md:border-b-0 md:border-r border-gray-200">
 
-                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--color-primary)] font-semibold mb-2">Opening Hours</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--color-primary)] font-semibold mb-2">Start Hour</p>
 
-                  <p className="text-3xl font-bold text-[var(--color-black)]">6:00 AM</p>
+                  <p className="text-3xl font-bold text-[var(--color-black)]">5:00 PM</p>
 
                 </div>
 
                 <div className="p-8">
 
-                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--color-primary)] font-semibold mb-2">Closing Hours</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--color-primary)] font-semibold mb-2">Closing Hour</p>
 
-                  <p className="text-3xl font-bold text-[var(--color-black)]">11:59 PM</p>
+                  <p className="text-3xl font-bold text-[var(--color-black)]">10:00 PM</p>
 
                 </div>
 
@@ -83,9 +82,9 @@ function BasketballCourt() {
 
               <div className="border-t border-gray-200 p-8">
 
-                <p className="text-xs uppercase tracking-[0.25em] text-[var(--color-secondary)] font-semibold mb-2">Lighting Hours</p>
+                <p className="text-xs uppercase tracking-[0.25em] text-[var(--color-secondary)] font-semibold mb-2">Price per Hour</p>
 
-                <p className="text-3xl font-bold text-[var(--color-black)]">6:00 PM – 11:59 PM</p>
+                <p className="text-3xl font-bold text-[var(--color-black)]">Php 100</p>
 
               </div>
 

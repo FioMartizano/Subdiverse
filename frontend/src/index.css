@@ -21,6 +21,21 @@
 
   --radius-buttons: 0.5rem;
   --radius-cards: 1rem;
+
+  --color-pending: #FFB300;
+  --color-pending-bg: #FFF8E1;
+  --color-pending-text: #92400E;
+ 
+  --color-approved: #1B5E20;
+  --color-approved-bg: #E8F5E9;
+  --color-approved-text: #1B5E20;
+ 
+  --color-rejected: #FF7043;
+  --color-rejected-bg: #FBE9E7;
+  --color-rejected-text: #BF360C;
+
+
+
 }
 
 /* ===========================

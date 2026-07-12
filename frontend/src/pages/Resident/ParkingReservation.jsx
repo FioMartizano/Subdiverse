@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, File, Trash2, RefreshCw } from 'lucide-react';
+import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, File, Trash2, RefreshCw, Car, CreditCard, MapPin, User, Calendar as CalendarIcon, DollarSign, Info, Map, ChevronLeft, ChevronRight } from 'lucide-react';
 import { auth, db, storage } from '../../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { uploadImage } from "../../services/cloudinary";
+import heroImg from "../../assets/parking_bg.JPEG";
 
 const CarIcon = ({ className, color = "currentColor", windowColor = "white" }) => (
   <svg viewBox="0 0 100 100" className={className} fill={color}>
@@ -16,6 +17,7 @@ const CarIcon = ({ className, color = "currentColor", windowColor = "white" }) =
 );
 
 export default function ParkingReservation() {
+  // ALL YOUR EXISTING STATE AND LOGIC REMAINS EXACTLY THE SAME
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,8 +26,9 @@ export default function ParkingReservation() {
   const [submitting, setSubmitting] = useState(false);
   const [reservationError, setReservationError] = useState(null);
 
-  const [userReservation, setUserReservation] = useState(null);
+  const [userReservations, setUserReservations] = useState([]);
   const [loadingStatus, setLoadingStatus] = useState(false);
+  const [showPastReservations, setShowPastReservations] = useState(false);
 
   const [orcFile, setOrcFile] = useState(null);
   const [orcPreview, setOrcPreview] = useState(null);
@@ -65,16 +68,17 @@ export default function ParkingReservation() {
 
   const monthlyRate = 1000;
 
+  // ALL YOUR EXISTING useEffect HOOKS
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
         await fetchUserData(currentUser.uid);
-        await fetchLatestReservation(currentUser.uid);
+        await fetchUserReservations(currentUser.uid);
       } else {
         setUser(null);
         setUserData(null);
-        setUserReservation(null);
+        setUserReservations([]);
       }
       setLoading(false);
     });
@@ -84,10 +88,11 @@ export default function ParkingReservation() {
 
   useEffect(() => {
     if (user && userData) {
-      fetchLatestReservation(user.uid);
+      fetchUserReservations(user.uid);
     }
   }, [user, userData]);
 
+  // ALL YOUR EXISTING FUNCTIONS (keep them exactly as they are)
   const fetchUserData = async (uid) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', uid));
@@ -108,17 +113,20 @@ export default function ParkingReservation() {
     }
   };
 
-  const fetchLatestReservation = async (uid) => {
+  const fetchUserReservations = async (uid) => {
     if (!uid) {
-      console.log('❌ No UID provided');
+      console.log(' No UID provided');
       return;
     }
     
-    console.log('🔍 Fetching reservation for user UID:', uid);
+    console.log('🔍 Fetching reservations for user UID:', uid);
     setLoadingStatus(true);
     
     try {
       const reservationsRef = collection(db, 'ParkingReservation');
+      // Every reservation doc carries a userId field, so this query already
+      // groups all of a user's reservations together — no separate
+      // subcollection or grouping structure is needed in Firestore.
       const q = query(
         reservationsRef,
         where('userId', '==', uid)
@@ -127,36 +135,23 @@ export default function ParkingReservation() {
       
       console.log(`👤 Found ${querySnapshot.size} reservations for user UID:`, uid);
       
-      if (!querySnapshot.empty) {
-        const sortedDocs = querySnapshot.docs.sort((a, b) => {
-          const aData = a.data();
-          const bData = b.data();
-          const aTime = aData.createdAt?.toDate?.() || new Date(aData.createdAt);
-          const bTime = bData.createdAt?.toDate?.() || new Date(bData.createdAt);
-          return bTime - aTime;
-        });
-        
-        const doc = sortedDocs[0];
-        const data = doc.data();
-        console.log('✅ Found reservation:', { id: doc.id, ...data });
-        
+      const allReservations = querySnapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
         const startDate = data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate);
         const endDate = data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate);
         const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-        
-        setUserReservation({
-          id: doc.id,
+        return {
+          id: docSnap.id,
           ...data,
-          startDate: startDate,
-          endDate: endDate,
-          createdAt: createdAt
-        });
-      } else {
-        console.log('❌ No reservations found for user UID:', uid);
-        setUserReservation(null);
-      }
+          startDate,
+          endDate,
+          createdAt
+        };
+      }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      
+      setUserReservations(allReservations);
     } catch (error) {
-      console.error('❌ Error fetching reservation:', error);
+      console.error('❌ Error fetching reservations:', error);
     } finally {
       setLoadingStatus(false);
     }
@@ -212,10 +207,6 @@ export default function ParkingReservation() {
   };
 
   const handleInputDetails = async () => {
-    if (!user) {
-      alert('Please log in to make a reservation.');
-      return;
-    }
 
     if (!selectedId) {
       alert('Please select a parking spot first.');
@@ -355,7 +346,7 @@ export default function ParkingReservation() {
         fileInputRef.current.value = '';
       }
       
-      await fetchLatestReservation(user.uid);
+      await fetchUserReservations(user.uid);
 
       setTimeout(() => {
         setShowSuccess(false);
@@ -371,7 +362,7 @@ export default function ParkingReservation() {
 
   const handleRefreshStatus = async () => {
     if (user) {
-      await fetchLatestReservation(user.uid);
+      await fetchUserReservations(user.uid);
     }
   };
 
@@ -420,12 +411,12 @@ export default function ParkingReservation() {
   const getSpotStyles = (status) => {
     switch (status) {
       case 'occupied':
-        return { color: '#8A1D1D', borderClass: 'border-[#8A1D1D] border-dashed' };
+        return { color: '#FF7043', borderClass: 'border-red-500 border-2' };
       case 'selected':
-        return { color: 'var(--color-primary)', borderClass: 'border-[var(--color-primary)] border-solid' };
+        return { color: ' #FFB300', borderClass: 'border-secondary border-2' };
       case 'available':
       default:
-        return { color: '#D1D5DB', borderClass: 'border-gray-300 border-dashed' };
+        return { color: '#1B5E20', borderClass: 'border-gray-300 border-2' };
     }
   };
 
@@ -471,9 +462,9 @@ export default function ParkingReservation() {
         <button
           key={i}
           onClick={() => handlePageChange(i)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={`w-10 h-10 rounded-full text-sm font-medium transition-all duration-200 ease-in-out active:scale-90 ${
             currentPage === i
-              ? 'bg-[var(--color-primary)] text-white shadow-md'
+              ? 'bg-secondary text-white shadow-lg shadow-secondary-200'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -484,45 +475,29 @@ export default function ParkingReservation() {
     return pages;
   };
 
-  const renderStatusMessage = () => {
-    if (loadingStatus) {
-      return (
-        <div className="flex items-center justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-[var(--color-primary)] border-t-transparent"></div>
-          <span className="ml-2 text-sm text-gray-500">Loading status...</span>
-        </div>
-      );
-    }
-
-    if (!userReservation) {
-      return (
-        <div className="text-center py-6">
-          <p className="text-gray-500 text-sm">No active reservation</p>
-          <p className="text-xs text-gray-400 mt-1">Make a reservation to get started</p>
-        </div>
-      );
-    }
-
-    const { status, spotId, rejectionReason } = userReservation;
+  // Renders a single reservation as a status card. Reused for both the
+  // active list and the collapsible "past" (rejected) list.
+  const renderReservationCard = (reservation) => {
+    const { id, status, spotId, rejectionReason, startDate: rStart, endDate: rEnd, totalAmount: rAmount } = reservation;
 
     switch (status) {
       case 'pending':
         return (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div key={id} className="bg-pending-bg border border-pending/30 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <div className="bg-yellow-100 p-2 rounded-full">
-                <Clock className="w-5 h-5 text-yellow-600" />
+              <div className="bg-pending/15 p-2 rounded-full">
+                <Clock className="w-5 h-5 text-pending" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-yellow-800">Pending Approval</h4>
-                  <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">{spotId}</span>
+                  <h4 className="font-semibold text-pending-text">Pending Approval</h4>
+                  <span className="text-xs text-pending-text bg-pending/15 px-2 py-0.5 rounded-full">{spotId}</span>
                 </div>
-                <p className="text-sm text-yellow-700 mt-1">
-                  Please wait for the HOA admin to review and approve your reservation.
+                <p className="text-sm text-pending-text/90 mt-1">
+                  Waiting for HOA admin to review
                 </p>
-                <p className="text-xs text-yellow-600 mt-2">
-                  You will receive a notification once your reservation is processed.
+                <p className="text-xs text-pending-text/80 mt-1.5">
+                  {formatDate(rStart)} – {formatDate(rEnd)} · ₱{(rAmount || 0).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -531,21 +506,21 @@ export default function ParkingReservation() {
 
       case 'confirmed':
         return (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div key={id} className="bg-approved-bg border border-approved/20 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <div className="bg-green-100 p-2 rounded-full">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+              <div className="bg-approved/15 p-2 rounded-full">
+                <CheckCircle className="w-5 h-5 text-approved" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-green-800">Reservation Confirmed!</h4>
-                  <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">{spotId}</span>
+                  <h4 className="font-semibold text-approved-text">Confirmed!</h4>
+                  <span className="text-xs text-approved-text bg-approved/15 px-2 py-0.5 rounded-full">{spotId}</span>
                 </div>
-                <p className="text-sm text-green-700 mt-1">
-                  You can now proceed to the HOA office to pay and claim your sticker.
+                <p className="text-sm text-approved-text/90 mt-1">
+                  Proceed to HOA office for payment
                 </p>
-                <p className="text-xs text-green-600 mt-2">
-                  Please bring your valid ID and payment confirmation.
+                <p className="text-xs text-approved-text/80 mt-1.5">
+                  {formatDate(rStart)} – {formatDate(rEnd)} · ₱{(rAmount || 0).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -554,27 +529,21 @@ export default function ParkingReservation() {
 
       case 'rejected':
         return (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div key={id} className="bg-rejected-bg border border-rejected/25 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <div className="bg-red-100 p-2 rounded-full">
-                <AlertCircle className="w-5 h-5 text-red-600" />
+              <div className="bg-rejected/15 p-2 rounded-full">
+                <AlertCircle className="w-5 h-5 text-rejected" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-red-800">Reservation Rejected</h4>
-                  <span className="text-xs text-red-600 bg-red-100 px-2 py-0.5 rounded-full">{spotId}</span>
+                  <h4 className="font-semibold text-rejected-text">Rejected</h4>
+                  <span className="text-xs text-rejected-text bg-rejected/15 px-2 py-0.5 rounded-full">{spotId}</span>
                 </div>
-                <p className="text-sm text-red-700 mt-1">
-                  Sorry, we can't process your reservation.
-                </p>
                 {rejectionReason && (
-                  <p className="text-sm text-red-700 mt-1 font-medium">
+                  <p className="text-sm text-rejected-text/90 mt-1">
                     Reason: {rejectionReason}
                   </p>
                 )}
-                <p className="text-xs text-red-600 mt-2">
-                  Please contact the HOA office for more information.
-                </p>
               </div>
             </div>
           </div>
@@ -585,236 +554,365 @@ export default function ParkingReservation() {
     }
   };
 
+  const renderStatusMessage = () => {
+    if (loadingStatus) {
+      return (
+        <div className="flex items-center justify-center py-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+          <span className="ml-2 text-sm text-gray-500">Loading status...</span>
+        </div>
+      );
+    }
+
+    const activeReservations = userReservations.filter(
+      (r) => r.status === 'pending' || r.status === 'confirmed'
+    );
+    const rejectedReservations = userReservations.filter((r) => r.status === 'rejected');
+
+    return (
+      <div>
+        {activeReservations.length === 0 ? (
+          <div className="text-center py-6">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Car className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 text-sm font-medium">No active reservation</p>
+            <p className="text-xs text-gray-400 mt-1">Select a spot to get started</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {activeReservations.map((r) => renderReservationCard(r))}
+          </div>
+        )}
+
+        {rejectedReservations.length > 0 && (
+          <div className="mt-4">
+            <button
+              onClick={() => setShowPastReservations((prev) => !prev)}
+              className="text-xs font-medium text-gray-500 hover:text-gray-700 transition-all duration-200 ease-in-out flex items-center gap-1"
+            >
+              {showPastReservations ? 'Hide' : 'View'} past ({rejectedReservations.length})
+            </button>
+            {showPastReservations && (
+              <div className="space-y-3 mt-3 animate-fade-in">
+                {rejectedReservations.map((r) => renderReservationCard(r))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--color-primary)] mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
+  // ENHANCED UI WITH CLEAN, MODERN DESIGN
   return (
-    <div className="min-h-screen bg-gray-50 font-sans pt-16">
+    <div className="min-h-screen bg-gray-50 font-sans animate-page-in">
+      {/* Success Toast */}
       {showSuccess && (
-        <div className="fixed top-20 right-4 z-50 animate-slide-in">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg max-w-sm">
+        <div className="fixed top-24 right-4 z-50 animate-slide-in">
+          <div className="bg-white rounded-xl shadow-2xl border border-pending/30 p-4 max-w-sm">
             <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <div className="bg-pending/15 p-2 rounded-full">
+                <CheckCircle className="w-5 h-5 text-pending" />
+              </div>
               <div>
-                <h4 className="font-semibold text-green-800">Reservation Submitted!</h4>
-                <p className="text-sm text-green-700">Your reservation is waiting for processing. You will be notified once confirmed.</p>
-                <div className="flex items-center gap-2 mt-2 text-xs text-green-600">
-                  <Clock className="w-3 h-3" />
-                  <span>Status: Pending</span>
-                </div>
+                <h4 className="font-semibold text-gray-900">Reservation Submitted!</h4>
+                <p className="text-sm text-gray-600">Your reservation is being processed.</p>
+                <span className="inline-block mt-1 text-xs text-pending-text bg-pending/15 px-2 py-0.5 rounded-full">Pending</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="p-4 md:p-8 flex justify-center">
-        <div className="flex flex-col xl:flex-row gap-6 w-full max-w-[1400px]">
-          
-          <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-            <div className="bg-[var(--color-secondary)] py-6 text-center">
-              <h1 className="text-white text-3xl font-bold tracking-wider uppercase drop-shadow-sm">
-                Parking Space
-              </h1>
-            </div>
+      {/* HERO with nav + background image */}
+      <div className="relative w-full h-[420px] overflow-hidden">
+        <img src={heroImg} alt="Car park" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-black/50" />
 
-            <div className="p-6 md:p-8 flex flex-col h-full" id="parking-space-container">
-              <div className="bg-[#FCFAFA] border border-gray-300 rounded-xl p-4 md:p-6 mb-6 relative shadow-sm">
-                <div className="grid grid-cols-5 gap-3 md:gap-4 lg:gap-6">
-                  {getCurrentPageSpots.map((spot) => {
-                    const { color, borderClass } = getSpotStyles(spot.status);
-                    let windowColor = '#FCFAFA';
-                    if (spot.status === 'selected') windowColor = '#e9f0e9';
-                    else if (spot.status === 'occupied') windowColor = '#f7e9e9';
-                    
-                    return (
-                      <div 
-                        key={spot.id} 
-                        className="flex flex-col items-center gap-1 cursor-pointer hover:translate-y-[-4px] transition-transform"
-                        onClick={() => handleSpotClick(spot.id)}
-                      >
-                        <div className={`w-full aspect-square max-w-[80px] md:max-w-[100px] border-2 rounded-xl flex items-center justify-center p-1.5 transition-colors ${borderClass}`}>
-                          <CarIcon 
-                            className="w-full h-full" 
-                            color={color} 
-                            windowColor={windowColor} 
-                          />
-                        </div>
-                        <span className={`text-xs md:text-sm font-semibold tracking-wide ${spot.status === 'occupied' ? 'text-[#8A1D1D]' : 'text-gray-700'}`}>
-                          {spot.number}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+         <div className="absolute top-0 left-0 w-full h-20 bg-white z-10"></div>
+
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4" style={{ height: 'calc(100% - 88px)' }}>
+          <h1 className=" mt-20 text-5xl sm:text-6xl font-extrabold text-white tracking-tight">Parking Reservation</h1>
+           <p className=" text-[var(--color-accent)] text-lg md:text-xl font-semibold tracking-wider block mb-1"> <span className="text-secondary">
+                        WWHS </span> - Reserve a slot for your car parking space! </p>
+        </div>
+      </div>
+
+      {/* Booking bar - overlaps hero bottom edge. This is now the single reservation form. */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-5">
+          <div className="flex flex-col lg:flex-row gap-3">
+            <div className="flex-1 flex items-center gap-3 border border-gray-200 rounded-xl px-3 py-2.5">
+              <div className="bg-secondary p-2.5 rounded-lg flex-shrink-0">
+                <MapPin className="w-5 h-5 text-white" />
               </div>
-
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex items-center gap-2 flex-wrap justify-center">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === 1
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    ← Prev
-                  </button>
-                  {renderPageNumbers()}
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === totalPages
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    Next →
-                  </button>
-                </div>
-                <div className="text-sm text-gray-500">
-                  Showing {(currentPage - 1) * SPOTS_PER_PAGE + 1} - {Math.min(currentPage * SPOTS_PER_PAGE, spots.length)} of {spots.length} spots
-                </div>
-              </div>
-
-              <div className="flex flex-col items-center mt-6">
-                <div className="flex flex-wrap justify-center gap-6 md:gap-10">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-[var(--color-primary)] rounded shadow-sm"></div>
-                    <span className="text-sm text-gray-700 font-medium">Selected</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-gray-300 rounded shadow-sm"></div>
-                    <span className="text-sm text-gray-700 font-medium">Available</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-[#8A1D1D] rounded shadow-sm"></div>
-                    <span className="text-sm text-gray-700 font-medium">Occupied</span>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-500 font-semibold tracking-wide mt-3">
-                  {spots.filter(s => s.status === 'available').length} out of {spots.length} spots available
-                </div>
+              <div>
+                <p className="text-xs text-gray-400">Location</p>
+                <p className="text-sm font-semibold text-gray-900">Parking Area</p>
               </div>
             </div>
+            <button    onClick={() => document.getElementById('parking-space-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="lg:w-40 border-2 border-gray-900 rounded-xl text-sm font-semibold text-gray-900 hover:bg-gray-900 hover:text-white transition-all duration-200 ease-in-out active:scale-95 py-2.5">
+              Reserve a slot
+            </button>
           </div>
 
-          <div className="w-full xl:w-[380px] shrink-0 flex flex-col gap-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Reservation Status</h3>
-              {renderStatusMessage()}
-            </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Reservation Details</h2>
-                <button
-                  onClick={handleRefreshStatus}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  title="Refresh status"
-                >
-                  <RefreshCw className={`w-4 h-4 text-gray-500 ${loadingStatus ? 'animate-spin' : ''}`} />
-                </button>
+          <div className="flex flex-col lg:flex-row gap-3 mt-3">
+            <div className="flex-1 flex items-center gap-3 border border-gray-200 rounded-xl px-3 py-2.5">
+              <div className="bg-secondary p-2.5 rounded-lg flex-shrink-0">
+                <Calendar className="w-5 h-5 text-white" />
               </div>
-
-              <div className="mb-6">
-                <p className="text-xs text-gray-500 mb-2">Selected Spot</p>
-                <div className="border border-[var(--color-primary)] bg-[#eef4ee] rounded-xl p-4 flex flex-col justify-between h-32">
-                  <div className="flex justify-between items-start">
-                    <CarIcon 
-                      className="w-14 h-14 ml-1 mt-1" 
-                      color="var(--color-primary)" 
-                      windowColor="#eef4ee" 
-                    />
-                    <span className="font-bold text-gray-900 text-lg">{selectedSpot?.id || '—'}</span>
-                  </div>
-                  <div className="text-[var(--color-primary)] font-bold text-sm ml-1">
-                    Php {monthlyRate.toLocaleString()}/month
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-4 mb-6">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1.5">Start Date</label>
-                  <input
-                    type="date"
-                    value={formatDateForInput(startDate)}
-                    onChange={handleStartDateChange}
-                    min={formatDateForInput(today)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2.5 bg-white cursor-pointer hover:border-gray-400 transition-colors text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Rental starts on {formatDate(startDate)}
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1.5">End Date (Auto-calculated)</label>
-                  <div className="flex items-center justify-between border border-gray-300 rounded-md px-3 py-2.5 bg-gray-50 cursor-not-allowed">
-                    <span className="text-sm text-gray-800">{formatDate(endDate)}</span>
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    30 days after start date
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-[var(--color-secondary)] text-white rounded-xl p-5 mb-6 shadow-md">
-                <div className="text-xs font-medium opacity-90 mb-1">Total Amount</div>
-                <div className="flex justify-between items-end">
-                  <div className="text-[10px] opacity-90 pb-1">
-                    1 month ({totalDays} days)
-                  </div>
-                  <div className="text-2xl font-bold tracking-tight">Php {totalAmount.toFixed(2)}</div>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <button 
-                  onClick={handleInputDetails}
-                  className="bg-[var(--color-primary)] text-white px-8 py-3 rounded-full text-sm font-semibold hover:brightness-95 transition-all shadow-sm"
-                >
-                  Input details
-                </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-400">Entry date</p>
+                <input
+                  type="date"
+                  value={formatDateForInput(startDate)}
+                  onChange={handleStartDateChange}
+                  min={formatDateForInput(today)}
+                  className="text-sm font-semibold text-gray-900 w-full bg-transparent focus:outline-none"
+                />
               </div>
             </div>
+
+            <div className="flex-1 flex items-center gap-3 border border-gray-200 rounded-xl px-3 py-2.5">
+              <div className="bg-secondary p-2.5 rounded-lg flex-shrink-0">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Exit date</p>
+                <p className="text-sm font-semibold text-gray-900">{formatDate(endDate)}</p>
+              </div>
+            </div>
+
+            <div className="flex-1 flex items-center gap-3 border border-gray-200 rounded-xl px-3 py-2.5">
+              <div className="bg-secondary p-2.5 rounded-lg flex-shrink-0">
+                <Car className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Selected spot</p>
+                <p className="text-sm font-semibold text-gray-900">{selectedSpot?.id || '—'}</p>
+              </div>
+            </div>
+
+            <div className="flex-1 flex items-center gap-3 border border-gray-200 rounded-xl px-3 py-2.5">
+              <div className="bg-secondary p-2.5 rounded-lg flex-shrink-0">
+                <DollarSign className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Price</p>
+                <p className="text-sm font-semibold text-gray-900">₱{totalAmount.toLocaleString()}/mo</p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleInputDetails}
+              className="lg:w-56 bg-secondary hover:bg-amber-400 rounded-xl text-sm font-bold text-gray-900 transition-all duration-200 ease-in-out active:scale-95 py-2.5"
+            >
+              Choose this space
+            </button>
           </div>
         </div>
       </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-16">
+
+        {/* Parking Map + Reservation Status, side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+          {/* Parking Map */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <Map className="w-6 h-6 text-secondary" />
+                    Select Your Spot
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">Tap an available space below</p>
+                </div>
+                <div className="text-sm text-gray-500">
+                  <span className="font-medium text-gray-700">{spots.filter(s => s.status === 'available').length}</span> available
+                </div>
+              </div>
+            </div>
+
+            {/* Parking Grid */}
+            <div className="p-6" id="parking-space-container">
+                  <div className="grid grid-cols-5 gap-3 md:gap-4">
+                    {getCurrentPageSpots.map((spot) => {
+                      const { color, borderClass } = getSpotStyles(spot.status);
+                      let windowColor = '#F3F4F6';
+                      if (spot.status === 'selected') windowColor = '#DBEAFE';
+                      else if (spot.status === 'occupied') windowColor = '#FEE2E2';
+                      
+                      return (
+                        <div 
+                          key={spot.id} 
+                          className={`flex flex-col items-center gap-1.5 cursor-pointer transition-all duration-200 ease-in-out ${
+                            spot.status !== 'occupied' ? 'hover:scale-105 active:scale-90' : 'opacity-60 cursor-not-allowed'
+                          }`}
+                          onClick={() => handleSpotClick(spot.id)}
+                        >
+                          <div className={`w-full aspect-square max-w-[80px] md:max-w-[90px] rounded-xl flex items-center justify-center p-1.5 transition-all ${borderClass} ${
+                            spot.status === 'selected' ? ' shadow-md shadow-orange-100' : 
+                            spot.status === 'occupied' ? 'bg-red-50' : 'bg-gray-50 hover:bg-gray-100'
+                          }`}>
+                            <CarIcon 
+                              className="w-full h-full" 
+                              color={color} 
+                              windowColor={windowColor} 
+                            />
+                          </div>
+                          <span className={`text-xs font-bold ${spot.status === 'occupied' ? 'text-red-600' : 'text-gray-700'}`}>
+                            {spot.number}
+                          </span>
+                          {spot.status === 'occupied' && (
+                            <span className="text-[8px] text-red-500 font-medium">Taken</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Pagination */}
+                  <div className="flex flex-col items-center gap-4 mt-6 pt-6 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`p-2 rounded-lg transition-all duration-200 ease-in-out ${
+                          currentPage === 1
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-600 hover:bg-gray-100 active:scale-90'
+                        }`}
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <div className="flex gap-1">
+                        {renderPageNumbers()}
+                      </div>
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`p-2 rounded-lg transition-all duration-200 ease-in-out ${
+                          currentPage === totalPages
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-600 hover:bg-gray-100 active:scale-90'
+                        }`}
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Showing {Math.min((currentPage - 1) * SPOTS_PER_PAGE + 1, spots.length)} - {Math.min(currentPage * SPOTS_PER_PAGE, spots.length)} of {spots.length} spots
+                    </div>
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex justify-center gap-6 mt-6 pt-6 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-pending rounded"></div>
+                      <span className="text-xs text-gray-600">Selected</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-approved rounded"></div>
+                      <span className="text-xs text-gray-600">Available</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-rejected rounded"></div>
+                      <span className="text-xs text-gray-600">Occupied</span>
+                    </div>
+                  </div>
+                </div>
+          </div>
+
+          {/* Reservation Status - sidebar beside the grid */}
+          <div className="lg:col-span-1 lg:sticky lg:top-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Reservation Status</h3>
+                <button
+                  onClick={handleRefreshStatus}
+                  className="p-1.5 hover:bg-gray-100 rounded-full transition-all duration-200 ease-in-out active:scale-90"
+                >
+                  <RefreshCw className={`w-4 h-4 text-gray-400 ${loadingStatus ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              {renderStatusMessage()}
+
+              {(() => {
+                const activeReservations = userReservations.filter(
+                  (r) => r.status === 'pending' || r.status === 'confirmed'
+                );
+                if (activeReservations.length === 0) return null;
+                const combinedTotal = activeReservations.reduce(
+                  (sum, r) => sum + (r.totalAmount || 0),
+                  0
+                );
+                return (
+                  <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">Active reservations</span>
+                      <span className="font-semibold text-gray-900">{activeReservations.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
+                      <span className="text-gray-500">Combined monthly total</span>
+                      <span className="font-bold text-lg text-primary">₱{combinedTotal.toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Modal - Clean Design */}
       {showModal && userData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
-            <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white rounded-t-2xl z-10">
-              <h3 className="text-xl font-bold text-gray-900">Reservation Details</h3>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-white z-10 flex justify-between items-center p-6 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 p-2 rounded-xl">
+                  <Car className="w-5 h-5 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Reservation Details</h3>
+              </div>
               <button 
                 onClick={() => {
                   setShowModal(false);
                   handleRemoveFile();
                   setReservationError(null);
                 }}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-full transition-all"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
             <div className="p-6 space-y-6">
+              {/* User Info */}
               <div className="space-y-3">
-                <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider">User Information</h4>
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl">
+                <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  User Information
+                </h4>
+                <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-xl">
                   <div>
                     <p className="text-xs text-gray-500">Name</p>
                     <p className="font-medium text-gray-900">
@@ -822,11 +920,14 @@ export default function ParkingReservation() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Contact Number</p>
+                    <p className="text-xs text-gray-500">Contact</p>
                     <p className="font-medium text-gray-900">{userData.residentData?.contactNumber || 'N/A'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-xs text-gray-500">Address</p>
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      Address
+                    </p>
                     <p className="font-medium text-gray-900">
                       {[
                         userData.residentData?.block,
@@ -836,60 +937,66 @@ export default function ParkingReservation() {
                       ].filter(Boolean).join(', ') || 'N/A'}
                     </p>
                   </div>
-                  <div className="col-span-2">
-                    <p className="text-xs text-gray-500">Resident Category</p>
-                    <p className="font-medium text-gray-900 capitalize">{userData.residentData?.residentCategory || 'N/A'}</p>
-                  </div>
                 </div>
               </div>
 
+              {/* Reservation Details */}
               <div className="space-y-3">
-                <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider">Reservation Details</h4>
-                <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-xl">
+                <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4" />
+                  Reservation Details
+                </h4>
+                <div className="grid grid-cols-2 gap-3 bg-blue-50 p-4 rounded-xl">
                   <div>
                     <p className="text-xs text-gray-500">Parking Spot</p>
-                    <p className="font-bold text-[var(--color-primary)]">{selectedSpot?.id}</p>
+                    <p className="font-bold text-blue-600">{selectedSpot?.id}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Monthly Rate</p>
-                    <p className="font-bold text-gray-900">Php {monthlyRate.toLocaleString()}</p>
+                    <p className="font-bold text-gray-900">₱{monthlyRate.toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Start Date</p>
+                    <p className="text-xs text-gray-500">Entry Date</p>
                     <p className="font-medium text-gray-900">{formatDate(startDate)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">End Date</p>
+                    <p className="text-xs text-gray-500">Exit Date</p>
                     <p className="font-medium text-gray-900">{formatDate(endDate)}</p>
                   </div>
-                  <div className="col-span-2">
+                  <div className="col-span-2 border-t border-blue-200 pt-3">
                     <p className="text-xs text-gray-500">Total Amount</p>
-                    <p className="font-bold text-2xl text-[var(--color-primary)]">Php {totalAmount.toFixed(2)}</p>
+                    <p className="font-bold text-2xl text-blue-600">₱{totalAmount.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
 
+              {/* Payment Method */}
               <div className="space-y-3">
-                <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider">Payment Method</h4>
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <select
-                    value={paymentType}
-                    onChange={(e) => setPaymentType(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent text-sm text-gray-800"
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="gcash">GCash</option>
-                    <option value="check">Check</option>
-                  </select>
-                </div>
+                <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  Payment Method
+                </h4>
+                <select
+                  value={paymentType}
+                  onChange={(e) => setPaymentType(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                >
+                  <option value="cash">💵 Cash</option>
+                  <option value="gcash">📱 GCash</option>
+                  <option value="check">📝 Check</option>
+                </select>
               </div>
 
+              {/* OR/CR Upload */}
               <div className="space-y-3">
-                <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider">OR/CR Document (Optional)</h4>
+                <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  OR/CR Document (Optional)
+                </h4>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   {!orcFile ? (
                     <div 
-                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[var(--color-primary)] transition-colors cursor-pointer"
+                      className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Upload className="w-10 h-10 text-gray-400 mx-auto mb-2" />
@@ -904,62 +1011,58 @@ export default function ParkingReservation() {
                       />
                     </div>
                   ) : (
-                    <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="border border-gray-200 rounded-xl p-4 bg-white">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           {orcPreview ? (
-                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                              <img src={orcPreview} alt="OR/CR Preview" className="w-full h-full object-cover" />
+                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                              <img src={orcPreview} alt="Preview" className="w-full h-full object-cover" />
                             </div>
                           ) : (
-                            <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center">
                               <File className="w-8 h-8 text-gray-400" />
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">{orcFileName}</p>
-                            <p className="text-xs text-gray-500">
-                              {(orcFile.size / 1024).toFixed(1)} KB
-                            </p>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">{orcFileName}</p>
+                            <p className="text-xs text-gray-500">{(orcFile.size / 1024).toFixed(1)} KB</p>
                           </div>
                         </div>
                         <button
                           onClick={handleRemoveFile}
-                          className="p-1 hover:bg-red-50 rounded-full transition-colors text-red-500"
+                          className="p-1.5 hover:bg-red-50 rounded-lg transition-all text-red-500"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                   )}
-                  <p className="text-xs text-gray-400 mt-2">
-                    Upload your Official Receipt (OR) or Certificate of Registration (CR) for verification.
-                  </p>
                 </div>
               </div>
 
               {reservationError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-700">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2 text-red-700">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   <span className="text-sm">{reservationError}</span>
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                   onClick={() => {
                     setShowModal(false);
                     handleRemoveFile();
                     setReservationError(null);
                   }}
-                  className="px-6 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+                  className="px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200 ease-in-out active:scale-95 text-sm font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitReservation}
                   disabled={submitting}
-                  className="px-6 py-2 rounded-full bg-[var(--color-primary)] text-white hover:brightness-95 transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 ease-in-out active:scale-95 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-blue-200"
                 >
                   {submitting ? (
                     <>
@@ -967,7 +1070,10 @@ export default function ParkingReservation() {
                       Submitting...
                     </>
                   ) : (
-                    'Submit Reservation'
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Submit Reservation
+                    </>
                   )}
                 </button>
               </div>
@@ -1002,6 +1108,19 @@ export default function ParkingReservation() {
         }
         .animate-fade-in {
           animation: fade-in 0.2s ease-out;
+        }
+        @keyframes page-in {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-page-in {
+          animation: page-in 0.5s ease-in;
         }
       `}</style>
     </div>

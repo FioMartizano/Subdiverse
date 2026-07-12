@@ -78,8 +78,8 @@ function ScrollGallery({ stopBeforeId = "visit-office" }) {
         >
             <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-                {/* LEFT: Sticky titles + description */}
-                <div className="lg:col-span-4 order-2 lg:order-1">
+                {/* LEFT: Sticky titles + description (desktop/tablet only) */}
+                <div className="lg:col-span-4 order-2 lg:order-1 hidden lg:block">
                     <div className="lg:sticky lg:top-32 flex flex-col gap-8 pt-4">
                         <span className="text-xs tracking-widest uppercase text-zinc-400">
                             About the Office
@@ -121,12 +121,26 @@ function ScrollGallery({ stopBeforeId = "visit-office" }) {
                 {/* CENTER: Scrolling image column */}
                 <div className="lg:col-span-8 order-1 lg:order-2 flex flex-col gap-12 md:gap-16">
                     {officeInfoData.map((item, i) => (
-                        <ImageReveal
-                            key={item.id}
-                            item={item}
-                            isActive={activeIndex === i}
-                            onInView={() => setActiveIndex(i)}
-                        />
+                        <div key={item.id} className="flex flex-col gap-4">
+                            {/* Mobile/tablet-only: title + description shown right above its image */}
+                            <div className="lg:hidden">
+                                <span className="text-xs tracking-widest uppercase text-zinc-400 block mb-2">
+                                    About the Office
+                                </span>
+                                <h3 className="text-xl font-bold tracking-tight leading-snug text-[var(--color-secondary)] mb-2">
+                                    {item.title}
+                                </h3>
+                                <p className="text-sm text-zinc-500 leading-relaxed">
+                                    {item.description}
+                                </p>
+                            </div>
+
+                            <ImageReveal
+                                item={item}
+                                isActive={activeIndex === i}
+                                onInView={() => setActiveIndex(i)}
+                            />
+                        </div>
                     ))}
                 </div>
             </div>

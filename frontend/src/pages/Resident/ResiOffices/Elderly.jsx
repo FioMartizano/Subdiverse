@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Contact, HeartPulse, UserRound, Dumbbell, CakeIcon, PartyPopperIcon } from "lucide-react";
 import ScrollGallery from "../../../components/ScrollGallery";
 import { MapPin, Clock, Mail, Send } from "lucide-react";
-import SeniorsMap from "../../../components/Maps/SeniorsMap";
+import GrievanceMap from "../../../components/Maps/GrievanceMap";
 
 import hoaOfficer1 from "../../../assets/SeniorsOfficers/Cardel.png";
 import hoaOfficer2 from "../../../assets/SeniorsOfficers/Saracho.png";
@@ -81,19 +81,19 @@ function Elderly() {
 
             {/* HERO */}
             <section
-                className="w-full h-[500px] md:h-[600px] bg-cover bg-center flex items-center relative overflow-hidden"
+                className="w-full min-h-[500px] md:min-h-[600px] bg-cover bg-center flex items-center relative py-16 md:py-0"
                 style={{
                     backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${seniorsHome})`
                 }}
             >
 
-                <div className="ml-12 md:ml-24 max-w-2xl text-left z-10">
+                <div className="ml-6 sm:ml-12 md:ml-24 mr-6 sm:mr-0 mt-10 sm:mt-6 md:mt-0 max-w-2xl text-center md:text-left z-10 flex flex-col items-center md:items-start">
                     <span className="text-white text-lg md:text-xl font-medium tracking-wide block mb-1">
                         Welcome to the
                     </span>
 
                     <h1 className="text-white text-4xl md:text-6xl font-bold leading-tight">
-                        Samahan ng<br /> <span className="whitespace-nowrap">Windward Hills Senior Citizen</span>
+                        Samahan ng<br /> <span className="md:whitespace-nowrap">Windward Hills Senior Citizen</span>
                     </h1>
 
                     <p className="text-gray-200 text-sm md:text-base mt-4 max-w-xl leading-relaxed">
@@ -110,7 +110,7 @@ function Elderly() {
 
             {/* OFFICE INFO CARDS - New section matching Healthcare */}
             <section className="bg-white w-full py-8 px-6 md:px-24 flex justify-center -mt-8 relative z-20">
-                <div className="max-w-6xl w-full grid grid-cols-2 md:grid-cols-4 gap-4 bg-white rounded-2xl p-6 md:p-8 border border-gray-100 fade-in-up shadow-sm" style={{ animationDelay: '0.3s' }}>
+                <div className="max-w-6xl w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-white rounded-2xl p-6 md:p-8 border border-gray-100 fade-in-up shadow-sm" style={{ animationDelay: '0.3s' }}>
                     <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 hover:-translate-y-1 transition-all duration-300">
                         <div className="bg-[var(--color-primary)]/10 p-2.5 rounded-full">
                             <Clock className="w-6 h-6 text-[var(--color-primary)]" />
@@ -205,7 +205,7 @@ function Elderly() {
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
 
                         {/* 2x3 Grid Dashboard Wrapper */}
-                        <div className="lg:col-span-3 grid grid-cols-3 gap-4">
+                        <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-4">
                             {tilesData.map((tile) => {
                                 // Render standard image block
                                 if (tile.type === "image") {
@@ -227,18 +227,19 @@ function Elderly() {
                                         key={tile.id}
                                         onMouseEnter={() => setHoveredTile(tile.id)}
                                         onMouseLeave={() => setHoveredTile(null)}
-                                        className={`aspect-square rounded-2xl flex flex-col p-5 transition-all duration-300 select-none ${isHovered
-                                            ? "bg-white border-2 border-[var(--color-secondary)] justify-start items-start text-left shadow-lg"
-                                            : "bg-[var(--color-secondary)] justify-center items-center text-center cursor-pointer"
+                                        onClick={() => setHoveredTile(isHovered ? null : tile.id)}
+                                        className={`aspect-square rounded-2xl flex flex-col p-3 sm:p-4 md:p-5 transition-all duration-300 select-none overflow-hidden ${isHovered
+                                                ? "bg-white border-2 border-[var(--color-secondary)] justify-start items-start text-left shadow-lg"
+                                                : "bg-[var(--color-secondary)] justify-center items-center text-center cursor-pointer"
                                             }`}
                                     >
                                         {isHovered ? (
 
                                             <div className="animate-fadeIn">
-                                                <h3 className="text-[var(--color-secondary)] text-base md:text-lg font-bold tracking-wide mb-1 md:mb-2">
+                                                <h3 className="text-[var(--color-secondary)] text-xs sm:text-sm md:text-lg font-bold tracking-wide mb-0.5 md:mb-2 leading-snug">
                                                     {tile.title}
                                                 </h3>
-                                                <p className="text-zinc-600 text-[11px] sm:text-xs md:text-sm font-medium leading-relaxed max-h-[85%] overflow-hidden">
+                                                <p className="text-zinc-600 text-[9px] sm:text-[11px] md:text-sm font-medium leading-snug md:leading-relaxed max-h-[85%] overflow-hidden">
                                                     {tile.description}
                                                 </p>
                                             </div>
@@ -279,7 +280,7 @@ function Elderly() {
             {/* 4. EVENTS SCROLL GALLERY SECTION */}
             <ScrollGallery />
 
-            {/* VISIT OUR OFFICE SECTION - Updated with fade-in animations */}
+             {/* VISIT OUR OFFICE SECTION - Updated with fade-in animations */}
             <section id="visit-office" className="bg-gray-50 w-full py-24 px-6 md:px-24">
                 <div className="max-w-6xl mx-auto">
                     <div className="flex items-center gap-4 mb-12 fade-in-up" style={{ animationDelay: '0.2s' }}>
@@ -296,7 +297,7 @@ function Elderly() {
                                     <MapPin className="text-[var(--color-primary)] mt-1" />
                                     <div>
                                         <h4 className="font-bold">Address</h4>
-                                        <p className="text-gray-600">WWHS, Burol 1, Main Ave, 8XH8+Q35, Dasmariñas, 4114 Cavite</p>
+                                        <p className="text-gray-600">WWHS, Burol 1, Lot 12 Ph E, 56 Main Ave, Dasmariñas, 4114 Cavite</p>
                                     </div>
                                 </div>
 
@@ -304,15 +305,15 @@ function Elderly() {
                                     <Clock className="text-[var(--color-primary)] mt-1" />
                                     <div>
                                         <h4 className="font-bold">Operating Hours</h4>
-                                        <p className="text-gray-600">Mon, Wed, Fri: 10:00 AM - 3:00 PM</p>
+                                        <p className="text-gray-600">Thur, Fri, Sat: 8:00 AM - 5:00 PM</p>
                                     </div>
                                 </div>
 
                                 <div className="flex items-start gap-4">
                                     <Mail className="text-[var(--color-primary)] mt-1" />
                                     <div>
-                                        <h4 className="font-bold">Contact Number</h4>
-                                        <p className="text-gray-600">idk pa</p>
+                                        <h4 className="font-bold">Email</h4>
+                                        <p className="text-gray-600">contact@office.com</p>
                                     </div>
                                 </div>
 
@@ -320,12 +321,7 @@ function Elderly() {
                                     <Send className="text-[var(--color-primary)] mt-1" />
                                     <div>
                                         <h4 className="font-bold">Social Media</h4>
-                                        <a
-                                            href="https://www.facebook.com/profile.php?id=61574385560214"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-[var(--color-secondary)] underline hover:opacity-80"
-                                        >
+                                        <a href="#" className="text-[var(--color-secondary)] underline hover:opacity-80">
                                             Visit our Facebook Page
                                         </a>
                                     </div>
@@ -333,12 +329,12 @@ function Elderly() {
                             </div>
                         </div>
 
-                        <div className="h-[400px] w-full rounded-3xl overflow-hidden shadow-lg border border-gray-100 fade-in-up" style={{ animationDelay: '0.4s' }}>
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                                <SeniorsMap />
-                            </div>
-                        </div>
-                    </div>
+            <div className="h-[400px] w-full rounded-3xl overflow-hidden shadow-lg border border-gray-100 fade-in-up" style={{ animationDelay: '0.4s' }}>
+                <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+                    <GrievanceMap />
+                </div>
+            </div>
+            </div>
                 </div>
             </section>
 

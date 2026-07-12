@@ -8,11 +8,20 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
+  sendEmailVerification,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import loginImage from "../../assets/login.avif";
 
 const googleProvider = new GoogleAuthProvider();
+
+/*
+ * Always show the Google account chooser instead of silently using
+ * whichever Google account is already active in the browser.
+ */
+googleProvider.setCustomParameters({
+  prompt: "select_account",
+});
 
 // Validation errors UI
 const getFriendlyAuthError = (error) => {
@@ -30,10 +39,46 @@ const getFriendlyAuthError = (error) => {
       return "Too many failed attempts. Please wait a moment and try again.";
     case "auth/network-request-failed":
       return "Network error. Please check your connection and try again.";
-    case "auth/popup-closed-by-user":
-      return "Google sign-in was closed before finishing. Please try again.";
     default:
       return "Something went wrong while logging in. Please try again.";
+  }
+};
+
+/*
+ * GOOGLE LOGIN ERROR MESSAGES
+ *
+ * Google sign-in uses different errors from typed email/password login.
+ * Keeping a separate mapper prevents Google errors from showing messages
+ * such as "Incorrect email or password."
+ */
+const getFriendlyGoogleAuthError = (error) => {
+  switch (error.code) {
+    case "auth/popup-closed-by-user":
+      return "Google sign-in was closed before it finished. Please try again.";
+
+    case "auth/popup-blocked":
+      return "The Google sign-in popup was blocked by your browser. Please allow popups and try again.";
+
+    case "auth/cancelled-popup-request":
+      return "Another Google sign-in request is already open. Please finish or close it first.";
+
+    case "auth/account-exists-with-different-credential":
+      return "This email is already registered using another sign-in method. Please log in using that method first.";
+
+    case "auth/operation-not-allowed":
+      return "Google sign-in is currently disabled. Please contact the administrator.";
+
+    case "auth/unauthorized-domain":
+      return "Google sign-in is not authorized for this website domain.";
+
+    case "auth/network-request-failed":
+      return "Network error. Please check your connection and try again.";
+
+    case "auth/invalid-credential":
+      return "Google could not verify this sign-in. Please choose the account again.";
+
+    default:
+      return "Google sign-in could not be completed. Please try again.";
   }
 };
 
@@ -48,52 +93,57 @@ function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Check account status from Firestore
+  // Read the authenticated user's Firestore profile.
+  // Firestore errors are allowed to reach the login catch block instead of
+  // being incorrectly reported as a missing profile.
   const checkAccountStatus = async (userId) => {
-    try {
-      const userDocRef = doc(db, "users", userId);
-      const userDocSnap = await getDoc(userDocRef);
-      
-      if (!userDocSnap.exists()) {
-        return { exists: false, status: null, role: null };
-      }
-      
-      const data = userDocSnap.data();
-      return { 
-        exists: true, 
-        status: data.status || 'pending', // default to pending if not set
-        role: data.role || 'resident'
-      };
-    } catch (error) {
-      console.error("Error checking account status:", error);
-      return { exists: false, status: null, role: null, error: error.message };
+    const userDocRef = doc(db, "users", userId);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (!userDocSnap.exists()) {
+      return { exists: false, status: null, role: null };
     }
+
+    const data = userDocSnap.data();
+
+    return {
+      exists: true,
+      status: String(data.status || "pending").toLowerCase(),
+      role: String(data.role || "resident").toLowerCase(),
+    };
   };
 
-  // Route user based on profile with pending check
+  // Route only active accounts to the correct dashboard.
   const routeUserByProfile = async (userId) => {
     const { exists, status, role } = await checkAccountStatus(userId);
-    
+
     if (!exists) {
-      return { success: false, reason: 'no_profile' };
+      return { success: false, reason: "no_profile" };
     }
-    
-    // Check if account is pending
-    if (status === 'pending') {
-      return { success: false, reason: 'pending' };
+
+    if (status === "pending") {
+      return { success: false, reason: "pending" };
     }
-    
-    // Route based on role
-    if (role === 'admin') {
-      navigate("/admin-dashboard");
-      return { success: true, role: 'admin' };
-    } else if (role === 'resident') {
-      navigate("/resident-home");
-      return { success: true, role: 'resident' };
+
+    if (status === "rejected") {
+      return { success: false, reason: "rejected" };
     }
-    
-    // Invalid role
-    return { success: false, reason: 'invalid_role' };
+
+    if (status !== "active") {
+      return { success: false, reason: "inactive" };
+    }
+
+    if (role === "admin") {
+      navigate("/admin-dashboard", { replace: true });
+      return { success: true, role: "admin" };
+    }
+
+    if (role === "resident") {
+      navigate("/resident-home", { replace: true });
+      return { success: true, role: "resident" };
+    }
+
+    return { success: false, reason: "invalid_role" };
   };
 
   // Validate form
@@ -153,26 +203,77 @@ function Login() {
         password
       );
 
-      const { success, reason } = await routeUserByProfile(userCredential.user.uid);
+      const signedInUser = userCredential.user;
+
+      /*
+       * Password signup requires email ownership verification before
+       * Firestore status and role checks are allowed to continue.
+       */
+      await signedInUser.reload();
+
+      if (!signedInUser.emailVerified) {
+        let verificationEmailSent = true;
+
+        try {
+          await sendEmailVerification(signedInUser);
+        } catch (verificationError) {
+          verificationEmailSent = false;
+          console.error(
+            "Could not resend verification email:",
+            verificationError
+          );
+        }
+
+        await signOut(auth);
+
+        setSubmitError(
+          verificationEmailSent
+            ? "Your email is not verified yet. We sent another verification link. Check your inbox and spam folder before logging in again."
+            : "Your email is not verified yet. We could not send another link right now. Check the verification email already sent during signup or try again later."
+        );
+        return;
+      }
+
+      const { success, reason } = await routeUserByProfile(signedInUser.uid);
       
       if (!success) {
         // Immediately sign out if profile check fails
         await signOut(auth);
         
         // Set appropriate error message
-        if (reason === 'pending') {
+        if (reason === "pending") {
           setSubmitError(
             "Your account is pending approval. Please wait for admin verification before logging in."
           );
-        } else if (reason === 'no_profile') {
-          setSubmitError("User profile not found in our records. Please contact support.");
+        } else if (reason === "rejected") {
+          setSubmitError(
+            "Your registration was not approved. Please contact the HOA office."
+          );
+        } else if (reason === "inactive") {
+          setSubmitError(
+            "Your account is currently inactive. Please contact the administrator."
+          );
+        } else if (reason === "no_profile") {
+          setSubmitError(
+            "User profile not found in our records. Please contact support."
+          );
         } else {
-          setSubmitError("Unable to access this account. Please contact support.");
+          setSubmitError(
+            "Unable to access this account because its role is invalid. Please contact support."
+          );
         }
       }
     } catch (error) {
       console.error("Login error:", error);
-      setSubmitError(getFriendlyAuthError(error));
+
+      if (error.code === "permission-denied") {
+        await signOut(auth);
+        setSubmitError(
+          "Your account was authenticated, but Firestore denied access to your profile. Please check the published Firestore read rules."
+        );
+      } else {
+        setSubmitError(getFriendlyAuthError(error));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -185,7 +286,23 @@ function Login() {
 
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const { success, reason } = await routeUserByProfile(result.user.uid);
+      const googleUser = result.user;
+
+      const isVerifiedGoogleAccount =
+        googleUser.emailVerified &&
+        googleUser.providerData.some(
+          (provider) => provider.providerId === "google.com"
+        );
+
+      if (!isVerifiedGoogleAccount || !googleUser.email) {
+        await signOut(auth);
+        setSubmitError(
+          "Google could not verify this account or email address. Please choose a valid Google account."
+        );
+        return;
+      }
+
+      const { success, reason } = await routeUserByProfile(googleUser.uid);
 
       if (!success) {
         // Immediately sign out
@@ -199,23 +316,48 @@ function Login() {
         }
         
         // Set appropriate error message
-        if (reason === 'pending') {
+        if (reason === "pending") {
           setSubmitError(
             "Your account is pending approval. Please wait for admin verification before logging in."
           );
-        } else if (reason === 'no_profile') {
+        } else if (reason === "rejected") {
           setSubmitError(
-            "This Google account isn't linked to a registered account yet. Please sign up first or contact support."
+            "Your registration was not approved. Please contact the HOA office."
+          );
+        } else if (reason === "inactive") {
+          setSubmitError(
+            "Your account is currently inactive. Please contact the administrator."
+          );
+        } else if (reason === "no_profile") {
+          setSubmitError(
+            "This Google account has not completed registration yet. Go to Sign Up and choose Sign Up with Google."
           );
         } else {
           setSubmitError(
-            "Unable to access this account. Please contact support."
+            "Unable to access this account because its role is invalid. Please contact support."
           );
         }
       }
     } catch (error) {
-      console.error("Google login error:", error);
-      setSubmitError(getFriendlyAuthError(error));
+      console.error("Google login error:", {
+        code: error.code,
+        message: error.message,
+        email: error.customData?.email,
+      });
+
+      if (
+        error.code === "permission-denied" ||
+        error.code === "firestore/permission-denied"
+      ) {
+        await signOut(auth);
+        setSubmitError(
+          "Google authentication succeeded, but Firestore denied access to the user profile. Please check the published Firestore read rules."
+        );
+      } else {
+        // Google errors now use their own messages instead of
+        // the email/password error translator.
+        setSubmitError(getFriendlyGoogleAuthError(error));
+      }
     } finally {
       setIsGoogleLoading(false);
     }

@@ -1,13 +1,51 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, User, Phone, MapPin, Lock, Eye, EyeOff, Calendar, ShieldCheck, CreditCard, Image, Users, Upload, FileText, AlertCircle, X } from "lucide-react";
-import { auth, db, storage } from "../../firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { initializeApp, getApps } from "firebase/app";
+import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    deleteUser,
+    signOut,
+    signInWithPopup,
+    GoogleAuthProvider,
+    sendEmailVerification,
+    EmailAuthProvider,
+    linkWithCredential,
+} from "firebase/auth";
+import { getFirestore, doc, getDoc, writeBatch } from "firebase/firestore";
 import signUpImage from "../../assets/signUp.jpg";
 import { uploadImage } from "../../services/cloudinary"; //add this to link cloudinary.js
 import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
+
+const signupFirebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+const signupApp =
+    getApps().find((app) => app.name === "signupApp") ||
+    initializeApp(signupFirebaseConfig, "signupApp");
+
+const signupAuth = getAuth(signupApp);
+const signupDb = getFirestore(signupApp);
+
+/*
+ * GOOGLE SIGN-UP PROVIDER
+ *
+ * Google verifies the user's identity and prefills their email/name.
+ * The resident must still create a Subdiverse password and complete
+ * all HOA registration requirements. Google and password credentials
+ * are linked to one Firebase UID.
+ */
+const signupGoogleProvider = new GoogleAuthProvider();
+signupGoogleProvider.setCustomParameters({
+    prompt: "select_account",
+});
 
 const SuccessModal = ({ isOpen, message, onClose }) => {
     if (!isOpen) return null;
@@ -67,6 +105,17 @@ function SignUp() {
     const [idFiles, setIdFiles] = useState([]); // array of up to 2 files: [front, back]
     const [isDraggingFile, setIsDraggingFile] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+    /*
+     * signupMethod:
+     * - "password" = normal email/password registration
+     * - "google"   = Google verified the email; a password will also be
+     *                linked so the resident can use either login method
+     */
+    const [signupMethod, setSignupMethod] = useState("password");
+    const [googleSignupAccount, setGoogleSignupAccount] = useState(null);
+
     const [passwordStrength, setPasswordStrength] = useState("Weak");
     const [passwordScore, setPasswordScore] = useState(0);
 
@@ -305,10 +354,19 @@ function SignUp() {
             }
         }
 
+        /*
+         * Every resident creates a Subdiverse password.
+         *
+         * For normal signup, Firebase creates a password account.
+         * For Google signup, this password is linked to the verified
+         * Google account so both methods share the same UID.
+         */
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
         if (!passwordRegex.test(formData.password)) {
             errors.password = "Must be 8+ characters with an uppercase, lowercase, and number.";
         }
+
         if (formData.password !== formData.confirmPassword) {
             errors.confirmPassword = "Passwords do not match.";
         }
@@ -347,9 +405,187 @@ function SignUp() {
         const errors = validateForm();
         setFieldErrors(errors);
   
-    }, [formData, idFiles, userType]);
+    }, [formData, idFiles, userType, signupMethod]);
 
     const isFormValid = Object.keys(fieldErrors).length === 0;
+
+    /*
+     * SIGN UP WITH GOOGLE
+     *
+     * This authenticates the Google account but DOES NOT submit
+     * the resident registration yet. It prefills identity fields,
+     * then the resident creates a password and completes the form.
+     */
+    const handleGoogleSignup = async () => {
+        setSubmitError("");
+        setIsGoogleLoading(true);
+
+        try {
+            const result = await signInWithPopup(
+                signupAuth,
+                signupGoogleProvider
+            );
+
+            const googleUser = result.user;
+
+            /*
+             * Confirm that Firebase authenticated this user through Google
+             * and that Google supplied a verified email address.
+             */
+            const isVerifiedGoogleAccount =
+                googleUser.emailVerified &&
+                googleUser.providerData.some(
+                    (provider) =>
+                        provider.providerId === "google.com"
+                );
+
+            if (
+                !isVerifiedGoogleAccount ||
+                !googleUser.email
+            ) {
+                await signOut(signupAuth);
+                setSubmitError(
+                    "Google could not verify this account or email address. Please choose a valid Google account."
+                );
+                return;
+            }
+
+            /*
+             * Do not let an already registered account create another
+             * Firestore profile using the same Firebase UID.
+             */
+            const existingUserSnap = await getDoc(
+                doc(signupDb, "users", googleUser.uid)
+            );
+
+            if (existingUserSnap.exists()) {
+                await signOut(signupAuth);
+
+                setSubmitError(
+                    "This Google account is already registered. Please go to Login and choose Continue with Google."
+                );
+                return;
+            }
+
+            const displayNameParts = String(
+                googleUser.displayName || ""
+            )
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean);
+
+            const suggestedFirstName =
+                displayNameParts[0] || "";
+
+            const suggestedLastName =
+                displayNameParts.length > 1
+                    ? displayNameParts
+                          .slice(1)
+                          .join(" ")
+                    : "";
+
+            setSignupMethod("google");
+
+            setGoogleSignupAccount({
+                uid: googleUser.uid,
+                email: googleUser.email || "",
+                displayName: googleUser.displayName || "",
+            });
+
+            /*
+             * Prefill only empty name fields so the resident can still
+             * correct how their name should appear in HOA records.
+             */
+            setFormData((prev) => ({
+                ...prev,
+                email: googleUser.email || prev.email,
+                firstName:
+                    prev.firstName ||
+                    suggestedFirstName,
+                lastName:
+                    prev.lastName ||
+                    suggestedLastName,
+                password: "",
+                confirmPassword: "",
+            }));
+
+            setTouched((prev) => ({
+                ...prev,
+                email: true,
+            }));
+        } catch (error) {
+            console.error("Google sign-up error:", {
+                code: error.code,
+                message: error.message,
+                email: error.customData?.email,
+            });
+
+            if (
+                error.code ===
+                "auth/popup-closed-by-user"
+            ) {
+                setSubmitError(
+                    "Google sign-up was closed before it finished."
+                );
+            } else if (
+                error.code === "auth/popup-blocked"
+            ) {
+                setSubmitError(
+                    "The Google sign-up popup was blocked. Please allow popups and try again."
+                );
+            } else if (
+                error.code ===
+                "auth/account-exists-with-different-credential"
+            ) {
+                setSubmitError(
+                    "This email is already registered using email and password. Please log in using that method."
+                );
+            } else if (
+                error.code ===
+                "auth/network-request-failed"
+            ) {
+                setSubmitError(
+                    "Network error. Please check your connection and try again."
+                );
+            } else {
+                setSubmitError(
+                    "Google sign-up could not be completed. Please try again."
+                );
+            }
+        } finally {
+            setIsGoogleLoading(false);
+        }
+    };
+
+    /*
+     * Lets the resident switch back to the normal password signup flow
+     * before submitting their registration.
+     */
+    const handleUsePasswordSignup = async () => {
+        try {
+            if (
+                signupMethod === "google" &&
+                signupAuth.currentUser
+            ) {
+                await signOut(signupAuth);
+            }
+        } catch (error) {
+            console.error(
+                "Could not sign out Google signup account:",
+                error
+            );
+        }
+
+        setSignupMethod("password");
+        setGoogleSignupAccount(null);
+
+        setFormData((prev) => ({
+            ...prev,
+            email: "",
+            password: "",
+            confirmPassword: "",
+        }));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -358,15 +594,17 @@ function SignUp() {
         const errors = validateForm();
 
         if (Object.keys(errors).length > 0) {
-  
             setTouched((prev) => {
                 const all = { ...prev };
-                Object.keys(formData).forEach((k) => {
-                    all[k] = true;
+
+                Object.keys(formData).forEach((key) => {
+                    all[key] = true;
                 });
+
                 all.idFiles = true;
                 return all;
             });
+
             setFieldErrors(errors);
             setShowIncompleteModal(true);
             return;
@@ -374,80 +612,352 @@ function SignUp() {
 
         setIsLoading(true);
 
-        try {
-            const userCredential = await createUserWithEmailAndPassword(
-                auth,
-                formData.email,
-                formData.password
-            );
-            const userId = userCredential.user.uid;
+        let createdUser = null;
+        let profileCreated = false;
+        let failedStep = "creating the Firebase Authentication account";
 
-            let idImageUrls = [];
-            if (idFiles.length > 0) {
-                idImageUrls = await Promise.all(
-                    idFiles.map((file) => uploadImage(file, "authentication/valid-ids")) //cloudinary
-                );
+        try {
+            /*
+             * AUTH METHOD:
+             *
+             * Password signup creates a new password account.
+             * Google signup reuses the verified Google user and links the
+             * resident's Subdiverse password to that same Firebase UID.
+             */
+            if (signupMethod === "google") {
+                if (
+                    !googleSignupAccount ||
+                    !signupAuth.currentUser ||
+                    signupAuth.currentUser.uid !==
+                        googleSignupAccount.uid
+                ) {
+                    throw new Error(
+                        "Your Google sign-up session expired. Please choose your Google account again."
+                    );
+                }
+
+                createdUser = signupAuth.currentUser;
+
+                const registrationEmail = String(
+                    createdUser.email ||
+                    googleSignupAccount.email
+                ).trim();
+
+                const alreadyHasPasswordProvider =
+                    createdUser.providerData.some(
+                        (provider) =>
+                            provider.providerId === "password"
+                    );
+
+                /*
+                 * This check makes retries safe. If an upload or Firestore
+                 * write failed after linking, the next submit will not try
+                 * to link the password provider a second time.
+                 */
+                if (!alreadyHasPasswordProvider) {
+                    failedStep =
+                        "linking the Subdiverse password to the Google account";
+
+                    const passwordCredential =
+                        EmailAuthProvider.credential(
+                            registrationEmail,
+                            formData.password
+                        );
+
+                    const linkedUserCredential =
+                        await linkWithCredential(
+                            createdUser,
+                            passwordCredential
+                        );
+
+                    createdUser =
+                        linkedUserCredential.user;
+
+                    await createdUser.reload();
+                }
+            } else {
+                const userCredential =
+                    await createUserWithEmailAndPassword(
+                        signupAuth,
+                        formData.email.trim(),
+                        formData.password
+                    );
+
+                createdUser = userCredential.user;
             }
 
-            await setDoc(doc(db, "users", userId), {
-                email: formData.email,
+            const userId = createdUser.uid;
+            const registrationEmail = String(
+                createdUser.email ||
+                formData.email
+            ).trim();
+
+            await createdUser.getIdToken(true);
+
+            console.log("Created signup UID:", createdUser.uid);
+            console.log(
+                "Signup Auth current UID:",
+                signupAuth.currentUser?.uid
+            );
+            console.log("Firestore document UID:", userId);
+
+            failedStep = "uploading the valid ID images";
+
+            const idImageUrls = await Promise.all(
+                idFiles.map((file) =>
+                    uploadImage(
+                        file,
+                        "authentication/valid-ids"
+                    )
+                )
+            );
+
+            /*
+             * Refresh once more immediately before the first Firestore write.
+             * This keeps the registration request authenticated.
+             */
+            await createdUser.getIdToken(true);
+
+            console.log(
+                "UID immediately before users write:",
+                signupAuth.currentUser?.uid
+            );
+
+            failedStep = "creating the users and residents documents";
+            console.log("Attempting atomic profile write...");
+
+            /*
+             * Save both documents in one Firestore batch. If either write is
+             * rejected, neither document is created. This prevents partial
+             * registrations such as a users document without a resident record.
+             */
+            const registrationBatch = writeBatch(signupDb);
+            const userDocRef = doc(
+                signupDb,
+                "users",
+                userId
+            );
+            const residentDocRef = doc(
+                signupDb,
+                "residents",
+                userId
+            );
+
+            registrationBatch.set(userDocRef, {
+                email: registrationEmail,
                 role: "resident",
                 status: "pending",
                 residentId: userId,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
             });
 
-            await setDoc(doc(db, "residents", userId), {
-                firstName: formData.firstName,
-                middleName: formData.middleName,
-                lastName: formData.lastName,
+            registrationBatch.set(residentDocRef, {
+                firstName: formData.firstName.trim(),
+                middleName: formData.middleName.trim(),
+                lastName: formData.lastName.trim(),
                 suffix: formData.suffix,
-                contactNumber: `+63${formData.contactNumber}`,
-                emergencyContactNumber: `+63${formData.emergencyContactNumber}`,
-                email: formData.email,
-                block: formData.block,
-                lot: formData.lot,
-                street: formData.street,
-                phase: formData.phase,
+
+                contactNumber:
+                    `+63${formData.contactNumber}`,
+                emergencyContactNumber:
+                    `+63${formData.emergencyContactNumber}`,
+
+                email: registrationEmail,
+
+                block: formData.block.trim(),
+                lot: formData.lot.trim(),
+                street: formData.street.trim(),
+                phase: formData.phase.trim(),
+
                 residentCategory: userType,
 
                 ...(userType === "renter" && {
                     leaseStart: formData.leaseStart,
                     leaseEnd: formData.leaseEnd,
-                    propertyOwnerName: formData.ownerFullName
+                    propertyOwnerName:
+                        formData.ownerFullName.trim(),
                 }),
 
                 ...(userType === "household" && {
-                    homeownerName: formData.homeownerName,
-                    relationshipToHomeowner: formData.relationshipToHomeowner,
-                    otherRelationship: formData.relationshipToHomeowner === "Other" ? formData.otherRelationship : ""
+                    homeownerName:
+                        formData.homeownerName.trim(),
+                    relationshipToHomeowner:
+                        formData.relationshipToHomeowner,
+                    otherRelationship:
+                        formData.relationshipToHomeowner === "Other"
+                            ? formData.otherRelationship.trim()
+                            : "",
                 }),
 
-                idType: formData.idType === "Other" ? formData.otherIdType : formData.idType,
-                idNumber: formData.idNumber,
-                idImageFrontUrl: idImageUrls[0] || "",
-                idImageBackUrl: idImageUrls[1] || "",
+                idType:
+                    formData.idType === "Other"
+                        ? formData.otherIdType.trim()
+                        : formData.idType,
+
+                idNumber: formData.idNumber.trim(),
+
+                idImageFrontUrl:
+                    idImageUrls[0] || "",
+                idImageBackUrl:
+                    idImageUrls[1] || "",
+
                 verificationStatus: "unverified",
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
             });
+
+            await registrationBatch.commit();
+            profileCreated = true;
+
+            console.log(
+                "Users and residents documents successfully created."
+            );
+
+            /*
+             * Normal password signup must prove ownership through an
+             * email-verification link. Google signup is already email-verified,
+             * and its linked password inherits the same verified Firebase user.
+             */
+            let verificationEmailSent = true;
+
+            if (signupMethod === "password") {
+                failedStep = "sending the email verification link";
+
+                try {
+                    await sendEmailVerification(createdUser);
+                    console.log(
+                        "Email verification link sent."
+                    );
+                } catch (verificationError) {
+                    verificationEmailSent = false;
+                    console.error(
+                        "Could not send verification email:",
+                        verificationError
+                    );
+                }
+            }
+
+            failedStep = "signing the pending account out";
+
+            try {
+                await signOut(signupAuth);
+            } catch (signOutError) {
+                console.error(
+                    "Could not sign out after registration:",
+                    signOutError
+                );
+            }
+
+            const successMessage =
+                signupMethod === "google"
+                    ? "Your Google account and Subdiverse password were linked successfully. Your resident registration was submitted for HOA approval. After activation, you can log in using either Continue with Google or your email and password."
+                    : verificationEmailSent
+                        ? "Your resident registration was submitted. We sent a verification link to your email. Verify your email first, then wait for HOA approval before logging in."
+                        : "Your resident registration was submitted, but the verification email could not be sent. Try logging in again to request another verification link, then wait for HOA approval.";
 
             setSuccess({
                 show: true,
-                message:
-                    "Your account has been submitted for admin approval. You'll be able to sign in once your identity and residency have been verified.",
+                message: successMessage,
             });
-
         } catch (error) {
-            console.error("Error during registration process:", error);
+            console.error(
+                `Registration failed while ${failedStep}:`,
+                error
+            );
 
-            if (error.code === "auth/email-already-in-use") {
-                setTouched((prev) => ({ ...prev, email: true }));
+            /*
+             * Remove an incomplete Authentication account so the same email
+             * can be used again after a failed registration.
+             */
+            /*
+             * For password signup, remove the incomplete Auth user so the
+             * resident can retry with the same email.
+             *
+             * For Google signup, keep the authenticated linked account so
+             * the resident can correct the form/upload problem and resubmit.
+             */
+            if (
+                signupMethod === "password" &&
+                !profileCreated &&
+                createdUser &&
+                signupAuth.currentUser?.uid ===
+                    createdUser.uid
+            ) {
+                try {
+                    await deleteUser(createdUser);
+
+                    console.log(
+                        "Incomplete password signup account removed."
+                    );
+                } catch (deleteError) {
+                    console.error(
+                        "Could not remove incomplete signup account:",
+                        deleteError
+                    );
+                }
+            }
+
+            if (
+                error.code ===
+                "auth/email-already-in-use"
+            ) {
+                setTouched((prev) => ({
+                    ...prev,
+                    email: true,
+                }));
+
                 setFieldErrors((prev) => ({
                     ...prev,
-                    email: "This email address is already in use. Please try a different email or log in.",
+                    email:
+                        "This email address is already in use. Please try a different email or log in.",
                 }));
+
+                setSubmitError(
+                    "An account with this email already exists."
+                );
+            } else if (
+                error.code === "auth/invalid-email"
+            ) {
+                setSubmitError(
+                    "The email address is invalid."
+                );
+            } else if (
+                error.code === "auth/weak-password"
+            ) {
+                setSubmitError(
+                    "The password does not meet Firebase's requirements."
+                );
+            } else if (
+                error.code ===
+                "auth/provider-already-linked"
+            ) {
+                setSubmitError(
+                    "A password is already linked to this Google account. Please try submitting the registration again."
+                );
+            } else if (
+                error.code ===
+                "auth/credential-already-in-use"
+            ) {
+                setSubmitError(
+                    "This password credential is already connected to another Firebase account. Please use a different Google account or log in using the existing account."
+                );
+            } else if (
+                error.code ===
+                "auth/network-request-failed"
+            ) {
+                setSubmitError(
+                    "Network connection failed. Please check your internet and try again."
+                );
+            } else if (
+                error.code === "permission-denied"
+            ) {
+                setSubmitError(
+                    `Firestore denied the request while ${failedStep}. Check that your published rules allow an authenticated user to create users/{uid} and residents/{uid}.`
+                );
             } else {
-                setSubmitError(error.message);
+                setSubmitError(
+                    error.message ||
+                        `Registration failed while ${failedStep}. Please try again.`
+                );
             }
         } finally {
             setIsLoading(false);
@@ -564,6 +1074,43 @@ function SignUp() {
                         </p>
                     </div>
 
+                    {/* GOOGLE SIGN-UP CHANGE:
+                        Google only prefills identity. The resident must still
+                        complete the full form and submit for HOA approval. */}
+                    <div className="max-w-2xl w-full mb-4 flex-shrink-0">
+                        <button
+                            type="button"
+                            onClick={handleGoogleSignup}
+                            disabled={isGoogleLoading || isLoading}
+                            className={`w-full flex items-center justify-center gap-3 border rounded-full py-3 font-semibold text-sm transition-all duration-200 ${
+                                isGoogleLoading
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 cursor-pointer"
+                            }`}
+                        >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.63h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.8z" />
+                                <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1C3.25 21.3 7.31 24 12 24z" />
+                                <path fill="#FBBC05" d="M5.27 14.3c-.24-.72-.38-1.49-.38-2.3s.14-1.58.38-2.3v-3.1H1.27C.46 8.24 0 10.06 0 12s.46 3.76 1.27 5.4l4-3.1z" />
+                                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.6l4 3.1C6.22 6.86 8.87 4.75 12 4.75z" />
+                            </svg>
+
+                            {isGoogleLoading
+                                ? "Connecting Google..."
+                                : signupMethod === "google"
+                                    ? "Choose a Different Google Account"
+                                    : "Sign Up with Google"}
+                        </button>
+
+                        <div className="flex items-center gap-3 mt-4">
+                            <div className="flex-1 h-px bg-gray-200" />
+                            <span className="text-[11px] text-gray-400 font-medium uppercase">
+                                or complete manually
+                            </span>
+                            <div className="flex-1 h-px bg-gray-200" />
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-3 gap-3 mb-4 max-w-2xl w-full flex-shrink-0">
                         <button
                             type="button"
@@ -606,8 +1153,8 @@ function SignUp() {
                         }}
                     >
 
-                        <style dangerouslySetInnerHTML={{
-                            __html: `
+                        <style>{
+                            `
                                 form::-webkit-scrollbar {
                                     width: 8px;
                                     background: transparent;
@@ -624,7 +1171,7 @@ function SignUp() {
                                     background: #a8a8a8;
                                 }
                             `
-                        }} />
+                        }</style>
 
                         <div className="pt-2">
                             <span className="bg-gray-100 text-primary text-xs font-bold tracking-wider uppercase px-3 py-1.5 rounded">
@@ -709,10 +1256,39 @@ function SignUp() {
                                         <label htmlFor="email" className="text-xs font-semibold text-gray-600">Email</label>
                                         <div className="relative">
                                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input id="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="example@gmail.com" className={inputClasses("email", "pl-10")} />
+                                            <input
+                                                id="email"
+                                                value={formData.email}
+                                                onChange={handleInputChange}
+                                                type="email"
+                                                placeholder="example@gmail.com"
+                                                readOnly={signupMethod === "google"}
+                                                className={inputClasses(
+                                                    "email",
+                                                    signupMethod === "google"
+                                                        ? "pl-10 bg-gray-100 cursor-not-allowed"
+                                                        : "pl-10"
+                                                )}
+                                            />
                                             <FieldStatusIcon field="email" />
                                         </div>
                                         <FieldError field="email" />
+
+                                        {signupMethod === "google" && googleSignupAccount && (
+                                            <div className="mt-1 flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                                                <p className="text-[11px] font-medium text-green-700">
+                                                    Google account connected. Complete the remaining HOA requirements below.
+                                                </p>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={handleUsePasswordSignup}
+                                                    className="text-[11px] font-bold text-primary hover:underline whitespace-nowrap"
+                                                >
+                                                    Use password instead
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-col gap-1.5">
@@ -900,8 +1476,23 @@ function SignUp() {
                                         Account Security
                                     </h3>
 
+                                    {signupMethod === "google" && (
+                                        <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+                                            <p className="text-sm font-semibold text-green-800">
+                                                Google account verified
+                                            </p>
+                                            <p className="text-xs text-green-700 mt-1">
+                                                Create a Subdiverse password below. After HOA approval, you can log in using either Google or your email and this password.
+                                            </p>
+                                        </div>
+                                    )}
+
                                     <div className="flex flex-col gap-1.5">
-                                        <label htmlFor="password" className="text-xs font-semibold text-gray-600">Password</label>
+                                        <label htmlFor="password" className="text-xs font-semibold text-gray-600">
+                                            {signupMethod === "google"
+                                                ? "Create Subdiverse Password"
+                                                : "Password"}
+                                        </label>
                                         <div className="relative">
                                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                             <input
@@ -912,8 +1503,14 @@ function SignUp() {
                                                 placeholder="Enter at least 8 characters"
                                                 className={inputClasses("password", "pl-10 pr-10")}
                                             />
-                                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
-                                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                            >
+                                                {showPassword
+                                                    ? <EyeOff className="w-4 h-4" />
+                                                    : <Eye className="w-4 h-4" />}
                                             </button>
                                         </div>
                                         <FieldError field="password" />
@@ -921,31 +1518,33 @@ function SignUp() {
                                         <div className="mt-2">
                                             <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
                                                 <div
-                                                    className={`h-full transition-all duration-300 ${passwordStrength === "Weak"
-                                                        ? "bg-red-500"
-                                                        : passwordStrength === "Medium"
-                                                            ? "bg-yellow-500"
-                                                            : "bg-green-500"
-                                                        }`}
+                                                    className={`h-full transition-all duration-300 ${
+                                                        passwordStrength === "Weak"
+                                                            ? "bg-red-500"
+                                                            : passwordStrength === "Medium"
+                                                                ? "bg-yellow-500"
+                                                                : "bg-green-500"
+                                                    }`}
                                                     style={{ width: `${passwordScore}%` }}
                                                 />
                                             </div>
 
                                             <p
-                                                className={`text-xs mt-1 font-medium ${passwordStrength === "Weak"
-                                                    ? "text-red-500"
-                                                    : passwordStrength === "Medium"
-                                                        ? "text-yellow-600"
-                                                        : "text-green-600"
-                                                    }`}
+                                                className={`text-xs mt-1 font-medium ${
+                                                    passwordStrength === "Weak"
+                                                        ? "text-red-500"
+                                                        : passwordStrength === "Medium"
+                                                            ? "text-yellow-600"
+                                                            : "text-green-600"
+                                                }`}
                                             >
                                                 Password Strength: {passwordStrength}
                                             </p>
                                         </div>
 
                                         <div className="text-xs mt-2 space-y-1">
-                                            <p className={formData.password.length >= 6 ? "text-green-600" : "text-gray-500"}>
-                                                ✓ At least 6 characters
+                                            <p className={formData.password.length >= 8 ? "text-green-600" : "text-gray-500"}>
+                                                ✓ At least 8 characters
                                             </p>
                                             <p className={/[A-Z]/.test(formData.password) ? "text-green-600" : "text-gray-500"}>
                                                 ✓ One uppercase letter
@@ -963,7 +1562,9 @@ function SignUp() {
                                     </div>
 
                                     <div className="flex flex-col gap-1.5">
-                                        <label htmlFor="confirmPassword" className="text-xs font-semibold text-gray-600">Confirm Password</label>
+                                        <label htmlFor="confirmPassword" className="text-xs font-semibold text-gray-600">
+                                            Confirm Password
+                                        </label>
                                         <div className="relative">
                                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                             <input
@@ -974,10 +1575,17 @@ function SignUp() {
                                                 placeholder="Repeat password"
                                                 className={inputClasses("confirmPassword", "pl-10 pr-10")}
                                             />
-                                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
-                                                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                            >
+                                                {showConfirmPassword
+                                                    ? <EyeOff className="w-4 h-4" />
+                                                    : <Eye className="w-4 h-4" />}
                                             </button>
                                         </div>
+
                                         {touched.confirmPassword && fieldErrors.confirmPassword ? (
                                             <FieldError field="confirmPassword" />
                                         ) : formData.confirmPassword.length > 0 ? (
@@ -993,7 +1601,6 @@ function SignUp() {
                                         ) : null}
                                     </div>
                                 </div>
-
 
                                 <div className="space-y-4 pt-2 border-t border-gray-100">
                                     <h3 className="text-xs font-bold tracking-wider text-secondary uppercase">
@@ -1132,7 +1739,7 @@ function SignUp() {
                                 <div className="pt-2 pb-6">
                                     <button
                                         type="submit"
-                                        disabled={isLoading || !isFormValid}
+                                        disabled={isLoading}
                                         className={`w-full font-semibold py-3 rounded-full shadow-sm transition-all duration-200 ${isLoading
                                             ? "bg-gray-400 text-white cursor-not-allowed"
                                             : !isFormValid
@@ -1140,7 +1747,11 @@ function SignUp() {
                                                 : "bg-primary text-white hover:brightness-110 cursor-pointer"
                                             }`}
                                     >
-                                        {isLoading ? "Registering..." : "Register"}
+                                        {isLoading
+                                            ? "Registering..."
+                                            : signupMethod === "google"
+                                                ? "Link Accounts & Submit Registration"
+                                                : "Register"}
                                     </button>
 
                                     <p className="text-center text-[11px] text-gray-500 mt-3">

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, File, Trash2, RefreshCw, Car, CreditCard, MapPin, User, Calendar as CalendarIcon, DollarSign, Info, Map, ChevronLeft, ChevronRight } from 'lucide-react';
-import { auth, db, storage } from '../../firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore';
+import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, File, Trash2, RefreshCw, Car, CreditCard, MapPin, User, Calendar as CalendarIcon, DollarSign, Map, ChevronLeft, ChevronRight } from 'lucide-react';
+import { auth, db } from '../../firebase';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, getDoc, doc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { uploadImage } from "../../services/cloudinary";
 import heroImg from "../../assets/parking_bg.JPEG";
@@ -17,7 +17,6 @@ const CarIcon = ({ className, color = "currentColor", windowColor = "white" }) =
 );
 
 export default function ParkingReservation() {
-  // ALL YOUR EXISTING STATE AND LOGIC REMAINS EXACTLY THE SAME
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,13 +42,10 @@ export default function ParkingReservation() {
     
     for (let i = 1; i <= totalSpots; i++) {
       const id = `SPOT-${String(i).padStart(2, '0')}`;
-      const isOccupied = 
-        i === 3 || i === 7 || i === 12 || i === 15 || 
-        i === 22 || i === 28 || i === 35 || i === 42 || i === 48;
       spots.push({
         id,
         number: i,
-        status: isOccupied ? 'occupied' : 'available'
+        status: 'available' 
       });
     }
     return spots;
@@ -68,13 +64,16 @@ export default function ParkingReservation() {
 
   const monthlyRate = 1000;
 
-  // ALL YOUR EXISTING useEffect HOOKS
+  // ============================================================
+  // FETCH USER DATA
+  // ============================================================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
         await fetchUserData(currentUser.uid);
         await fetchUserReservations(currentUser.uid);
+        await fetchAvailability();
       } else {
         setUser(null);
         setUserData(null);
@@ -92,7 +91,6 @@ export default function ParkingReservation() {
     }
   }, [user, userData]);
 
-  // ALL YOUR EXISTING FUNCTIONS (keep them exactly as they are)
   const fetchUserData = async (uid) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', uid));
@@ -113,9 +111,12 @@ export default function ParkingReservation() {
     }
   };
 
+  // ============================================================
+  // FETCH USER RESERVATIONS
+  // ============================================================
   const fetchUserReservations = async (uid) => {
     if (!uid) {
-      console.log(' No UID provided');
+      console.log('No UID provided');
       return;
     }
     
@@ -124,9 +125,6 @@ export default function ParkingReservation() {
     
     try {
       const reservationsRef = collection(db, 'ParkingReservation');
-      // Every reservation doc carries a userId field, so this query already
-      // groups all of a user's reservations together — no separate
-      // subcollection or grouping structure is needed in Firestore.
       const q = query(
         reservationsRef,
         where('userId', '==', uid)
@@ -157,6 +155,101 @@ export default function ParkingReservation() {
     }
   };
 
+  // ============================================================
+  // FETCH AVAILABILITY
+  // ============================================================
+  const fetchAvailability = async () => {
+    try {
+      console.log('🔄 Fetching parking availability...');
+      
+      const availabilityRef = collection(db, 'ParkingAvailability');
+      const querySnapshot = await getDocs(availabilityRef);
+      
+      const availabilityMap = {};
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        availabilityMap[data.spotId] = {
+          isOccupied: data.isOccupied || false,
+          isPending: data.isPending || false,
+        };
+      });
+      
+      setSpots(prevSpots => 
+        prevSpots.map(spot => {
+          const availability = availabilityMap[spot.id];
+          if (!availability) return spot;
+          
+          let status = 'available';
+          if (availability.isPending) {
+            status = 'pending';
+          } else if (availability.isOccupied) {
+            status = 'occupied';
+          }
+          
+          return {
+            ...spot,
+            status: status,
+          };
+        })
+      );
+      
+      console.log('✅ Availability fetched successfully');
+      
+    } catch (error) {
+      console.error('❌ Error fetching availability:', error);
+    }
+  };
+
+  // Real-time listener for availability updates
+  useEffect(() => {
+    if (!user) return;
+    
+    console.log('👂 Setting up real-time availability listener...');
+    
+    const availabilityRef = collection(db, 'ParkingAvailability');
+    const unsubscribe = onSnapshot(availabilityRef, (snapshot) => {
+      const availabilityMap = {};
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        availabilityMap[data.spotId] = {
+          isOccupied: data.isOccupied || false,
+          isPending: data.isPending || false,
+        };
+      });
+      
+      setSpots(prevSpots => 
+        prevSpots.map(spot => {
+          const availability = availabilityMap[spot.id];
+          if (!availability) return spot;
+          
+          let status = 'available';
+          if (availability.isPending) {
+            status = 'pending';
+          } else if (availability.isOccupied) {
+            status = 'occupied';
+          }
+          
+          return {
+            ...spot,
+            status: status,
+          };
+        })
+      );
+      
+      console.log('🔄 Availability updated in real-time');
+    }, (error) => {
+      console.error('❌ Error listening to availability:', error);
+    });
+    
+    return () => {
+      console.log('👋 Unsubscribing from availability listener');
+      unsubscribe();
+    };
+  }, [user]);
+
+  // ============================================================
+  // CHECK RESERVATION STATUS
+  // ============================================================
   const checkPendingReservation = async () => {
     if (!user) return false;
     
@@ -175,39 +268,36 @@ export default function ParkingReservation() {
     }
   };
 
-  const checkSpotAvailability = async (spotId, startDate, endDate) => {
+  const checkSpotAvailability = async (spotId) => {
     try {
-      const reservationsRef = collection(db, 'ParkingReservation');
-      const q = query(
-        reservationsRef,
-        where('spotId', '==', spotId),
-        where('status', 'in', ['pending', 'confirmed'])
-      );
-      const querySnapshot = await getDocs(q);
+      const availabilityRef = doc(db, 'ParkingAvailability', spotId);
+      const availabilitySnap = await getDoc(availabilityRef);
       
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      if (!availabilitySnap.exists()) {
+        console.error('Spot not found in availability collection');
+        return false;
+      }
       
-      let isAvailable = true;
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const existingStart = data.startDate.toDate ? data.startDate.toDate() : new Date(data.startDate);
-        const existingEnd = data.endDate.toDate ? data.endDate.toDate() : new Date(data.endDate);
-        
-        if (start < existingEnd && end > existingStart) {
-          isAvailable = false;
-        }
-      });
+      const availability = availabilitySnap.data();
       
-      return isAvailable;
+      if (availability.isOccupied || availability.isPending) {
+        console.log(`Spot ${spotId} is not available (occupied: ${availability.isOccupied}, pending: ${availability.isPending})`);
+        return false;
+      }
+      
+      console.log(`✅ Spot ${spotId} is available!`);
+      return true;
+      
     } catch (error) {
       console.error('Error checking availability:', error);
       return false;
     }
   };
 
+  // ============================================================
+  // HANDLE INPUT DETAILS
+  // ============================================================
   const handleInputDetails = async () => {
-
     if (!selectedId) {
       alert('Please select a parking spot first.');
       return;
@@ -224,7 +314,7 @@ export default function ParkingReservation() {
       return;
     }
 
-    const isAvailable = await checkSpotAvailability(selectedId, startDate, endDate);
+    const isAvailable = await checkSpotAvailability(selectedId);
     if (!isAvailable) {
       alert('This spot is not available for the selected dates. Please choose another spot or date.');
       return;
@@ -238,6 +328,9 @@ export default function ParkingReservation() {
     setShowModal(true);
   };
 
+  // ============================================================
+  // FILE HANDLING
+  // ============================================================
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -276,6 +369,9 @@ export default function ParkingReservation() {
     }
   };
 
+  // ============================================================
+  // SUBMIT RESERVATION - FIXED!
+  // ============================================================
   const handleSubmitReservation = async () => {
     if (!user || !userData) return;
 
@@ -296,6 +392,10 @@ export default function ParkingReservation() {
         console.log(uploadedImage);
       }
 
+      // Calculate months (30 days = 1 month)
+      const monthsRequested = 1; // Currently only 1 month at a time
+      const totalMonths = 1;
+
       const reservationData = {
         userId: user.uid,
         residentId: userData.residentId || "",
@@ -303,9 +403,11 @@ export default function ParkingReservation() {
         spotNumber: spots.find((s) => s.id === selectedId)?.number || 0,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        monthlyRate,
-        totalAmount,
-        paymentType,
+        monthsRequested: monthsRequested,    // ✅ REQUIRED by rules
+        totalMonths: totalMonths,            // ✅ REQUIRED by rules
+        monthlyRate: monthlyRate,
+        totalAmount: totalAmount,
+        paymentStatus: "pending",            // ✅ FIXED: Changed from paymentType
         status: "pending",
         createdAt: serverTimestamp(),
         residentInfo: {
@@ -353,7 +455,7 @@ export default function ParkingReservation() {
       }, 5000);
 
     } catch (error) {
-      console.error(error);
+      console.error('❌ Error submitting reservation:', error);
       setReservationError("Failed to submit reservation. Please try again.");
     } finally {
       setSubmitting(false);
@@ -363,9 +465,13 @@ export default function ParkingReservation() {
   const handleRefreshStatus = async () => {
     if (user) {
       await fetchUserReservations(user.uid);
+      await fetchAvailability();
     }
   };
 
+  // ============================================================
+  // DATE CALCULATIONS
+  // ============================================================
   useMemo(() => {
     if (!startDate) {
       setEndDate(null);
@@ -376,14 +482,11 @@ export default function ParkingReservation() {
     setEndDate(date);
   }, [startDate]);
 
-  const totalDays = useMemo(() => {
-    if (!startDate || !endDate) return 0;
-    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 0;
-  }, [startDate, endDate]);
-
   const totalAmount = monthlyRate;
 
+  // ============================================================
+  // PARKING GRID
+  // ============================================================
   const getCurrentPageSpots = useMemo(() => {
     const startIndex = (currentPage - 1) * SPOTS_PER_PAGE;
     const endIndex = startIndex + SPOTS_PER_PAGE;
@@ -394,7 +497,7 @@ export default function ParkingReservation() {
 
   const handleSpotClick = (id) => {
     const spot = spots.find(s => s.id === id);
-    if (!spot || spot.status === 'occupied') return;
+    if (!spot || spot.status === 'occupied' || spot.status === 'pending') return;
 
     const updated = spots.map(s => {
       if (s.id === id) {
@@ -411,12 +514,14 @@ export default function ParkingReservation() {
   const getSpotStyles = (status) => {
     switch (status) {
       case 'occupied':
-        return { color: '#FF7043', borderClass: 'border-red-500 border-2' };
+        return { color: '#FF7043', borderClass: 'border-red-500 border-2', bgClass: 'bg-red-50' };
+      case 'pending':
+        return { color: '#FF9800', borderClass: 'border-orange-400 border-2', bgClass: 'bg-orange-50' };
       case 'selected':
-        return { color: ' #FFB300', borderClass: 'border-secondary border-2' };
+        return { color: '#FFB300', borderClass: 'border-secondary border-2', bgClass: 'bg-yellow-50' };
       case 'available':
       default:
-        return { color: '#1B5E20', borderClass: 'border-gray-300 border-2' };
+        return { color: '#1B5E20', borderClass: 'border-gray-300 border-2', bgClass: 'bg-gray-50' };
     }
   };
 
@@ -475,8 +580,9 @@ export default function ParkingReservation() {
     return pages;
   };
 
-  // Renders a single reservation as a status card. Reused for both the
-  // active list and the collapsible "past" (rejected) list.
+  // ============================================================
+  // RENDER RESERVATION CARD
+  // ============================================================
   const renderReservationCard = (reservation) => {
     const { id, status, spotId, rejectionReason, startDate: rStart, endDate: rEnd, totalAmount: rAmount } = reservation;
 
@@ -554,6 +660,9 @@ export default function ParkingReservation() {
     }
   };
 
+  // ============================================================
+  // RENDER STATUS MESSAGE
+  // ============================================================
   const renderStatusMessage = () => {
     if (loadingStatus) {
       return (
@@ -604,6 +713,9 @@ export default function ParkingReservation() {
     );
   };
 
+  // ============================================================
+  // LOADING
+  // ============================================================
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -615,7 +727,9 @@ export default function ParkingReservation() {
     );
   }
 
-  // ENHANCED UI WITH CLEAN, MODERN DESIGN
+  // ============================================================
+  // MAIN RENDER
+  // ============================================================
   return (
     <div className="min-h-screen bg-gray-50 font-sans animate-page-in">
       {/* Success Toast */}
@@ -636,21 +750,21 @@ export default function ParkingReservation() {
         </div>
       )}
 
-      {/* HERO with nav + background image */}
+      {/* HERO */}
       <div className="relative w-full h-[420px] overflow-hidden">
         <img src={heroImg} alt="Car park" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/50" />
-
-         <div className="absolute top-0 left-0 w-full h-20 bg-white z-10"></div>
+        <div className="absolute top-0 left-0 w-full h-20 bg-white z-10" />
 
         <div className="relative z-10 flex flex-col items-center justify-center text-center px-4" style={{ height: 'calc(100% - 88px)' }}>
-          <h1 className=" mt-20 text-5xl sm:text-6xl font-extrabold text-white tracking-tight">Parking Reservation</h1>
-           <p className=" text-[var(--color-accent)] text-lg md:text-xl font-semibold tracking-wider block mb-1"> <span className="text-secondary">
-                        WWHS </span> - Reserve a slot for your car parking space! </p>
+          <h1 className="mt-20 text-5xl sm:text-6xl font-extrabold text-white tracking-tight">Parking Reservation</h1>
+          <p className="text-[var(--color-accent)] text-lg md:text-xl font-semibold tracking-wider block mb-1">
+            <span className="text-secondary">WWHS</span> - Reserve a slot for your car parking space!
+          </p>
         </div>
       </div>
 
-      {/* Booking bar - overlaps hero bottom edge. This is now the single reservation form. */}
+      {/* Booking Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-5">
           <div className="flex flex-col lg:flex-row gap-3">
@@ -663,8 +777,10 @@ export default function ParkingReservation() {
                 <p className="text-sm font-semibold text-gray-900">Parking Area</p>
               </div>
             </div>
-            <button    onClick={() => document.getElementById('parking-space-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="lg:w-40 border-2 border-gray-900 rounded-xl text-sm font-semibold text-gray-900 hover:bg-gray-900 hover:text-white transition-all duration-200 ease-in-out active:scale-95 py-2.5">
+            <button
+              onClick={() => document.getElementById('parking-space-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="lg:w-40 border-2 border-gray-900 rounded-xl text-sm font-semibold text-gray-900 hover:bg-gray-900 hover:text-white transition-all duration-200 ease-in-out active:scale-95 py-2.5"
+            >
               Reserve a slot
             </button>
           </div>
@@ -726,14 +842,11 @@ export default function ParkingReservation() {
         </div>
       </div>
 
+      {/* Parking Grid + Status */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-16">
-
-        {/* Parking Map + Reservation Status, side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
           {/* Parking Map */}
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            {/* Header */}
             <div className="px-6 py-5 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
@@ -749,97 +862,109 @@ export default function ParkingReservation() {
               </div>
             </div>
 
-            {/* Parking Grid */}
             <div className="p-6" id="parking-space-container">
-                  <div className="grid grid-cols-5 gap-3 md:gap-4">
-                    {getCurrentPageSpots.map((spot) => {
-                      const { color, borderClass } = getSpotStyles(spot.status);
-                      let windowColor = '#F3F4F6';
-                      if (spot.status === 'selected') windowColor = '#DBEAFE';
-                      else if (spot.status === 'occupied') windowColor = '#FEE2E2';
-                      
-                      return (
-                        <div 
-                          key={spot.id} 
-                          className={`flex flex-col items-center gap-1.5 cursor-pointer transition-all duration-200 ease-in-out ${
-                            spot.status !== 'occupied' ? 'hover:scale-105 active:scale-90' : 'opacity-60 cursor-not-allowed'
-                          }`}
-                          onClick={() => handleSpotClick(spot.id)}
-                        >
-                          <div className={`w-full aspect-square max-w-[80px] md:max-w-[90px] rounded-xl flex items-center justify-center p-1.5 transition-all ${borderClass} ${
-                            spot.status === 'selected' ? ' shadow-md shadow-orange-100' : 
-                            spot.status === 'occupied' ? 'bg-red-50' : 'bg-gray-50 hover:bg-gray-100'
-                          }`}>
-                            <CarIcon 
-                              className="w-full h-full" 
-                              color={color} 
-                              windowColor={windowColor} 
-                            />
-                          </div>
-                          <span className={`text-xs font-bold ${spot.status === 'occupied' ? 'text-red-600' : 'text-gray-700'}`}>
-                            {spot.number}
-                          </span>
-                          {spot.status === 'occupied' && (
-                            <span className="text-[8px] text-red-500 font-medium">Taken</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Pagination */}
-                  <div className="flex flex-col items-center gap-4 mt-6 pt-6 border-t border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className={`p-2 rounded-lg transition-all duration-200 ease-in-out ${
-                          currentPage === 1
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-100 active:scale-90'
-                        }`}
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                      <div className="flex gap-1">
-                        {renderPageNumbers()}
+              <div className="grid grid-cols-5 gap-3 md:gap-4">
+                {getCurrentPageSpots.map((spot) => {
+                  const { color, borderClass, bgClass } = getSpotStyles(spot.status);
+                  let windowColor = '#F3F4F6';
+                  if (spot.status === 'selected') windowColor = '#DBEAFE';
+                  else if (spot.status === 'occupied') windowColor = '#FEE2E2';
+                  else if (spot.status === 'pending') windowColor = '#FFF3E0';
+                  
+                  return (
+                    <div 
+                      key={spot.id} 
+                      className={`flex flex-col items-center gap-1.5 cursor-pointer transition-all duration-200 ease-in-out ${
+                        spot.status !== 'occupied' && spot.status !== 'pending' 
+                          ? 'hover:scale-105 active:scale-90' 
+                          : 'opacity-60 cursor-not-allowed'
+                      }`}
+                      onClick={() => handleSpotClick(spot.id)}
+                    >
+                      <div className={`w-full aspect-square max-w-[80px] md:max-w-[90px] rounded-xl flex items-center justify-center p-1.5 transition-all ${borderClass} ${bgClass} ${
+                        spot.status === 'selected' ? 'shadow-md shadow-orange-100' : ''
+                      }`}>
+                        <CarIcon 
+                          className="w-full h-full" 
+                          color={color} 
+                          windowColor={windowColor} 
+                        />
                       </div>
-                      <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className={`p-2 rounded-lg transition-all duration-200 ease-in-out ${
-                          currentPage === totalPages
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-100 active:scale-90'
-                        }`}
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
+                      <span className={`text-xs font-bold ${
+                        spot.status === 'occupied' ? 'text-red-600' : 
+                        spot.status === 'pending' ? 'text-orange-600' : 
+                        'text-gray-700'
+                      }`}>
+                        {spot.number}
+                      </span>
+                      {spot.status === 'occupied' && (
+                        <span className="text-[8px] text-red-500 font-medium">Taken</span>
+                      )}
+                      {spot.status === 'pending' && (
+                        <span className="text-[8px] text-orange-500 font-medium">Pending</span>
+                      )}
                     </div>
-                    <div className="text-xs text-gray-400">
-                      Showing {Math.min((currentPage - 1) * SPOTS_PER_PAGE + 1, spots.length)} - {Math.min(currentPage * SPOTS_PER_PAGE, spots.length)} of {spots.length} spots
-                    </div>
-                  </div>
+                  );
+                })}
+              </div>
 
-                  {/* Legend */}
-                  <div className="flex justify-center gap-6 mt-6 pt-6 border-t border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-pending rounded"></div>
-                      <span className="text-xs text-gray-600">Selected</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-approved rounded"></div>
-                      <span className="text-xs text-gray-600">Available</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-rejected rounded"></div>
-                      <span className="text-xs text-gray-600">Occupied</span>
-                    </div>
+              {/* Pagination */}
+              <div className="flex flex-col items-center gap-4 mt-6 pt-6 border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`p-2 rounded-lg transition-all duration-200 ease-in-out ${
+                      currentPage === 1
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-600 hover:bg-gray-100 active:scale-90'
+                    }`}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <div className="flex gap-1">
+                    {renderPageNumbers()}
                   </div>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`p-2 rounded-lg transition-all duration-200 ease-in-out ${
+                      currentPage === totalPages
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-600 hover:bg-gray-100 active:scale-90'
+                    }`}
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
                 </div>
+                <div className="text-xs text-gray-400">
+                  Showing {Math.min((currentPage - 1) * SPOTS_PER_PAGE + 1, spots.length)} - {Math.min(currentPage * SPOTS_PER_PAGE, spots.length)} of {spots.length} spots
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="flex justify-center gap-6 mt-6 pt-6 border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-400 rounded"></div>
+                  <span className="text-xs text-gray-600">Selected</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-500 rounded"></div>
+                  <span className="text-xs text-gray-600">Available</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-orange-400 rounded"></div>
+                  <span className="text-xs text-gray-600">Pending</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-red-500 rounded"></div>
+                  <span className="text-xs text-gray-600">Occupied</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Reservation Status - sidebar beside the grid */}
+          {/* Reservation Status */}
           <div className="lg:col-span-1 lg:sticky lg:top-6">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -877,12 +1002,10 @@ export default function ParkingReservation() {
               })()}
             </div>
           </div>
-
         </div>
-
       </div>
 
-      {/* Modal - Clean Design */}
+      {/* Modal */}
       {showModal && userData && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">

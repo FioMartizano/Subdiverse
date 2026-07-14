@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Bell, ArrowLeft, X, Menu } from "lucide-react";
+import { Bell, ArrowLeft, X, Menu, Settings } from "lucide-react";
 import heroImg from "../assets/hero.png"; /*temporary, for logo*/
 
 import { signOut } from "firebase/auth";
@@ -342,10 +342,19 @@ export default function ResidentNavbar() {
               </button>
 
               {openUser && (
-                <div className="absolute right-0 mt-3 w-40 lg:w-44 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+                <div className="absolute right-0 mt-3 w-48 lg:w-52 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+                  <Link
+                    to="/userSettings"
+                    onClick={() => setOpenUser(false)}
+                    className="flex items-center gap-3 px-4 lg:px-5 py-3 hover-secondary-bg hover:text-white transition text-sm lg:text-base"
+                  >
+                    <Settings size={17} />
+                    User Settings
+                  </Link>
+
                   <button
                     onClick={handleLogout}
-                    className="block w-full text-left px-4 lg:px-5 py-3 hover-secondary-bg hover:text-white transition text-sm lg:text-base"
+                    className="block w-full text-left px-4 lg:px-5 py-3 hover-secondary-bg hover:text-white transition text-sm lg:text-base border-t border-gray-100"
                   >
                     Logout
                   </button>
@@ -597,6 +606,15 @@ export default function ResidentNavbar() {
                 </Link>
 
                 <hr className="my-2" />
+
+                <Link
+                  to="/userSettings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 text-lg font-semibold hover-secondary-text transition-colors py-2"
+                >
+                  <Settings size={20} />
+                  User Settings
+                </Link>
 
                 <button
                   onClick={handleLogout}

@@ -16,6 +16,8 @@ import Contact from "./pages/Guest/Contact";
 import ResidentHomePage from "./pages/Resident/ResidentHomePage";
 import BusinessHub from "./pages/Resident/BusinessHub";
 
+import UserSettings from "./pages/Resident/UserSettings";
+
 /*RESIDENT / OFFICES*/
 import HOA from "./pages/Resident/ResiOffices/HOA";
 
@@ -46,6 +48,7 @@ import BballReservationForm from "./pages/Resident/Reservation/BballReservationF
 
 
 import Community from "./pages/Resident/Community";
+import { Rotate3D } from "lucide-react";
 
 
 
@@ -84,6 +87,8 @@ function AppRoutes() {
         <Route path="/community" element={<Community />} />
 
         <Route path="/businesshub" element={<BusinessHub />} />
+
+        <Route path="/userSettings" element={<UserSettings />} />
 
         {/*RESIDENT / OFFICES*/}
         <Route path="/hoa" element={<HOA />} />

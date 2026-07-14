@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import {Car, Bike, FileText, Upload, BadgeCheck, LoaderCircle, Clock3, CircleCheckBig, CircleX, CheckCircle2, Lock, Wallet,
-  Home, Users, User, Phone, Mail, Check, Plus,CreditCard, Landmark, AlertCircle, Building2,
-  BookCheck, FileCheck, ArrowUp, Filter, XCircle} from "lucide-react";
+import {Car, Bike, FileText, Upload, BadgeCheck, LoaderCircle, Clock3, CircleX, Lock, Wallet,
+  Home, Users, User, Check, Plus, CreditCard, Landmark, AlertCircle, Building2,
+  BookCheck, FileCheck, ArrowUp} from "lucide-react";
 
 import { auth, db } from "../../firebase";
 import { 
@@ -18,6 +18,7 @@ export default function VehicleSticker() {
   const [resident, setResident] = useState(null);
   const [loadingResident, setLoadingResident] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const [formData, setFormData] = useState({
     vehicleType: "",
@@ -100,13 +101,15 @@ export default function VehicleSticker() {
 
   const selectedFee = getStickerFee();
 
-  const loadApplications = async (residentId) => {
+  const loadApplications = async (uid) => {
+    if (!uid) return;
+    
     try {
       setLoadingApps(true);
 
       const q = query(
         collection(db, "vehicleStickerApplications"),
-        where("residentId", "==", residentId)
+        where("residentUid", "==", uid) // Using UID instead of residentId
       );
 
       const snapshot = await getDocs(q);
@@ -126,6 +129,9 @@ export default function VehicleSticker() {
 
     } catch (error) {
       console.error("Load Applications Error:", error);
+      if (error.code === 'permission-denied') {
+        alert("You don't have permission to view these applications.");
+      }
     } finally {
       setLoadingApps(false);
     }
@@ -135,13 +141,17 @@ export default function VehicleSticker() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setLoadingResident(false);
+        setCurrentUser(null);
         return;
       }
 
+      setCurrentUser(user);
+
       try {
+        // Get resident by UID instead of email
         const residentQuery = query(
           collection(db, "residents"),
-          where("email", "==", user.email)
+          where("uid", "==", user.uid) // Store UID in residents collection
         );
 
         const residentSnapshot = await getDocs(residentQuery);
@@ -160,6 +170,7 @@ export default function VehicleSticker() {
 
         setResident(residentInfo);
 
+        // Load pricing settings
         const settingsRef = doc(db, "vehicleSticker", "settings");
         const settingsSnap = await getDoc(settingsRef);
 
@@ -182,11 +193,16 @@ export default function VehicleSticker() {
           setPricing(settingsSnap.data());
         }
 
-        await loadApplications(residentInfo.id);
+        // Load applications using UID
+        await loadApplications(user.uid);
 
       } catch (error) {
         console.error("Vehicle Sticker Error:", error);
-        alert(error.message);
+        if (error.code === 'permission-denied') {
+          alert("You don't have permission to access this data.");
+        } else {
+          alert(error.message);
+        }
       } finally {
         setLoadingResident(false);
       }
@@ -198,7 +214,7 @@ export default function VehicleSticker() {
   const handleStep1Submit = async (e) => {
     e.preventDefault();
 
-    if (!resident) {
+    if (!resident || !currentUser) {
       alert("Resident information not found.");
       return;
     }
@@ -218,17 +234,19 @@ export default function VehicleSticker() {
       alert("Please upload your OR/CR.");
       return;
     }
-    // Check for duplicate plate number in previous applications instead of blocking (defend nlng)
-    const plateQuery=query(collection(db,"vehicleStickerApplications"),
-    where("vehicleInfo.plateNumber","==",formData.plateNumber.trim().toUpperCase())
-    );
-    const plateSnapshot=await getDocs(plateQuery);
 
-    if(!plateSnapshot.empty){
-    const proceed=window.confirm(
-    "This plate number already exists in previous applications.\n\nPress OK if this is a renewal or reapplication."
+    // Check for duplicate plate number
+    const plateQuery = query(
+      collection(db, "vehicleStickerApplications"),
+      where("vehicleInfo.plateNumber", "==", formData.plateNumber.trim().toUpperCase())
     );
-    if(!proceed)return;
+    const plateSnapshot = await getDocs(plateQuery);
+
+    if (!plateSnapshot.empty) {
+      const proceed = window.confirm(
+        "This plate number already exists in previous applications.\n\nPress OK if this is a renewal or reapplication."
+      );
+      if (!proceed) return;
     }
 
     try {
@@ -237,14 +255,14 @@ export default function VehicleSticker() {
       const uploadedOrcr = await uploadImage(orcrFile, "vehicleSticker");
 
       const applicationData = {
-        residentId: resident.id,
+        // Use UID for security
+        residentUid: currentUser.uid,
+        residentId: resident.id, // Keep for reference
         residentInfo: {
           firstName: resident.firstName,
           lastName: resident.lastName,
           fullName: `${resident.firstName} ${resident.lastName}`,
           residentCategory: resident.residentCategory,
-          contactNumber: resident.contactNumber,
-          email: resident.email,
         },
         vehicleInfo: {
           vehicleType: formData.vehicleType,
@@ -273,7 +291,7 @@ export default function VehicleSticker() {
         applicationData
       );
 
-      await loadApplications(resident.id);
+      await loadApplications(currentUser.uid);
 
       setFormData({
         vehicleType: "",
@@ -285,7 +303,11 @@ export default function VehicleSticker() {
 
     } catch (error) {
       console.error("Submit Error:", error);
-      alert(error.message);
+      if (error.code === 'permission-denied') {
+        alert("You don't have permission to submit this application.");
+      } else {
+        alert(error.message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -327,15 +349,19 @@ export default function VehicleSticker() {
         [applicationId]: null,
       }));
 
-      if (resident) {
-        await loadApplications(resident.id);
+      if (currentUser) {
+        await loadApplications(currentUser.uid);
       }
 
       alert("GCash receipt uploaded successfully! Please proceed to the HOA office to claim your sticker.");
 
     } catch (error) {
       console.error("Receipt Upload Error:", error);
-      alert(error.message);
+      if (error.code === 'permission-denied') {
+        alert("You don't have permission to update this application.");
+      } else {
+        alert(error.message);
+      }
     }
   };
 
@@ -347,15 +373,19 @@ export default function VehicleSticker() {
         remarks: "Cash payment selected. Proceed to HOA office with your payment."
       });
 
-      if (resident) {
-        await loadApplications(resident.id);
+      if (currentUser) {
+        await loadApplications(currentUser.uid);
       }
 
       alert("Cash payment confirmed! Please proceed to the HOA office to complete your payment and claim your sticker.");
 
     } catch (error) {
       console.error("Cash Payment Error:", error);
-      alert(error.message);
+      if (error.code === 'permission-denied') {
+        alert("You don't have permission to update this application.");
+      } else {
+        alert(error.message);
+      }
     }
   };
 
@@ -396,8 +426,8 @@ export default function VehicleSticker() {
           app.paymentStatus === "Completed"
         );
       case "rejected":
-        return applications.filter(app=>
-        app.status==="Rejected"
+        return applications.filter(app =>
+          app.status === "Rejected"
         );
 
       default:
@@ -632,40 +662,18 @@ export default function VehicleSticker() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white/70 rounded-lg p-3 backdrop-blur-sm">
-                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                          Resident Type
-                        </p>
-                        <p className="font-semibold text-gray-800 mt-1 flex items-center gap-2">
-                          <span className={`inline-block w-2 h-2 rounded-full ${
-                            resident.residentCategory?.toLowerCase() === 'owner' || 
-                            resident.residentCategory?.toLowerCase() === 'homeowner' ? 'bg-green-500' :
-                            resident.residentCategory?.toLowerCase() === 'renter' ? 'bg-yellow-500' :
-                            'bg-pink-500'
-                          }`}></span>
-                          {resident.residentCategory}
-                        </p>
-                      </div>
-                      
-                      <div className="bg-white/70 rounded-lg p-3 backdrop-blur-sm">
-                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                          Contact Number
-                        </p>
-                        <p className="font-semibold text-gray-800 mt-1 flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-[var(--color-primary)]" />
-                          {resident.contactNumber}
-                        </p>
-                      </div>
-                    </div>
-
                     <div className="bg-white/70 rounded-lg p-3 backdrop-blur-sm">
                       <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                        Email Address
+                        Resident Type
                       </p>
                       <p className="font-semibold text-gray-800 mt-1 flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-[var(--color-primary)]" />
-                        {resident.email}
+                        <span className={`inline-block w-2 h-2 rounded-full ${
+                          resident.residentCategory?.toLowerCase() === 'owner' || 
+                          resident.residentCategory?.toLowerCase() === 'homeowner' ? 'bg-green-500' :
+                          resident.residentCategory?.toLowerCase() === 'renter' ? 'bg-yellow-500' :
+                          'bg-pink-500'
+                        }`}></span>
+                        {resident.residentCategory}
                       </p>
                     </div>
                   </div>

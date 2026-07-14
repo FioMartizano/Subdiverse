@@ -6,7 +6,7 @@ import {Car, Bike, FileText, Upload, BadgeCheck, LoaderCircle, Clock3, CircleX, 
 import { auth, db } from "../../firebase";
 import { 
   collection, addDoc, getDocs, getDoc, doc, query, 
-  where, serverTimestamp, setDoc, updateDoc
+  where, serverTimestamp, updateDoc
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { uploadImage } from "../../services/cloudinary";
@@ -148,49 +148,39 @@ export default function VehicleSticker() {
       setCurrentUser(user);
 
       try {
-        // Get resident by UID instead of email
-        const residentQuery = query(
-          collection(db, "residents"),
-          where("uid", "==", user.uid) // Store UID in residents collection
-        );
+        // Resident document ID is the Firebase Auth UID:
+        // residents/{uid}
+        const residentRef = doc(db, "residents", user.uid);
+        const residentSnapshot = await getDoc(residentRef);
 
-        const residentSnapshot = await getDocs(residentQuery);
-
-        if (residentSnapshot.empty) {
+        if (!residentSnapshot.exists()) {
           console.log("Resident not found.");
-          setLoadingResident(false);
+          setResident(null);
           return;
         }
 
-        const residentDoc = residentSnapshot.docs[0];
         const residentInfo = {
-          id: residentDoc.id,
-          ...residentDoc.data(),
+          id: residentSnapshot.id,
+          ...residentSnapshot.data(),
         };
 
         setResident(residentInfo);
 
-        // Load pricing settings
+        // Load pricing settings.
+        // Residents may read this document, but only admins may create or edit it.
+        // If it does not exist, the default pricing already in React state is used.
         const settingsRef = doc(db, "vehicleSticker", "settings");
         const settingsSnap = await getDoc(settingsRef);
 
-        if (!settingsSnap.exists()) {
-          const defaultPricing = {
-            homeownerCarPrice: 150,
-            homeownerMotorcyclePrice: 100,
-            homeownerTribikePrice: 120,
-            renterCarPrice: 200,
-            renterMotorcyclePrice: 150,
-            renterTribikePrice: 170,
-            householdCarPrice: 180,
-            householdMotorcyclePrice: 130,
-            householdTribikePrice: 150,
-          };
-
-          await setDoc(settingsRef, defaultPricing);
-          setPricing(defaultPricing);
+        if (settingsSnap.exists()) {
+          setPricing((currentPricing) => ({
+            ...currentPricing,
+            ...settingsSnap.data(),
+          }));
         } else {
-          setPricing(settingsSnap.data());
+          console.log(
+            "Vehicle sticker settings not found. Using default pricing."
+          );
         }
 
         // Load applications using UID
@@ -235,17 +225,23 @@ export default function VehicleSticker() {
       return;
     }
 
-    // Check for duplicate plate number
-    const plateQuery = query(
-      collection(db, "vehicleStickerApplications"),
-      where("vehicleInfo.plateNumber", "==", formData.plateNumber.trim().toUpperCase())
-    );
-    const plateSnapshot = await getDocs(plateQuery);
+    // Check only this resident's already-loaded applications.
+    // This avoids searching other residents' vehicle records.
+    const normalizedPlateNumber = formData.plateNumber
+      .trim()
+      .toUpperCase();
 
-    if (!plateSnapshot.empty) {
+    const hasPreviousApplication = applications.some(
+      (application) =>
+        application.vehicleInfo?.plateNumber?.toUpperCase() ===
+        normalizedPlateNumber
+    );
+
+    if (hasPreviousApplication) {
       const proceed = window.confirm(
-        "This plate number already exists in previous applications.\n\nPress OK if this is a renewal or reapplication."
+        "This plate number already exists in one of your previous applications.\n\nPress OK if this is a renewal or reapplication."
       );
+
       if (!proceed) return;
     }
 
@@ -266,7 +262,7 @@ export default function VehicleSticker() {
         },
         vehicleInfo: {
           vehicleType: formData.vehicleType,
-          plateNumber: formData.plateNumber.trim().toUpperCase(),
+          plateNumber: normalizedPlateNumber,
         },
         stickerFee: selectedFee,
         orcrInfo: {

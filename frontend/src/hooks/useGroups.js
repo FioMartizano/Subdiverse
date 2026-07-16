@@ -253,7 +253,7 @@ export const useGroups = (searchTerm = '') => {
       console.error('Error deleting group:', error);
       return { success: false, error: error.message };
     }
-  }, []);
+  }, [user]);
 
   // Update group
   const handleUpdateGroup = useCallback(async (groupId, updates) => {

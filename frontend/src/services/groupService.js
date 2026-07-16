@@ -183,20 +183,41 @@ export const joinGroup = async (groupId, userId, userName) => {
       const memberRef = doc(db, 'communityGroups', groupId, 'members', userId);
       const memberSnap = await transaction.get(memberRef);
       
-      if (memberSnap.exists()) {
-        throw new Error('Already a member of this group');
-      }
-      
-      transaction.set(memberRef, {
-        userId: userId,
-        userName: userName,
-        status: 'active',
-        joinedAt: serverTimestamp()
-      });
-      
-      transaction.update(groupRef, {
-        memberCount: increment(1)
-      });
+    if (memberSnap.exists()) {
+        const memberData = memberSnap.data();
+
+        // Still an active member
+        if (memberData.status === 'active') {
+            throw new Error('Already a member of this group');
+        }
+
+        // Previously left the group, reactivate membership
+        transaction.update(memberRef, {
+            status: 'active',
+            joinedAt: serverTimestamp(),
+            leftAt: null
+        });
+
+        transaction.update(groupRef, {
+            memberCount: increment(1)
+        });
+
+        return;
+    }
+
+    // First time joining
+    else {
+        transaction.set(memberRef, {
+            userId,
+            userName,
+            status: 'active',
+            joinedAt: serverTimestamp()
+        });
+
+        transaction.update(groupRef, {
+            memberCount: increment(1)
+        });
+    }
     });
     
     return { success: true };

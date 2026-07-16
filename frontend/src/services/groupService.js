@@ -32,9 +32,32 @@ const GROUPS_PER_PAGE = 6;
  */
 export const createGroup = async (groupData) => {
   try {
+
+      // Normalize the group name
+      const normalizedName = groupData.name
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+
+      // Check if a group with the same name already exists
+      const existingQuery = query(
+        collection(db, 'communityGroups'),
+        where('normalizedName', '==', normalizedName),
+        where('status', '==', 'active')
+      );
+
+      const existingSnapshot = await getDocs(existingQuery);
+
+      if (!existingSnapshot.empty) {
+        return {
+          success: false,
+          error: 'A community with this name already exists.'
+        };
+      }
     // Create the group document
     const groupRef = await addDoc(collection(db, 'communityGroups'), {
       name: groupData.name,
+      normalizedName: normalizedName,
       description: groupData.description || '',
       createdBy: groupData.createdBy,
       createdByName: groupData.createdByName,

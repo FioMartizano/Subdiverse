@@ -30,8 +30,6 @@ function App() {
     "/monthlyDues",
     "/userSettings",
   ];
-
-<<<<<<< HEAD
   const adminPrefixes = [
   "/admin-dashboard",
   "/admin/users",
@@ -52,37 +50,20 @@ function App() {
   const isAdmin = adminPrefixes.some((prefix) =>
     location.pathname === prefix || location.pathname.startsWith(prefix + "/")
   );
-
-  // Auth state listener to check for pending accounts 
-=======
-  const isResident = residentPrefixes.some(
-    (prefix) =>
-      location.pathname === prefix ||
-      location.pathname.startsWith(prefix + "/")
-  );
-
-  /*
-   * Global authentication/account-status listener.
-   *
-   * users.accountStatus controls whether the user can access the portal.
-   * The old users.status field is kept only as a temporary fallback for
-   * existing Firestore records created before the migration.
-   */
->>>>>>> 5a7e11d94e79994449990a118b12042f61797243
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
       auth,
       async (firebaseUser) => {
         /*
          * No authenticated Firebase user:
-         * only redirect if they are trying to access a resident route.
+         * only redirect if they are trying to access a resident route. ADD: OR ADMIN
          */
-        if (!firebaseUser) {
-          if (isResident) {
-            navigate("/login", { replace: true });
-          }
-          return;
+      if (!firebaseUser) {
+        if (isResident || isAdmin) {
+          navigate("/login", { replace: true });
         }
+        return;
+      }
 
         try {
           const userDocRef = doc(
@@ -211,23 +192,14 @@ function App() {
     navigate,
     location.pathname,
     isResident,
+    isAdmin,
   ]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased">
-<<<<<<< HEAD
       {isAdmin ? (<AdminNavbar />) : isResident ? (<ResidentNavbar />) : (<GuestNavbar />)}
       
       <main className={`flex-grow pt-0 ${isAdmin ? "ml-20" : ""}`}>
-=======
-      {isResident ? (
-        <ResidentNavbar />
-      ) : (
-        <GuestNavbar />
-      )}
-
-      <main className="flex-grow pt-0">
->>>>>>> 5a7e11d94e79994449990a118b12042f61797243
         <AppRoutes />
       </main>
 

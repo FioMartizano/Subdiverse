@@ -7,6 +7,7 @@ import AppRoutes from "./AppRoutes";
 import Footer from "./components/Footer";
 import GuestNavbar from "./components/GuestNavbar";
 import ResidentNavbar from "./components/ResidentNavbar";
+import AdminNavbar from "./components/AdminNavbar";
 
 function App() {
   const location = useLocation();
@@ -23,36 +24,46 @@ function App() {
     "/healthcare",
     "/parishchurch",
     "/community",
-    "/community/feed", 
+    "/community/feed",
     "/vehicleSticker",
     "/parkingReservation",
     "/monthlyDues",
     "/userSettings",
   ];
 
-  const isResident = residentPrefixes.some(
-    (prefix) =>
-      location.pathname === prefix ||
-      location.pathname.startsWith(prefix + "/")
+  const adminPrefixes = [
+    "/admin-dashboard",
+    "/admin/users",
+    "/admin/reservations",
+    "/admin/vehicle-stickers",
+    "/admin/parking",
+    "/admin/announcements",
+    "/admin/grievances",
+    "/admin/community-groups",
+    "/admin/business-hub",
+    "/admin/logs"
+  ];
+
+  const isResident = residentPrefixes.some((prefix) =>
+    location.pathname === prefix ||
+    location.pathname.startsWith(prefix + "/")
   );
 
-  /*
-   * Global authentication/account-status listener.
-   *
-   * users.accountStatus controls whether the user can access the portal.
-   * The old users.status field is kept only as a temporary fallback for
-   * existing Firestore records created before the migration.
-   */
+  const isAdmin = adminPrefixes.some((prefix) =>
+    location.pathname === prefix ||
+    location.pathname.startsWith(prefix + "/")
+  );
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
       auth,
       async (firebaseUser) => {
         /*
          * No authenticated Firebase user:
-         * only redirect if they are trying to access a resident route.
+         * only redirect if they are trying to access a resident route. ADD: OR ADMIN
          */
         if (!firebaseUser) {
-          if (isResident) {
+          if (isResident || isAdmin) {
             navigate("/login", { replace: true });
           }
           return;
@@ -185,21 +196,18 @@ function App() {
     navigate,
     location.pathname,
     isResident,
+    isAdmin,
   ]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased">
-      {isResident ? (
-        <ResidentNavbar />
-      ) : (
-        <GuestNavbar />
-      )}
-
-      <main className="flex-grow pt-0">
+      {isAdmin ? (<AdminNavbar />) : isResident ? (<ResidentNavbar />) : (<GuestNavbar />)}
+      
+      <main className={`flex-grow pt-0 ${isAdmin ? "ml-20" : ""}`}>
         <AppRoutes />
       </main>
 
-      <Footer />
+      {!isAdmin && <Footer />}
     </div>
   );
 }

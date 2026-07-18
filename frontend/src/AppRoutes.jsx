@@ -52,13 +52,22 @@ import CommunityFeed from './pages/Resident/CommunityFeed';
 
 import { Rotate3D } from "lucide-react";
 
-
+/*ADMIN PAGES*/
+import AdminDashboard from "./pages/Admin/Dashboard";
+import AdminUsers from "./pages/Admin/Users";
+import AdminAnnouncements from "./pages/Admin/Announcements";
+import AdminReservations from "./pages/Admin/Reservations";
+import AdminVehicleStickers from "./pages/Admin/VehicleStickers";
+import AdminParking from "./pages/Admin/Parking";
+import AdminCommunityGroups from "./pages/Admin/CommunityGroups";
+import AdminGrievances from "./pages/Admin/Grievances";
+import AdminBusinessHub from "./pages/Admin/BusinessHub";
+import AdminLogs from "./pages/Admin/Logs";
 
 
 /* PENDING PAGES */
 /*RESIDENT PAGES*/
 /*
-import Community from "./pages/Resident/Community";
 import MonthlyDues from "./pages/Resident/MonthlyDues";
 */
 
@@ -116,15 +125,24 @@ function AppRoutes() {
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
         <Route path="/reservation/clubhouse/reserve" element={<ClubhouseReservationForm />} />
       
-
-
         <Route path="/reservation/pool" element={<SwimmingPool />} />
         <Route path ="/reservation/pool/reserve" element={<PoolReservationForm />} />
         
         <Route path="/reservation/court" element={<BasketballCourt />} />
         <Route path="/reservation/court/reserve" element={<BballReservationForm />} />
 
-
+        {/*ADMIN ROUTING*/}
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+        <Route path="/admin/reservations" element={<AdminReservations />} />
+        <Route path="/admin/vehicle-stickers" element={<AdminVehicleStickers />} />
+        <Route path="/admin/parking" element={<AdminParking />} />
+        <Route path="/admin/grievances" element={<AdminGrievances />} />
+        <Route path="/admin/community-groups" element={<AdminCommunityGroups />} />
+        <Route path="/admin/business-hub" element={<AdminBusinessHub />} />
+        <Route path="/admin/logs" element={<AdminLogs />} />
+        
         
 
       </Routes>

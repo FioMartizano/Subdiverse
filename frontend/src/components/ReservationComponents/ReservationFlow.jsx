@@ -246,20 +246,7 @@ export default function ReservationFlow({
             value={duration > 0 ? `₱${total.toLocaleString()}` : "—"} 
           />
         </div>
-        <div className="relative overflow-hidden rounded-3xl shadow-xl mb-10 mt-6">
-          <img
-            src={config.banner}
-            alt={venueName}
-            className="w-full h-64 object-cover"
-          />
-          <div className="absolute inset-0 bg-black/45"/>
-          <div className="absolute inset-0 flex flex-col justify-center px-10 text-white">
-            <h1 className="text-4xl font-bold drop-shadow-lg">{venueName}</h1>
-            <p className="mt-3 max-w-xl text-white/90 drop-shadow">
-              Complete your reservation by selecting your preferred date, schedule and payment option.
-            </p>
-          </div>
-        </div>
+
         <div className="mt-auto">
         </div>
       </div>

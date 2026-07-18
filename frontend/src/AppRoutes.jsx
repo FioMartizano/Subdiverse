@@ -52,6 +52,8 @@ import CommunityFeed from './pages/Resident/CommunityFeed';
 
 import { Rotate3D } from "lucide-react";
 
+/*ADMIN PAGES*/
+
 
 
 
@@ -116,13 +118,14 @@ function AppRoutes() {
         <Route path="/reservation/clubhouse" element={<Clubhouse />} />
         <Route path="/reservation/clubhouse/reserve" element={<ClubhouseReservationForm />} />
       
-
-
         <Route path="/reservation/pool" element={<SwimmingPool />} />
         <Route path ="/reservation/pool/reserve" element={<PoolReservationForm />} />
         
         <Route path="/reservation/court" element={<BasketballCourt />} />
         <Route path="/reservation/court/reserve" element={<BballReservationForm />} />
+
+        {/*ADMIN ROUTING*/}
+        
 
 
         

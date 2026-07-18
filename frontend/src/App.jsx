@@ -23,6 +23,7 @@ function App() {
     "/healthcare",
     "/parishchurch",
     "/community",
+    "/community/feed", 
     "/vehicleSticker",
     "/parkingReservation",
     "/monthlyDues",

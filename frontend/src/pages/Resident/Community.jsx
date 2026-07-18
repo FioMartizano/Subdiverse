@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useGroups } from '../../hooks/useGroups';
 import CommunityGroup from "../../assets/CommunityGroup.jpg";
+import { useNavigate } from 'react-router-dom';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -223,10 +224,11 @@ export default function CommunityGroups() {
     }
   };
 
-  const handleOpenFeed = (groupId) => {
-    showToast('Community Feed coming soon! 🚀', 'info');
-  };
+    const navigate = useNavigate();
 
+    const handleOpenFeed = (groupId) => {
+      navigate(`/community/feed/${groupId}`);
+    };
   // ============================================================
   // RENDER HELPERS
   // ============================================================

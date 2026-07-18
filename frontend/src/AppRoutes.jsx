@@ -48,6 +48,8 @@ import BballReservationForm from "./pages/Resident/Reservation/BballReservationF
 
 
 import Community from "./pages/Resident/Community";
+import CommunityFeed from './pages/Resident/CommunityFeed';
+
 import { Rotate3D } from "lucide-react";
 
 
@@ -85,6 +87,8 @@ function AppRoutes() {
         <Route path="/resident-home" element={<ResidentHomePage />} />
 
         <Route path="/community" element={<Community />} />
+
+        <Route path="/community/feed/:groupId" element={<CommunityFeed />} />
 
         <Route path="/businesshub" element={<BusinessHub />} />
 

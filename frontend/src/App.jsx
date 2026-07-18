@@ -8,6 +8,7 @@ import AppRoutes from "./AppRoutes";
 import Footer from "./components/Footer";
 import GuestNavbar from "./components/GuestNavbar";
 import ResidentNavbar from "./components/ResidentNavbar";
+import AdminNavbar from "./components/AdminNavbar";
 
 function App() {
   const location = useLocation();
@@ -29,8 +30,25 @@ function App() {
     "/parkingReservation",
     "/monthlyDues"
   ];
+
+  const adminPrefixes = [
+  "/admin-dashboard",
+  "/admin/users",
+  "/admin/reservations",
+  "/admin/vehicle-stickers",
+  "/admin/parking",
+  "/admin/announcements",
+  "/admin/grievances",
+  "/admin/community-groups",
+  "/admin/business-hub",
+  "/admin/logs"
+];
   
   const isResident = residentPrefixes.some((prefix) => 
+    location.pathname === prefix || location.pathname.startsWith(prefix + "/")
+  );
+
+  const isAdmin = adminPrefixes.some((prefix) =>
     location.pathname === prefix || location.pathname.startsWith(prefix + "/")
   );
 
@@ -95,13 +113,13 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased">
-      {isResident ? <ResidentNavbar /> : <GuestNavbar />}
+      {isAdmin ? (<AdminNavbar />) : isResident ? (<ResidentNavbar />) : (<GuestNavbar />)}
       
-      <main className="flex-grow pt-0">
+      <main className={`flex-grow pt-0 ${isAdmin ? "ml-20" : ""}`}>
         <AppRoutes />
       </main>
 
-      <Footer />
+      {!isAdmin && <Footer />}
     </div>
   );  
 }

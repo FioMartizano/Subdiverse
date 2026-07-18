@@ -132,7 +132,7 @@ function AppRoutes() {
         <Route path="/reservation/court/reserve" element={<BballReservationForm />} />
 
         {/*ADMIN ROUTING*/}
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/announcements" element={<AdminAnnouncements />} />
         <Route path="/admin/reservations" element={<AdminReservations />} />

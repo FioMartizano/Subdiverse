@@ -202,8 +202,9 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased">
       {isAdmin ? (<AdminNavbar />) : isResident ? (<ResidentNavbar />) : (<GuestNavbar />)}
-      
-      <main className={`flex-grow pt-0 ${isAdmin ? "ml-20" : ""}`}>
+
+     
+      <main className={`flex-grow pt-0 transition-all duration-300 ${isAdmin ? "lg:ml-20 lg:peer-hover:ml-64" : ""}`}>
         <AppRoutes />
       </main>
 

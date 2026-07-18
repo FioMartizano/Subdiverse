@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, File, Trash2, RefreshCw, Car, CreditCard, MapPin, User, Calendar as CalendarIcon, DollarSign, Map, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, X, CheckCircle, AlertCircle, Clock, Upload, File, Trash2, RefreshCw, Car, CreditCard, MapPin, User, Calendar as CalendarIcon, Coins, Map, ChevronLeft, ChevronRight } from 'lucide-react';
 import { auth, db } from '../../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, getDoc, doc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -824,7 +824,7 @@ export default function ParkingReservation() {
 
             <div className="flex-1 flex items-center gap-3 border border-gray-200 rounded-xl px-3 py-2.5">
               <div className="bg-secondary p-2.5 rounded-lg flex-shrink-0">
-                <DollarSign className="w-5 h-5 text-white" />
+                <Coins className="w-5 h-5 text-white" />
               </div>
               <div>
                 <p className="text-xs text-gray-400">Price</p>

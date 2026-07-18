@@ -25,14 +25,22 @@
   --color-pending: #FFB300;
   --color-pending-bg: #FFF8E1;
   --color-pending-text: #92400E;
- 
+
   --color-approved: #1B5E20;
   --color-approved-bg: #E8F5E9;
   --color-approved-text: #1B5E20;
- 
+
   --color-rejected: #FF7043;
   --color-rejected-bg: #FBE9E7;
   --color-rejected-text: #BF360C;
+
+  --color-frozen: #5C6BC0;
+  --color-frozen-bg: #E8EAF6;
+  --color-frozen-text: #283593;
+
+  --color-archived: #9E9E9E;
+  --color-archived-bg: #F5F5F5;
+  --color-archived-text: #616161;
 
   --color-admin-sidebar: #123513;
   --color-admin-hover: #1b4a1d;
@@ -220,9 +228,12 @@ body {
 
 /* swipe scroll */
 .scroll-hide::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
+
 .scroll-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;     /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }

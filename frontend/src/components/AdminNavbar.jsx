@@ -43,8 +43,13 @@ export default function AdminNavbar() {
         <Menu size={24} />
       </button>
 
-      {/*SIDEBAR*/}
-      <aside className="hidden lg:block fixed top-0 left-0 h-screen w-20 hover:w-64 bg-[var(--color-admin-sidebar)] transition-all duration-300 overflow-hidden group z-50 border-r border-white/10 shadow-xl">
+      {/*
+        SIDEBAR
+        `peer` lets App.jsx's <main> react to this element's hover state
+        via lg:peer-hover:ml-64, so content shifts over on expand instead
+        of the sidebar (fixed, z-50) floating on top of it.
+      */}
+      <aside className="hidden lg:block peer fixed top-0 left-0 h-screen w-20 hover:w-64 bg-[var(--color-admin-sidebar)] transition-all duration-300 overflow-hidden group z-50 border-r border-white/10 shadow-xl">
         <div className="h-full flex flex-col">
 
           {/*logo*/}

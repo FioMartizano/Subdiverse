@@ -248,6 +248,7 @@ export default function VehicleSticker() {
     try {
       setSubmitting(true);
 
+      const currentYear = new Date().getFullYear();
       const uploadedOrcr = await uploadImage(orcrFile, "vehicleSticker");
 
       const applicationData = {
@@ -264,6 +265,9 @@ export default function VehicleSticker() {
           vehicleType: formData.vehicleType,
           plateNumber: normalizedPlateNumber,
         },
+        stickerYear: currentYear,
+        applicationType: hasPreviousApplication ? "Renewal" : "New Application",
+
         stickerFee: selectedFee,
         orcrInfo: {
           fileName: orcrFile.name,

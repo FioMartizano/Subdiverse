@@ -197,6 +197,21 @@ export default function GuestNavbar() {
                   >
                     Sign Up
                   </Link>
+                  <div className="px-4 py-2">
+                    <div className="border-t border-gray-200"></div>
+
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mt-2">
+                      WWHS Admin
+                    </p>
+                  </div>
+
+                  <Link
+                    to="/admin-login"
+                    onClick={() => setOpenUser(false)}
+                    className="block px-4 lg:px-5 py-3 hover-secondary-bg hover:text-white transition text-sm lg:text-base"
+                  >
+                    Admin Login
+                  </Link>
                 </div>
               )}
             </div>

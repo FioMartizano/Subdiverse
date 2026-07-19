@@ -52,6 +52,38 @@ function initials(name) {
 }
 
 function AdminUsers() {
+
+  const [showAddResident, setShowAddResident] = useState(false);
+
+  const [addResidentForm, setAddResidentForm] = useState({
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    suffix: "",
+
+    email: "",
+    contactNumber: "",
+    emergencyContactNumber: "",
+
+    block: "",
+    lot: "",
+    street: "",
+    phase: "",
+
+    residentCategory: "owner",
+
+    propertyControlNumber: "",
+
+    propertyOwnerResidentId: "",
+    propertyOwnerName: "",
+
+    homeownerResidentId: "",
+    homeownerName: "",
+    relationshipToHomeowner: "",
+
+    leaseStart: "",
+    leaseEnd: "",
+  });
   const [residentsList, setResidentsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,6 +103,8 @@ function AdminUsers() {
   const [actionSuccess, setActionSuccess] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  const today = new Date().toISOString().split("T")[0];
 
 
 
@@ -446,7 +480,11 @@ function AdminUsers() {
       title="Manage residents"
       subtitle="Review sign-ups, verify IDs, and manage account status"
       action={
-        <button className="btn-primary !px-4 !py-2 !text-sm !font-medium w-full sm:w-auto">
+        <button
+          type="button"
+          onClick={() => setShowAddResident(true)}
+          className="btn-primary !px-4 !py-2 !text-sm !font-medium w-full sm:w-auto"
+        >
           Add resident
         </button>
       }
@@ -926,6 +964,351 @@ function AdminUsers() {
           />
         </div>
       )}
+      {showAddResident && (
+        <div className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border shadow-2xl">
+
+            {/* Header */}
+            <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Add resident
+                </h2>
+
+                <p className="text-xs text-muted-foreground mt-1">
+                  Create a new resident record and community account.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAddResident(false)}
+                className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+
+            <form className="p-6 space-y-8">
+
+              {/* Resident Category */}
+              <section>
+                <h3 className="text-sm font-semibold text-foreground mb-4">
+                  Resident category
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {["owner", "renter", "household"].map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() =>
+                        setAddResidentForm((prev) => ({
+                          ...prev,
+                          residentCategory: category,
+                        }))
+                      }
+                      className={`px-4 py-3 rounded-xl border text-sm capitalize ${addResidentForm.residentCategory === category
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border hover:bg-muted"
+                        }`}
+                    >
+                      {category === "household"
+                        ? "Household member"
+                        : category}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* Personal Information */}
+              <section>
+                <h3 className="text-sm font-semibold text-foreground mb-4">
+                  Personal information
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormInput
+                    label="First name"
+                    placeholder="e.g. Juan"
+                    value={addResidentForm.firstName}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        firstName: value,
+                      }))
+                    }
+                    required
+                  />
+
+                  <FormInput
+                    label="Middle name"
+                    placeholder="e.g. Santos"
+                    value={addResidentForm.middleName}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        middleName: value,
+                      }))
+                    }
+                  />
+
+                  <FormInput
+                    label="Last name"
+                    placeholder="e.g. Dela Cruz"
+                    value={addResidentForm.lastName}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        lastName: value,
+                      }))
+                    }
+                    required
+                  />
+
+                  <FormInput
+                    label="Suffix"
+                    placeholder="e.g. Jr., Sr., III"
+                    value={addResidentForm.suffix}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        suffix: value,
+                      }))
+                    }
+                  />
+                </div>
+              </section>
+
+              {/* Contact */}
+              <section>
+                <h3 className="text-sm font-semibold text-foreground mb-4">
+                  Contact information
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Email address"
+                    placeholder="juandelacruz@gmail.com"
+                    type="email"
+                    value={addResidentForm.email}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        email: value,
+                      }))
+                    }
+                    required
+                  />
+
+                  <FormInput
+                    label="Contact number"
+                    placeholder="e.g. 09123456789"
+                    value={addResidentForm.contactNumber}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        contactNumber: value,
+                      }))
+                    }
+                  />
+
+                  <FormInput
+                    label="Emergency contact number"
+                    placeholder="e.g. 09987654321"
+                    value={addResidentForm.emergencyContactNumber}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        emergencyContactNumber: value,
+                      }))
+                    }
+                  />
+                </div>
+              </section>
+
+              {/* Address */}
+              <section>
+                <h3 className="text-sm font-semibold text-foreground mb-4">
+                  Property information
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Block"
+                    placeholder="e.g. Block 71"
+                    value={addResidentForm.block}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        block: value,
+                      }))
+                    }
+                  />
+
+                  <FormInput
+                    label="Lot"
+                    placeholder="e.g. Lot 12"
+                    value={addResidentForm.lot}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        lot: value,
+                      }))
+                    }
+                  />
+
+                  <FormInput
+                    label="Street"
+                    placeholder="e.g. Timothy Street"
+                    value={addResidentForm.street}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        street: value,
+                      }))
+                    }
+                  />
+
+                  <FormInput
+                    label="Phase"
+                    placeholder="e.g. Phase 2"
+                    value={addResidentForm.phase}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        phase: value,
+                      }))
+                    }
+                  />
+
+                  <FormInput
+                    label="Property control number"
+                    placeholder="e.g. WH-P2-B71-L12"
+                    value={addResidentForm.propertyControlNumber}
+                    onChange={(value) =>
+                      setAddResidentForm((prev) => ({
+                        ...prev,
+                        propertyControlNumber: value,
+                      }))
+                    }
+                  />
+                </div>
+              </section>
+
+              {/* Renter */}
+              {addResidentForm.residentCategory === "renter" && (
+                <section>
+                  <h3 className="text-sm font-semibold text-foreground mb-4">
+                    Rental information
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormInput
+                      label="Property owner"
+                      value={addResidentForm.propertyOwnerName}
+                      onChange={(value) =>
+                        setAddResidentForm((prev) => ({
+                          ...prev,
+                          propertyOwnerName: value,
+                        }))
+                      }
+                    />
+
+                    <FormInput
+                      label="Lease start"
+                      type="date"
+                      value={addResidentForm.leaseStart}
+                      max={addResidentForm.leaseEnd || undefined}
+                      onChange={(value) =>
+                        setAddResidentForm((prev) => ({
+                          ...prev,
+                          leaseStart: value,
+
+                          // Reset lease end if it becomes invalid
+                          leaseEnd:
+                            prev.leaseEnd && prev.leaseEnd < value
+                              ? ""
+                              : prev.leaseEnd,
+                        }))
+                      }
+                      helperText="Enter the date when the resident's current lease began."
+                      required
+                    />
+
+                    <FormInput
+                      label="Lease end"
+                      type="date"
+                      value={addResidentForm.leaseEnd}
+                      min={addResidentForm.leaseStart || today}
+                      onChange={(value) =>
+                        setAddResidentForm((prev) => ({
+                          ...prev,
+                          leaseEnd: value,
+                        }))
+                      }
+                      helperText="The lease end date cannot be earlier than the lease start date."
+                      required
+                    />
+                  </div>
+                </section>
+              )}
+
+              {/* Household */}
+              {addResidentForm.residentCategory === "household" && (
+                <section>
+                  <h3 className="text-sm font-semibold text-foreground mb-4">
+                    Household information
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormInput
+                      label="Homeowner name"
+                      value={addResidentForm.homeownerName}
+                      onChange={(value) =>
+                        setAddResidentForm((prev) => ({
+                          ...prev,
+                          homeownerName: value,
+                        }))
+                      }
+                    />
+
+                    <FormInput
+                      label="Relationship to homeowner"
+                      value={addResidentForm.relationshipToHomeowner}
+                      onChange={(value) =>
+                        setAddResidentForm((prev) => ({
+                          ...prev,
+                          relationshipToHomeowner: value,
+                        }))
+                      }
+                    />
+                  </div>
+                </section>
+              )}
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2 pt-5 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setShowAddResident(false)}
+                  className="px-4 py-2 text-sm rounded-buttons border border-border hover:bg-muted"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="btn-primary !px-5 !py-2 !text-sm"
+                >
+                  Add resident
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
 
     </AdminPageLayout>
   );
@@ -938,6 +1321,46 @@ function DetailItem({ label, value }) {
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="font-medium text-foreground mt-1 capitalize">{value || "Not provided"}</p>
+    </div>
+  );
+}
+
+function FormInput({
+  label,
+  value,
+  onChange,
+  type = "text",
+  required = false,
+  placeholder = "",
+  min,
+  max,
+  helperText = "",
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+        {label}
+        {required && (
+          <span className="text-red-500 ml-1">*</span>
+        )}
+      </label>
+
+      <input
+        type={type}
+        value={value}
+        required={required}
+        placeholder={placeholder}
+        min={min}
+        max={max}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-buttons border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/30"
+      />
+
+      {helperText && (
+        <p className="text-[11px] text-muted-foreground mt-1.5">
+          {helperText}
+        </p>
+      )}
     </div>
   );
 }

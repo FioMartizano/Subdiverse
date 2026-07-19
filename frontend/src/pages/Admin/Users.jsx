@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Users,
   Clock,
@@ -10,6 +11,7 @@ import {
   ChevronRight,
   ChevronDown,
   FileWarning,
+  FileText,
 } from "lucide-react";
 
 import { db } from "../../firebase";
@@ -68,9 +70,81 @@ function initials(name) {
     .toUpperCase();
 }
 
+// SHARED DROPDOWN PORTAL
+// Renders table dropdowns outside overflow containers so menus are not clipped.
+function DropdownPortal({ anchorRef, onClose, children, align = "left" }) {
+  const [style, setStyle] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const updatePosition = () => {
+      if (!anchorRef.current) return;
+      const rect = anchorRef.current.getBoundingClientRect();
+
+     
+      const menuHeight = menuRef.current?.offsetHeight || 0;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      const shouldOpenUpward =
+        menuHeight > 0 &&
+        spaceBelow < menuHeight + 8 &&
+        spaceAbove > spaceBelow;
+
+      setStyle({
+        position: "fixed",
+        top: shouldOpenUpward ? undefined : rect.bottom + 4,
+        bottom: shouldOpenUpward
+          ? window.innerHeight - rect.top + 4
+          : undefined,
+        left: align === "right" ? undefined : rect.left,
+        right: align === "right" ? window.innerWidth - rect.right : undefined,
+        minWidth: rect.width,
+        maxHeight: shouldOpenUpward
+          ? spaceAbove - 8
+          : spaceBelow - 8,
+        overflowY: "auto",
+      });
+    };
+
+    updatePosition();
+    const raf = requestAnimationFrame(updatePosition);
+
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+
+    const handleClickOutside = (e) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target) &&
+        anchorRef.current &&
+        !anchorRef.current.contains(e.target)
+      ) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [anchorRef, onClose, align]);
+
+  if (!style) return null;
+
+  return createPortal(
+    <div ref={menuRef} style={style} className="z-[100]">
+      {children}
+    </div>,
+    document.body
+  );
+}
+
 function AdminUsers() {
 
-  //use states
 
   const [showAddResident, setShowAddResident] = useState(false);
 
@@ -123,6 +197,10 @@ function AdminUsers() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const verificationButtonRefs = useRef({});
+  const statusButtonRefs = useRef({});
+  const menuButtonRefs = useRef({});
+
   const getLocalToday = () => {
     const currentDate = new Date();
     const year = currentDate.getFullYear();
@@ -136,14 +214,14 @@ function AdminUsers() {
 
   const [addResidentErrors, setAddResidentErrors] = useState({});
   const [createdResidentCredentials, setCreatedResidentCredentials] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedReportType, setSelectedReportType] = useState("master");
 
   
 
 
-
-  // synch w/ firestore
+  // FIRESTORE REAL-TIME SYNC
   useEffect(() => {
-    // A. Query users collection for residents only
     const usersQuery = query(collection(db, "users"), where("role", "==", "resident"));
     const residentsQuery = collection(db, "residents");
 
@@ -166,7 +244,6 @@ function AdminUsers() {
         );
       };
 
-      // B. Join users and residents (profile verification) by Document ID
       const joined = rawUsersList.map((userDoc) => {
         const profileDoc = rawResidentsMap[userDoc.id] || {};
 
@@ -221,7 +298,6 @@ function AdminUsers() {
     };
 
 
-    // Listen to users collection
     const unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
       rawUsersList = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       mergeAndSync();
@@ -229,7 +305,6 @@ function AdminUsers() {
       console.error("Firestore users error:", error);
     });
 
-    // Listen to residents collection
     const unsubscribeResidents = onSnapshot(residentsQuery, (snapshot) => {
       rawResidentsMap = {};
       snapshot.docs.forEach((doc) => {
@@ -245,9 +320,6 @@ function AdminUsers() {
       unsubscribeResidents();
     };
   }, []);
-
-
-
 
 
   const formatPhoneNumber = (value) => {
@@ -386,6 +458,7 @@ function AdminUsers() {
     }));
   };
 
+  // ADD RESIDENT VALIDATION
   const validateAddResidentForm = () => {
     const errors = {};
 
@@ -408,7 +481,6 @@ function AdminUsers() {
     const mobileRegex = /^9\d{9}$/;
     const propertyControlRegex = /^WH-P\d+-B\d+-L\d+$/i;
 
-    // Personal information
     if (!firstName) {
       errors.firstName = "First name is required.";
     } else if (firstName.length < 2) {
@@ -433,7 +505,6 @@ function AdminUsers() {
       errors.suffix = "Suffix contains invalid characters.";
     }
 
-    // Email
     if (!email) {
       errors.email = "Email address is required.";
     } else if (!emailRegex.test(email)) {
@@ -448,7 +519,6 @@ function AdminUsers() {
       }
     }
 
-    // Contact numbers
     if (!contactNumber) {
       errors.contactNumber = "Contact number is required.";
     } else if (!mobileRegex.test(contactNumber)) {
@@ -472,7 +542,6 @@ function AdminUsers() {
         "Emergency contact should be different from the resident's contact number.";
     }
 
-    // Property information
     if (!block) {
       errors.block = "Block is required.";
     }
@@ -489,9 +558,6 @@ function AdminUsers() {
       errors.phase = "Phase is required.";
     }
 
-    // Owners need a property control number.
-    // Renters/household members may temporarily inherit a blank value
-    // from older owner records created before this field existed.
     if (addResidentForm.residentCategory === "owner") {
       if (!propertyControlNumber) {
         errors.propertyControlNumber = "Property control number is required.";
@@ -519,7 +585,6 @@ function AdminUsers() {
         "The linked property's control number has an invalid format.";
     }
 
-    // Renter-specific validation
     if (addResidentForm.residentCategory === "renter") {
       if (!addResidentForm.propertyOwnerResidentId) {
         errors.propertyOwnerResidentId =
@@ -557,7 +622,6 @@ function AdminUsers() {
       }
     }
 
-    // Household-specific validation
     if (addResidentForm.residentCategory === "household") {
       if (!addResidentForm.homeownerResidentId) {
         errors.homeownerResidentId =
@@ -579,6 +643,7 @@ function AdminUsers() {
     return Object.keys(errors).length === 0;
   };
 
+  // ADD RESIDENT SUBMISSION
   const handleAddResidentSubmit = async (e) => {
     e.preventDefault();
 
@@ -601,8 +666,6 @@ function AdminUsers() {
     let secondaryAuth = null;
 
     try {
-      // Create/reuse a second Firebase App using the same project config.
-      // Its Auth session is completely separate from the admin's main session.
       const secondaryAppName = "SecondaryResidentCreator";
 
       const secondaryApp =
@@ -611,15 +674,12 @@ function AdminUsers() {
 
       secondaryAuth = getAuth(secondaryApp);
 
-      // Make sure the secondary Auth instance starts clean.
       if (secondaryAuth.currentUser) {
         await signOut(secondaryAuth);
       }
 
       const temporaryPassword = generateTemporaryPassword();
 
-      // Create the resident in Firebase Authentication without replacing
-      // the currently signed-in admin on the default Firebase App.
       const userCredential = await createUserWithEmailAndPassword(
         secondaryAuth,
         addResidentForm.email.trim().toLowerCase(),
@@ -629,8 +689,6 @@ function AdminUsers() {
       createdUser = userCredential.user;
       const residentId = createdUser.uid;
 
-      // Login.jsx requires emailVerified === true for password accounts.
-      // Send the resident a verification link immediately after creation.
       let verificationEmailSent = true;
 
       try {
@@ -643,7 +701,6 @@ function AdminUsers() {
         );
       }
 
-      // The default Firestore instance still uses the main admin session.
       const batch = writeBatch(db);
 
       const userRef = doc(db, "users", residentId);
@@ -725,10 +782,8 @@ function AdminUsers() {
         updatedAt: serverTimestamp(),
       });
 
-      // Both Firestore documents succeed or fail together.
       await batch.commit();
 
-      // End only the secondary resident session.
       await signOut(secondaryAuth);
 
       const displayName = [
@@ -788,8 +843,6 @@ function AdminUsers() {
     } catch (error) {
       console.error("Error adding resident:", error);
 
-      // If Auth succeeded but Firestore failed, delete the new account
-      // while it is still signed in on the secondary Auth instance.
       if (createdUser) {
         try {
           await deleteUser(createdUser);
@@ -861,7 +914,7 @@ function AdminUsers() {
   const activeResidents = residentsList.filter((r) => r.status === "active").length;
   const pendingVerification = residentsList.filter((r) => r.verification === "pending" || r.verification === "unverified").length;
 
-  // filters
+  // TABLE FILTERING
   const filtered = residentsList.filter((r) => {
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
     const matchesVerification = activeCard !== "needsVerification" || r.verification !== "verified";
@@ -872,6 +925,788 @@ function AdminUsers() {
       r.email.toLowerCase().includes(search.toLowerCase());
     return matchesStatus && matchesVerification && matchesSearch;
   });
+
+
+  // REPORT HELPERS
+  // Escape dynamic Firestore values before inserting them into printable HTML.
+  const escapeReportHtml = (value) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  const capitalizeReportValue = (value) => {
+    const normalized = String(value || "Not provided").trim();
+
+    if (!normalized) {
+      return "Not provided";
+    }
+
+    return normalized
+      .split(" ")
+      .map((part) =>
+        part ? part.charAt(0).toUpperCase() + part.slice(1) : part
+      )
+      .join(" ");
+  };
+
+  // REPORT TABLE BUILDER
+  // Reuse this pattern on other admin pages that need printable tabular reports.
+  const buildResidentReportTable = (rows, includePropertyControl = false) => {
+    if (!rows.length) {
+      return `
+        <div class="empty-state">
+          No resident records matched this report.
+        </div>
+      `;
+    }
+
+    return `
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Resident</th>
+            <th>Email</th>
+            <th>Contact</th>
+            <th>Address</th>
+            ${includePropertyControl ? "<th>Property Control No.</th>" : ""}
+            <th>Category</th>
+            <th>Verification</th>
+            <th>Account Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows
+            .map(
+              (resident, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${escapeReportHtml(resident.name)}</td>
+                  <td>${escapeReportHtml(resident.email)}</td>
+                  <td>${escapeReportHtml(resident.contactNumber)}</td>
+                  <td>${escapeReportHtml(resident.location)}</td>
+                  ${
+                    includePropertyControl
+                      ? `<td>${escapeReportHtml(
+                          resident.propertyControlNumber || "Not assigned"
+                        )}</td>`
+                      : ""
+                  }
+                  <td>${escapeReportHtml(
+                    capitalizeReportValue(resident.category)
+                  )}</td>
+                  <td>${escapeReportHtml(
+                    capitalizeReportValue(resident.verification)
+                  )}</td>
+                  <td>${escapeReportHtml(
+                    capitalizeReportValue(resident.status)
+                  )}</td>
+                </tr>
+              `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    `;
+  };
+
+  // REPORT SUMMARY BUILDER
+  // Builds the summary content shown when the admin selects the Summary report type.
+  const buildResidentSummaryReport = () => {
+    const categoryCounts = {
+      owner: residentsList.filter((resident) => resident.category === "owner")
+        .length,
+      renter: residentsList.filter((resident) => resident.category === "renter")
+        .length,
+      household: residentsList.filter(
+        (resident) => resident.category === "household"
+      ).length,
+    };
+
+    const accountStatusCounts = ACCOUNT_STATUSES.filter(
+      (status) => status !== "all"
+    ).map((status) => ({
+      label: capitalizeReportValue(status),
+      value: residentsList.filter((resident) => resident.status === status)
+        .length,
+    }));
+
+    const verificationStatuses = [
+      "verified",
+      "pending",
+      "unverified",
+      "rejected",
+    ];
+
+    const verificationCounts = verificationStatuses.map((status) => ({
+      label: capitalizeReportValue(status),
+      value: residentsList.filter(
+        (resident) => resident.verification === status
+      ).length,
+    }));
+
+    return `
+      <div class="summary-grid">
+        <div class="summary-card">
+          <span>Total Residents</span>
+          <strong>${residentsList.length}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Property Owners</span>
+          <strong>${categoryCounts.owner}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Renters</span>
+          <strong>${categoryCounts.renter}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Household Members</span>
+          <strong>${categoryCounts.household}</strong>
+        </div>
+      </div>
+
+      <div class="summary-section">
+        <h2>Account Status Breakdown</h2>
+        <table class="compact-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${accountStatusCounts
+              .map(
+                (item) => `
+                  <tr>
+                    <td>${escapeReportHtml(item.label)}</td>
+                    <td>${item.value}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="summary-section">
+        <h2>Verification Status Breakdown</h2>
+        <table class="compact-table">
+          <thead>
+            <tr>
+              <th>Verification Status</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${verificationCounts
+              .map(
+                (item) => `
+                  <tr>
+                    <td>${escapeReportHtml(item.label)}</td>
+                    <td>${item.value}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  // REPORT PRINTING
+  // Prints through a hidden iframe so the browser print dialog works without popup permission.
+  const printHtmlWithoutPopup = (html) => {
+    const iframe = document.createElement("iframe");
+
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
+
+    document.body.appendChild(iframe);
+
+    const iframeDocument =
+      iframe.contentDocument || iframe.contentWindow?.document;
+
+    if (!iframeDocument) {
+      document.body.removeChild(iframe);
+      setActionError(
+        "The printable report could not be prepared. Please try again."
+      );
+      return;
+    }
+
+    iframeDocument.open();
+    iframeDocument.write(html);
+    iframeDocument.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } finally {
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1000);
+      }
+    }, 300);
+  };
+
+  // INDIVIDUAL RECORD REPORT
+  // Builds and prints one resident's detailed record from the Resident Details modal.
+  const handlePrintResident = (resident) => {
+    if (!resident) return;
+
+    setActionError("");
+
+    const reportDate = new Date().toLocaleString("en-PH", {
+      dateStyle: "long",
+      timeStyle: "short",
+    });
+
+    const detailRows = [
+      ["Full name", resident.name],
+      ["Email", resident.email],
+      ["Contact number", resident.contactNumber],
+      ["Emergency contact", resident.emergencyContactNumber],
+      ["Resident category", capitalizeReportValue(resident.category)],
+      ["Account status", capitalizeReportValue(resident.status)],
+      ["Verification status", capitalizeReportValue(resident.verification)],
+      ["Address", resident.location],
+      [
+        "Property control number",
+        resident.propertyControlNumber || "Not assigned",
+      ],
+      ["ID type", resident.idType || "Not provided"],
+      ["ID number", resident.idNumber || "Not provided"],
+    ];
+
+    if (resident.category === "renter") {
+      detailRows.push(
+        ["Property owner", resident.propertyOwnerName || "Not provided"],
+        ["Lease start", resident.leaseStart || "Not provided"],
+        ["Lease end", resident.leaseEnd || "Not provided"]
+      );
+    }
+
+    if (resident.category === "household") {
+      detailRows.push(
+        ["Homeowner", resident.homeownerName || "Not provided"],
+        [
+          "Relationship to homeowner",
+          resident.relationshipToHomeowner || "Not provided",
+        ]
+      );
+    }
+
+    const residentReportHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>${escapeReportHtml(resident.name)} | Resident Record</title>
+          <style>
+            * {
+              box-sizing: border-box;
+            }
+
+            body {
+              margin: 0;
+              padding: 32px;
+              font-family: Arial, Helvetica, sans-serif;
+              color: #1f2937;
+              background: #f8fafc;
+            }
+
+            .report-shell {
+              max-width: 820px;
+              margin: 0 auto;
+              background: #ffffff;
+              border: 1px solid #e5e7eb;
+              border-radius: 16px;
+              padding: 32px;
+              box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            }
+
+            .toolbar {
+              display: flex;
+              justify-content: flex-end;
+              margin-bottom: 20px;
+            }
+
+            .print-button {
+              border: none;
+              border-radius: 999px;
+              padding: 10px 18px;
+              background: #f59e0b;
+              color: white;
+              font-size: 13px;
+              font-weight: 700;
+              cursor: pointer;
+            }
+
+            .report-header {
+              display: flex;
+              align-items: flex-start;
+              justify-content: space-between;
+              gap: 24px;
+              padding-bottom: 20px;
+              border-bottom: 2px solid #f59e0b;
+              margin-bottom: 24px;
+            }
+
+            .brand {
+              font-size: 12px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.12em;
+              color: #d97706;
+              margin-bottom: 8px;
+            }
+
+            h1 {
+              margin: 0;
+              font-size: 26px;
+              color: #111827;
+            }
+
+            .subtitle {
+              margin: 6px 0 0;
+              color: #6b7280;
+              font-size: 13px;
+            }
+
+            .meta {
+              text-align: right;
+              color: #6b7280;
+              font-size: 11px;
+              line-height: 1.6;
+            }
+
+            .details {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 12px;
+            }
+
+            .details th,
+            .details td {
+              border: 1px solid #e5e7eb;
+              padding: 10px 12px;
+              text-align: left;
+              vertical-align: top;
+            }
+
+            .details th {
+              width: 34%;
+              background: #f3f4f6;
+              color: #374151;
+              font-weight: 700;
+            }
+
+            .footer {
+              margin-top: 28px;
+              padding-top: 14px;
+              border-top: 1px solid #e5e7eb;
+              color: #9ca3af;
+              font-size: 10px;
+              text-align: center;
+            }
+
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 14mm;
+              }
+
+              body {
+                padding: 0;
+                background: white;
+              }
+
+              .report-shell {
+                max-width: none;
+                border: none;
+                border-radius: 0;
+                padding: 0;
+                box-shadow: none;
+              }
+
+              .toolbar {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+
+        <body>
+          <main class="report-shell">
+            <header class="report-header">
+              <div>
+                <div class="brand">Subdiverse · Windward Hills</div>
+                <h1>Resident Record</h1>
+                <p class="subtitle">
+                  ${escapeReportHtml(resident.name)}
+                </p>
+              </div>
+
+              <div class="meta">
+                <div><strong>Generated:</strong></div>
+                <div>${escapeReportHtml(reportDate)}</div>
+              </div>
+            </header>
+
+            <table class="details">
+              <tbody>
+                ${detailRows
+                  .map(
+                    ([label, value]) => `
+                      <tr>
+                        <th>${escapeReportHtml(label)}</th>
+                        <td>${escapeReportHtml(value || "Not provided")}</td>
+                      </tr>
+                    `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+
+            <div class="footer">
+              Generated through the Subdiverse Resident Management System.
+            </div>
+          </main>
+        </body>
+      </html>
+    `;
+
+    printHtmlWithoutPopup(residentReportHtml);
+  };
+
+  // GENERATE REPORT
+  // Selects the requested report type, builds its printable HTML, then opens the print dialog.
+  // Other admin pages can follow this same pattern: choose type -> build content -> print.
+  const handleGenerateReport = () => {
+    setActionError("");
+
+    const reportDate = new Date().toLocaleString("en-PH", {
+      dateStyle: "long",
+      timeStyle: "short",
+    });
+
+    let reportTitle = "Resident Master List";
+    let reportDescription = "Complete list of all resident accounts.";
+    let reportBody = buildResidentReportTable(residentsList);
+
+    if (selectedReportType === "summary") {
+      reportTitle = "Resident Summary Report";
+      reportDescription =
+        "Summary of resident categories, account statuses, and verification statuses.";
+      reportBody = buildResidentSummaryReport();
+    }
+
+    if (selectedReportType === "property") {
+      const propertyRows = [...residentsList].sort((a, b) => {
+        const propertyA =
+          a.propertyControlNumber || a.location || "ZZZZ";
+        const propertyB =
+          b.propertyControlNumber || b.location || "ZZZZ";
+
+        const propertyComparison = propertyA.localeCompare(propertyB);
+
+        if (propertyComparison !== 0) {
+          return propertyComparison;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
+
+      reportTitle = "Residents by Property";
+      reportDescription =
+        "Residents organized by their linked property control number and address.";
+      reportBody = buildResidentReportTable(propertyRows, true);
+    }
+
+    if (selectedReportType === "filtered") {
+      const filterParts = [];
+
+      if (statusFilter !== "all") {
+        filterParts.push(
+          `Account status: ${capitalizeReportValue(statusFilter)}`
+        );
+      }
+
+      if (activeCard === "needsVerification") {
+        filterParts.push("Verification: Needs verification");
+      }
+
+      if (search.trim()) {
+        filterParts.push(`Search: "${search.trim()}"`);
+      }
+
+      reportTitle = "Filtered Resident Report";
+      reportDescription = filterParts.length
+        ? `Current filters — ${filterParts.join(" · ")}`
+        : "Current resident list with no additional filters applied.";
+      reportBody = buildResidentReportTable(filtered);
+    }
+
+    const reportHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>${escapeReportHtml(reportTitle)} | Subdiverse</title>
+          <style>
+            * {
+              box-sizing: border-box;
+            }
+
+            body {
+              margin: 0;
+              padding: 32px;
+              font-family: Arial, Helvetica, sans-serif;
+              color: #1f2937;
+              background: #f8fafc;
+            }
+
+            .report-shell {
+              max-width: 1200px;
+              margin: 0 auto;
+              background: #ffffff;
+              border: 1px solid #e5e7eb;
+              border-radius: 16px;
+              padding: 32px;
+              box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            }
+
+            .report-header {
+              display: flex;
+              align-items: flex-start;
+              justify-content: space-between;
+              gap: 24px;
+              padding-bottom: 20px;
+              border-bottom: 2px solid #f59e0b;
+              margin-bottom: 24px;
+            }
+
+            .brand {
+              font-size: 13px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.12em;
+              color: #d97706;
+              margin-bottom: 8px;
+            }
+
+            h1 {
+              margin: 0;
+              font-size: 28px;
+              color: #111827;
+            }
+
+            .description {
+              margin: 8px 0 0;
+              color: #6b7280;
+              font-size: 13px;
+              line-height: 1.5;
+            }
+
+            .meta {
+              text-align: right;
+              color: #6b7280;
+              font-size: 12px;
+              line-height: 1.6;
+              min-width: 210px;
+            }
+
+            .toolbar {
+              display: flex;
+              justify-content: flex-end;
+              margin-bottom: 20px;
+            }
+
+            .print-button {
+              border: none;
+              border-radius: 999px;
+              padding: 10px 18px;
+              background: #f59e0b;
+              color: white;
+              font-size: 13px;
+              font-weight: 700;
+              cursor: pointer;
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+
+            th,
+            td {
+              border: 1px solid #e5e7eb;
+              padding: 9px 8px;
+              vertical-align: top;
+              text-align: left;
+            }
+
+            th {
+              background: #f3f4f6;
+              color: #374151;
+              font-weight: 700;
+            }
+
+            tbody tr:nth-child(even) {
+              background: #fafafa;
+            }
+
+            .summary-grid {
+              display: grid;
+              grid-template-columns: repeat(4, minmax(0, 1fr));
+              gap: 12px;
+              margin-bottom: 28px;
+            }
+
+            .summary-card {
+              border: 1px solid #e5e7eb;
+              border-radius: 12px;
+              padding: 16px;
+              background: #fafafa;
+            }
+
+            .summary-card span {
+              display: block;
+              color: #6b7280;
+              font-size: 11px;
+              margin-bottom: 8px;
+            }
+
+            .summary-card strong {
+              font-size: 24px;
+              color: #111827;
+            }
+
+            .summary-section {
+              margin-top: 24px;
+            }
+
+            .summary-section h2 {
+              font-size: 16px;
+              margin: 0 0 10px;
+            }
+
+            .compact-table {
+              max-width: 520px;
+            }
+
+            .empty-state {
+              padding: 40px;
+              text-align: center;
+              border: 1px dashed #d1d5db;
+              border-radius: 12px;
+              color: #6b7280;
+            }
+
+            .footer {
+              margin-top: 28px;
+              padding-top: 14px;
+              border-top: 1px solid #e5e7eb;
+              color: #9ca3af;
+              font-size: 10px;
+              text-align: center;
+            }
+
+            @media print {
+              @page {
+                size: A4 landscape;
+                margin: 10mm;
+              }
+
+              body {
+                padding: 0;
+                background: white;
+              }
+
+              .report-shell {
+                max-width: none;
+                border: none;
+                border-radius: 0;
+                padding: 0;
+                box-shadow: none;
+              }
+
+              .toolbar {
+                display: none;
+              }
+
+              table {
+                font-size: 9px;
+              }
+
+              th,
+              td {
+                padding: 6px;
+              }
+
+              thead {
+                display: table-header-group;
+              }
+
+              tr {
+                break-inside: avoid;
+              }
+            }
+          </style>
+        </head>
+
+        <body>
+          <main class="report-shell">
+            <header class="report-header">
+              <div>
+                <div class="brand">Subdiverse · Windward Hills</div>
+                <h1>${escapeReportHtml(reportTitle)}</h1>
+                <p class="description">
+                  ${escapeReportHtml(reportDescription)}
+                </p>
+              </div>
+
+              <div class="meta">
+                <div><strong>Generated:</strong> ${escapeReportHtml(
+                  reportDate
+                )}</div>
+                <div><strong>Total records:</strong> ${
+                  selectedReportType === "filtered"
+                    ? filtered.length
+                    : residentsList.length
+                }</div>
+              </div>
+            </header>
+
+            ${reportBody}
+
+            <div class="footer">
+              Generated through the Subdiverse Resident Management System.
+            </div>
+          </main>
+        </body>
+      </html>
+    `;
+
+    printHtmlWithoutPopup(reportHtml);
+    setShowReportModal(false);
+  };
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -1115,13 +1950,28 @@ function AdminUsers() {
       title="Manage residents"
       subtitle="Review sign-ups, verify IDs, and manage account status"
       action={
-        <button
-          type="button"
-          onClick={() => setShowAddResident(true)}
-          className="btn-primary !px-4 !py-2 !text-sm !font-medium w-full sm:w-auto"
-        >
-          Add resident
-        </button>
+        // PAGE ACTION BUTTONS
+        // Keep page-level actions inside AdminPageLayout's action prop for consistent admin pages.
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          {/* SECONDARY PAGE ACTION: Opens the report selection modal. */}
+          <button
+            type="button"
+            onClick={() => setShowReportModal(true)}
+            className="px-4 py-2 text-sm font-medium rounded-buttons border border-border bg-card hover:bg-muted flex items-center justify-center gap-2"
+          >
+            <FileText size={16} />
+            Generate report
+          </button>
+
+          {/* PRIMARY PAGE ACTION: Opens the main create/add modal. */}
+          <button
+            type="button"
+            onClick={() => setShowAddResident(true)}
+            className="btn-primary !px-4 !py-2 !text-sm !font-medium w-full sm:w-auto"
+          >
+            Add resident
+          </button>
+        </div>
       }
     >
       {actionError && (
@@ -1136,7 +1986,7 @@ function AdminUsers() {
         </div>
       )}
 
-      {/* Metric cards */}
+      {/* METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <MetricCard
           icon={Users}
@@ -1184,7 +2034,7 @@ function AdminUsers() {
         />
       </div>
 
-      {/* Filters */}
+      {/* FILTERS AND SEARCH */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 mb-4">
         <div className="flex items-center gap-3">
           <label className="text-sm text-muted-foreground whitespace-nowrap">Account status</label>
@@ -1215,7 +2065,7 @@ function AdminUsers() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* RESIDENT TABLE */}
       <div className="bg-card rounded-cards border border-border shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -1230,7 +2080,10 @@ function AdminUsers() {
           </thead>
           <tbody>
             {paginatedResidents.map((r) => (
-              <tr key={r.id} className="border-t border-border hover:bg-muted/60">
+              <tr
+                key={r.id}
+                className="border-t border-border hover:bg-muted/60 transition-colors"
+              >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-medium flex-shrink-0">
@@ -1239,7 +2092,6 @@ function AdminUsers() {
                     <div className="min-w-0">
                       <p className="font-medium text-foreground truncate">{r.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{r.email}</p>
-                      {/* Location repeats here for phones/tablets where the dedicated column is hidden */}
                       <p className="lg:hidden text-xs text-muted-foreground truncate mt-0.5">{r.location}</p>
                     </div>
                   </div>
@@ -1251,28 +2103,33 @@ function AdminUsers() {
                   </span>
                 </td>
                 <td className="px-4 py-3 relative">
-                  <div className="relative inline-block text-left">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenVerificationId(
-                          openVerificationId === r.id ? null : r.id
-                        );
-                        setOpenStatusId(null);
-                        setOpenMenuId(null);
-                      }}
-                      title="Click to change verification status"
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-buttons text-xs capitalize ${VERIFICATION_STYLES[r.verification] ||
-                        "bg-gray-400 text-white"
-                        }`}
-                    >
-                      <FileWarning size={14} />
-                      {r.verification}
-                      <ChevronDown size={12} />
-                    </button>
+                  {/* STATUS BUTTON: Opens a portal dropdown for verification actions. */}
+                  <button
+                    ref={(el) => (verificationButtonRefs.current[r.id] = el)}
+                    type="button"
+                    onClick={() => {
+                      setOpenVerificationId(
+                        openVerificationId === r.id ? null : r.id
+                      );
+                      setOpenStatusId(null);
+                      setOpenMenuId(null);
+                    }}
+                    title="Click to change verification status"
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-buttons text-xs capitalize ${VERIFICATION_STYLES[r.verification] ||
+                      "bg-gray-400 text-white"
+                      }`}
+                  >
+                    <FileWarning size={14} />
+                    {r.verification}
+                    <ChevronDown size={12} />
+                  </button>
 
-                    {openVerificationId === r.id && (
-                      <div className="absolute left-0 top-8 z-50 w-48 rounded-xl border border-border bg-card shadow-xl py-1 text-left">
+                  {openVerificationId === r.id && (
+                    <DropdownPortal
+                      anchorRef={{ current: verificationButtonRefs.current[r.id] }}
+                      onClose={() => setOpenVerificationId(null)}
+                    >
+                      <div className="w-48 rounded-xl border border-border bg-card shadow-xl py-1 text-left">
                         <div className="px-3 py-2 text-[11px] font-medium text-muted-foreground">
                           Change verification
                         </div>
@@ -1292,31 +2149,36 @@ function AdminUsers() {
                           </button>
                         ))}
                       </div>
-                    )}
-                  </div>
+                    </DropdownPortal>
+                  )}
                 </td>
                 <td className="px-4 py-3 relative">
-                  <div className="relative inline-block text-left">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenStatusId(
-                          openStatusId === r.id ? null : r.id
-                        );
-                        setOpenVerificationId(null);
-                        setOpenMenuId(null);
-                      }}
-                      title="Click to change account status"
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-buttons text-xs capitalize ${STATUS_STYLES[r.status] ||
-                        "bg-gray-400 text-white"
-                        }`}
-                    >
-                      {r.status}
-                      <ChevronDown size={12} />
-                    </button>
+                  {/* STATUS BUTTON: Opens a portal dropdown for account-status actions. */}
+                  <button
+                    ref={(el) => (statusButtonRefs.current[r.id] = el)}
+                    type="button"
+                    onClick={() => {
+                      setOpenStatusId(
+                        openStatusId === r.id ? null : r.id
+                      );
+                      setOpenVerificationId(null);
+                      setOpenMenuId(null);
+                    }}
+                    title="Click to change account status"
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-buttons text-xs capitalize ${STATUS_STYLES[r.status] ||
+                      "bg-gray-400 text-white"
+                      }`}
+                  >
+                    {r.status}
+                    <ChevronDown size={12} />
+                  </button>
 
-                    {openStatusId === r.id && (
-                      <div className="absolute left-0 top-8 z-50 w-48 rounded-xl border border-border bg-card shadow-xl py-1 text-left">
+                  {openStatusId === r.id && (
+                    <DropdownPortal
+                      anchorRef={{ current: statusButtonRefs.current[r.id] }}
+                      onClose={() => setOpenStatusId(null)}
+                    >
+                      <div className="w-48 rounded-xl border border-border bg-card shadow-xl py-1 text-left">
                         <div className="px-3 py-2 text-[11px] font-medium text-muted-foreground">
                           Change account status
                         </div>
@@ -1341,26 +2203,36 @@ function AdminUsers() {
                           </button>
                         ))}
                       </div>
-                    )}
-                  </div>
+                    </DropdownPortal>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="relative inline-block text-left">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenMenuId(openMenuId === r.id ? null : r.id);
-                        setOpenStatusId(null);
-                        setOpenVerificationId(null);
-                      }}
-                      className="w-8 h-8 inline-flex items-center justify-center rounded-buttons hover:bg-muted"
-                      aria-label="More actions"
-                    >
-                      <MoreVertical size={16} className="text-muted-foreground" />
-                    </button>
+                  {/* ROW ACTION BUTTON: Opens the More Actions menu for this record. */}
+                  <button
+                    ref={(el) => (menuButtonRefs.current[r.id] = el)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuId(openMenuId === r.id ? null : r.id);
+                      setOpenStatusId(null);
+                      setOpenVerificationId(null);
+                    }}
+                    className="w-8 h-8 inline-flex items-center justify-center rounded-buttons hover:bg-muted"
+                    aria-label="More actions"
+                  >
+                    <MoreVertical size={16} className="text-muted-foreground" />
+                  </button>
 
-                    {openMenuId === r.id && (
-                      <div className="absolute right-0 top-9 z-50 w-40 rounded-xl border border-border bg-card shadow-xl py-1 text-left">
+                  {openMenuId === r.id && (
+                    <DropdownPortal
+                      anchorRef={{ current: menuButtonRefs.current[r.id] }}
+                      onClose={() => setOpenMenuId(null)}
+                      align="right"
+                    >
+                      <div
+                        className="w-40 rounded-xl border border-border bg-card shadow-xl py-1 text-left"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
                           type="button"
                           onClick={() => {
@@ -1372,8 +2244,8 @@ function AdminUsers() {
                           View details
                         </button>
                       </div>
-                    )}
-                  </div>
+                    </DropdownPortal>
+                  )}
                 </td>
               </tr>
             ))}
@@ -1388,7 +2260,7 @@ function AdminUsers() {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* PAGINATION */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 text-sm text-muted-foreground">
         <span>
           Showing {filtered.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + itemsPerPage, filtered.length)} of {filtered.length}
@@ -1417,6 +2289,8 @@ function AdminUsers() {
         </div>
       </div>
 
+      {/* CONFIRM ACTION MODAL
+          Use for destructive or important status changes that require admin confirmation. */}
       {pendingAction && (
         <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6">
@@ -1468,9 +2342,11 @@ function AdminUsers() {
         </div>
       )}
 
+      {/* RESIDENT DETAILS MODAL
+          Displays full record details and record-specific actions such as Print Resident. */}
       {selectedResident && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-2xl bg-card border border-border shadow-2xl">
+          <div className="w-full max-w-3xl rounded-2xl bg-card border border-border shadow-2xl">
             <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Resident details</h2>
@@ -1550,6 +2426,16 @@ function AdminUsers() {
               )}
 
               <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
+                {/* MODAL ACTION BUTTON: Prints or saves the selected resident record as PDF. */}
+                <button
+                  type="button"
+                  onClick={() => handlePrintResident(selectedResident)}
+                  className="px-4 py-2 text-xs font-medium rounded-buttons border border-border hover:bg-muted flex items-center gap-2"
+                >
+                  <FileText size={14} />
+                  Print resident
+                </button>
+
                 {selectedResident.status !== "active" && (
                   <button
                     type="button"
@@ -1578,6 +2464,8 @@ function AdminUsers() {
           </div>
         </div>
       )}
+      {/* IMAGE PREVIEW MODAL
+          Full-screen preview for uploaded verification images. */}
       {previewImage && (
         <div
           className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
@@ -1599,11 +2487,125 @@ function AdminUsers() {
           />
         </div>
       )}
+      {/* GENERATE REPORT MODAL
+          Lets the admin choose a report type before calling handleGenerateReport. */}
+      {showReportModal && (
+        <div
+          className="fixed inset-0 z-[75] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowReportModal(false)}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl bg-card border border-border shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-border px-6 py-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Generate resident report
+                </h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Choose the report you want to open in a printable view.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3">
+              {[
+                {
+                  value: "master",
+                  title: "Resident Master List",
+                  description:
+                    "Complete list of all resident accounts and their current statuses.",
+                },
+                {
+                  value: "summary",
+                  title: "Resident Summary",
+                  description:
+                    "Totals by resident category, account status, and verification status.",
+                },
+                {
+                  value: "property",
+                  title: "Residents by Property",
+                  description:
+                    "Resident list organized by property control number and address.",
+                },
+                {
+                  value: "filtered",
+                  title: "Current Filtered List",
+                  description:
+                    "Uses the account status, verification card, and search filters currently applied.",
+                },
+              ].map((report) => (
+                <label
+                  key={report.value}
+                  className={`block rounded-xl border p-4 cursor-pointer transition ${
+                    selectedReportType === report.value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/60"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="residentReportType"
+                      value={report.value}
+                      checked={selectedReportType === report.value}
+                      onChange={(e) =>
+                        setSelectedReportType(e.target.value)
+                      }
+                      className="mt-1"
+                    />
+
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {report.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-5">
+                        {report.description}
+                      </p>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="border-t border-border px-6 py-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="px-4 py-2 text-sm font-medium rounded-buttons border border-border hover:bg-muted"
+              >
+                Cancel
+              </button>
+
+              {/* MODAL PRIMARY ACTION: Generates the selected report and opens print preview. */}
+              <button
+                type="button"
+                onClick={handleGenerateReport}
+                className="btn-primary !px-5 !py-2 !text-sm"
+              >
+                Open report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD RESIDENT MODAL
+          Main create-record modal. Keep Header -> Form Sections -> Footer Actions structure
+          for similar create/edit modals on other admin pages. */}
       {showAddResident && (
         <div className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border shadow-2xl">
 
-            {/* Header */}
             <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
@@ -1634,7 +2636,6 @@ function AdminUsers() {
               className="p-6 space-y-8"
             >
 
-              {/* Resident Category */}
               <section>
                 <h3 className="text-sm font-semibold text-foreground mb-4">
                   Resident category
@@ -1686,7 +2687,6 @@ function AdminUsers() {
                 </div>
               </section>
 
-              {/* Personal Information */}
               <section>
                 <h3 className="text-sm font-semibold text-foreground mb-4">
                   Personal information
@@ -1772,7 +2772,6 @@ function AdminUsers() {
                 </div>
               </section>
 
-              {/* Contact */}
               <section>
                 <h3 className="text-sm font-semibold text-foreground mb-4">
                   Contact information
@@ -1841,7 +2840,6 @@ function AdminUsers() {
                 </div>
               </section>
 
-              {/* Address */}
               <section>
                 <h3 className="text-sm font-semibold text-foreground mb-4">
                   Property information
@@ -1962,7 +2960,6 @@ function AdminUsers() {
                 </div>
               </section>
 
-              {/* Renter */}
               {addResidentForm.residentCategory === "renter" && (
                 <section>
                   <h3 className="text-sm font-semibold text-foreground mb-4">
@@ -2026,7 +3023,6 @@ function AdminUsers() {
                 </section>
               )}
 
-              {/* Household */}
               {addResidentForm.residentCategory === "household" && (
                 <section>
                   <h3 className="text-sm font-semibold text-foreground mb-4">
@@ -2062,7 +3058,6 @@ function AdminUsers() {
                 </section>
               )}
 
-              {/* Footer */}
               <div className="flex justify-end gap-2 pt-5 border-t border-border">
                 <button
                   type="button"
@@ -2076,6 +3071,7 @@ function AdminUsers() {
                   Cancel
                 </button>
 
+                {/* MODAL PRIMARY ACTION: Submits the validated Add Resident form. */}
                 <button
                   type="submit"
                   disabled={actionLoading}
@@ -2090,6 +3086,8 @@ function AdminUsers() {
         </div>
       )}
 
+      {/* CREATED ACCOUNT CREDENTIALS MODAL
+          Shown once after successful account creation so the admin can copy temporary credentials. */}
       {createdResidentCredentials && (
         <div className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6">
@@ -2185,7 +3183,6 @@ function AdminUsers() {
     </AdminPageLayout>
   );
 }
-
 
 
 function DetailItem({ label, value }) {

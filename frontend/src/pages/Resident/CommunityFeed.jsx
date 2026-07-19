@@ -20,7 +20,7 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-const PostItem = ({ post, group, user, onLike, onComment, onDelete }) => {
+const PostItem = ({ post, group, user, onLike, onComment, onDelete, onReport }) => {
   const [isPostLiked, setIsPostLiked] = useState(post.isLiked || false);
   const [postLikesCount, setPostLikesCount] = useState(post.engagement?.likes || 0);
   const [showComments, setShowComments] = useState(false);
@@ -266,6 +266,7 @@ const CommunityFeed = () => {
 
   const {
     posts,
+    reportPost,
     loading,
     error,
     hasMore,
@@ -443,6 +444,7 @@ const CommunityFeed = () => {
                     onLike={handleLikeToggle}
                     onComment={handleCreateComment}
                     onDelete={handleDeletePost}
+                    onReport={reportPost}
                   />
                 ))}
               </div>

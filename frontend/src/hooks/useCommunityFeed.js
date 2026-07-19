@@ -142,6 +142,37 @@ export const useCommunityFeed = (groupId) => {
     }
   }, [user]);
 
+  // Report a post
+  const handleReportPost = useCallback(async (postId, reason, description = '') => {
+    if (!user) {
+      return { success: false, error: 'Please log in to report'
+      };
+    }
+
+    try {
+      const result = await createReport({
+        targetType: 'post',
+        targetId: postId,
+        reportedBy: user.uid,
+        reason,
+        description
+      });
+
+      return result;
+
+    } catch (error) {
+      console.error('Error reporting post:', error);
+
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }, [user]);
+
+
+
+
   // Toggle like on a post
   const handleToggleLike = useCallback(async (postId) => {
     if (!user) {
@@ -244,8 +275,11 @@ export const useCommunityFeed = (groupId) => {
     loadMore,
     group,
     groupLoading,
+
     createPost: handleCreatePost,
     deletePost: handleDeletePost,
+    reportPost: handleReportPost,
+
     toggleLike: handleToggleLike,
     createComment: handleCreateComment,
     deleteComment: handleDeleteComment,

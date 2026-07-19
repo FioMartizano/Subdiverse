@@ -183,14 +183,6 @@ const PostItem = ({ post, group, user, onLike, onComment, onDelete }) => {
           <MessageCircle className="w-5 h-5" />
           <span className="hidden sm:inline">Comment</span>
         </button>
-        <button className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:bg-gray-100 px-4 py-2 rounded transition-colors">
-          <Share2 className="w-5 h-5" />
-          <span className="hidden sm:inline">Share</span>
-        </button>
-        <button className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:bg-gray-100 px-4 py-2 rounded transition-colors">
-          <Bookmark className="w-5 h-5" />
-          <span className="hidden sm:inline">Save</span>
-        </button>
       </div>
 
       {/* Comments Section */}
@@ -473,7 +465,7 @@ const CommunityFeed = () => {
           {/* Right Sidebar */}
           <div className="hidden xl:block w-[280px] flex-shrink-0">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-24">
-              <h3 className="font-semibold text-gray-700 text-sm mb-3">Keep in touch</h3>
+              <h3 className="font-semibold text-gray-700 text-sm mb-3">Active Members: </h3>
               <div className="space-y-3">
                 {posts.slice(0, 4).map((post, index) => {
                   const author = post.author || {};

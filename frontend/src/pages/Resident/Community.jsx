@@ -61,9 +61,7 @@ export default function CommunityGroups() {
 
   const [toast, setToast] = useState(null);
 
-
-
-
+  const navigate = useNavigate();
 
   // ============================================================
   // EFFECTS
@@ -112,7 +110,7 @@ export default function CommunityGroups() {
       if (result.success) {
         await fetchMyGroups();
         
-        showToast(`"${newGroup.name}" has been created! `);
+        showToast(`"${newGroup.name}" has been created! 🎉`);
         setShowCreateModal(false);
         setNewGroup({ name: '', description: '' });
       } else {
@@ -173,6 +171,7 @@ export default function CommunityGroups() {
     const result = await deleteGroup(groupId);
     if (result.success) {
       showToast(`"${group.name}" has been deleted`);
+      await fetchMyGroups();
     } else {
       showToast(result.error || 'Failed to delete group', 'error');
     }
@@ -201,18 +200,25 @@ export default function CommunityGroups() {
     setReportError('');
 
     try {
+      // Get the group name for the report
+      const group = groups.find(g => g.id === reportGroupId);
+      
+      // Submit the report using the reportGroup function from useGroups
       const result = await reportGroup(
         reportGroupId,
-        user.uid,
-        user.displayName || 'Resident',
+        group?.name || 'Unknown Group',
         reportReason,
-        reportDescription
+        reportDescription,
+        user.uid,
+        user.displayName || 'Resident'
       );
 
       if (result.success) {
         showToast('Report submitted. Thank you for helping keep our community safe!');
         setShowReportModal(false);
         setReportGroupId(null);
+        setReportReason('');
+        setReportDescription('');
       } else {
         setReportError(result.error || 'Failed to submit report');
       }
@@ -224,11 +230,10 @@ export default function CommunityGroups() {
     }
   };
 
-    const navigate = useNavigate();
+  const handleOpenFeed = (groupId) => {
+    navigate(`/community/feed/${groupId}`);
+  };
 
-    const handleOpenFeed = (groupId) => {
-      navigate(`/community/feed/${groupId}`);
-    };
   // ============================================================
   // RENDER HELPERS
   // ============================================================
@@ -262,6 +267,7 @@ export default function CommunityGroups() {
       </div>
     );
   }
+
   // ============================================================
   // MAIN RENDER
   // ============================================================
@@ -625,7 +631,7 @@ export default function CommunityGroups() {
       )}
 
       {/* ============================================================
-          REPORT MODAL
+          REPORT MODAL - FIXED
           ============================================================ */}
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
@@ -662,7 +668,9 @@ export default function CommunityGroups() {
                 >
                   <option value="">Select a reason...</option>
                   {REPORT_REASONS.map((reason) => (
-                    <option key={reason} value={reason}>{reason}</option>
+                    <option key={reason} value={reason}>
+                      {reason}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -708,18 +716,21 @@ export default function CommunityGroups() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes slide-in {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
         }
+
         @keyframes fade-in {
           from { opacity: 0; transform: scale(0.95); }
           to { opacity: 1; transform: scale(1); }
         }
+
         .animate-slide-in {
           animation: slide-in 0.3s ease-out;
         }
+
         .animate-fade-in {
           animation: fade-in 0.2s ease-out;
         }

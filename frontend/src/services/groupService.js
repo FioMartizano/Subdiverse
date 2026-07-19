@@ -426,13 +426,95 @@ export const subscribeToGroupReports = (groupId, callback) => {
   });
 };
 
+// =========================================================
+// ADMIN - GET REPORTED COMMUNITY GROUPS
+// =========================================================
+
+export const getReportedGroups = async () => {
+  try {
+    const groupsSnapshot = await getDocs(
+      collection(db, "communityGroups")
+    );
+
+    const groups = [];
+
+    for (const groupDoc of groupsSnapshot.docs) {
+      const groupData = groupDoc.data();
+
+      // Fetch reports from the subcollection
+      const reportsSnapshot = await getDocs(
+        collection(
+          db,
+          "communityGroups",
+          groupDoc.id,
+          "reports"
+        )
+      );
+
+      const reports = reportsSnapshot.docs.map((reportDoc) => ({
+        id: reportDoc.id,
+        ...reportDoc.data(),
+      }));
+
+      groups.push({
+        id: groupDoc.id,
+        ...groupData,
+        reports,
+      });
+    }
+
+    return {
+      success: true,
+      data: groups,
+    };
+
+  } catch (error) {
+    console.error("Error fetching reported groups:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
+export const dismissGroupReport = async (groupId, reportId) => {
+  try {
+    const reportRef = doc(
+      db,
+      "communityGroups",
+      groupId,
+      "reports",
+      reportId
+    );
+
+    await updateDoc(reportRef, {
+      status: "dismissed",
+      resolvedAt: serverTimestamp()
+    });
+
+    return {
+      success: true
+    };
+
+  } catch (error) {
+    console.error("Error dismissing report:", error);
+
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+
+
+
+
 // ============================================================
 // SEARCH GROUPS
 // ============================================================
 
-/**
- * Search groups by name
- */
 export const searchGroups = (searchTerm, callback) => {
   if (!searchTerm || searchTerm.trim() === '') {
     return subscribeToGroups(callback);
@@ -475,4 +557,31 @@ export const searchGroups = (searchTerm, callback) => {
     console.error('Error searching groups:', error);
     callback({ error: error.message });
   });
+};
+
+/**
+ * Suspend a community group
+ */
+export const suspendGroup = async (groupId) => {
+  try {
+    const groupRef = doc(db, 'communityGroups', groupId);
+
+    await updateDoc(groupRef, {
+      status: 'suspended',
+      updatedAt: serverTimestamp(),
+      suspendedAt: serverTimestamp()
+    });
+
+    return {
+      success: true
+    };
+
+  } catch (error) {
+    console.error('Error suspending group:', error);
+
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 };

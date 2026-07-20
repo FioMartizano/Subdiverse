@@ -6,7 +6,7 @@ import {Car, Bike, FileText, Upload, BadgeCheck, LoaderCircle, Clock3, CircleX, 
 import { auth, db } from "../../firebase";
 import { 
   collection, addDoc, getDocs, getDoc, doc, query, 
-  where, serverTimestamp, updateDoc
+  where, serverTimestamp, updateDoc, onSnapshot
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { uploadImage } from "../../services/cloudinary";
@@ -34,6 +34,7 @@ export default function VehicleSticker() {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const topRef = useRef(null);
+  const unsubscribeRef = useRef(null);
 
   const [pricing, setPricing] = useState({
     homeownerCarPrice: 150,
@@ -101,6 +102,47 @@ export default function VehicleSticker() {
 
   const selectedFee = getStickerFee();
 
+  // Set up real-time listener for applications
+  const setupRealtimeListener = (uid) => {
+    // Clean up existing listener
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+
+    if (!uid) return;
+
+    const q = query(
+      collection(db, "vehicleStickerApplications"),
+      where("residentUid", "==", uid)
+    );
+
+    unsubscribeRef.current = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        list.sort((a, b) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime;
+        });
+
+        console.log("📱 Real-time update - Applications:", list.length);
+        setApplications(list);
+        setLoadingApps(false);
+      },
+      (error) => {
+        console.error("❌ Applications listener error:", error);
+        setLoadingApps(false);
+      }
+    );
+  };
+
+  // Initial load function (kept for backward compatibility)
   const loadApplications = async (uid) => {
     if (!uid) return;
     
@@ -109,7 +151,7 @@ export default function VehicleSticker() {
 
       const q = query(
         collection(db, "vehicleStickerApplications"),
-        where("residentUid", "==", uid) // Using UID instead of residentId
+        where("residentUid", "==", uid)
       );
 
       const snapshot = await getDocs(q);
@@ -126,19 +168,28 @@ export default function VehicleSticker() {
       });
 
       setApplications(list);
+      setLoadingApps(false);
+      
+      // Set up real-time listener after initial load
+      setupRealtimeListener(uid);
 
     } catch (error) {
       console.error("Load Applications Error:", error);
       if (error.code === 'permission-denied') {
         alert("You don't have permission to view these applications.");
       }
-    } finally {
       setLoadingApps(false);
     }
   };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // Clean up existing listener
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+
       if (!user) {
         setLoadingResident(false);
         setCurrentUser(null);
@@ -148,8 +199,6 @@ export default function VehicleSticker() {
       setCurrentUser(user);
 
       try {
-        // Resident document ID is the Firebase Auth UID:
-        // residents/{uid}
         const residentRef = doc(db, "residents", user.uid);
         const residentSnapshot = await getDoc(residentRef);
 
@@ -166,9 +215,6 @@ export default function VehicleSticker() {
 
         setResident(residentInfo);
 
-        // Load pricing settings.
-        // Residents may read this document, but only admins may create or edit it.
-        // If it does not exist, the default pricing already in React state is used.
         const settingsRef = doc(db, "vehicleSticker", "settings");
         const settingsSnap = await getDoc(settingsRef);
 
@@ -178,12 +224,10 @@ export default function VehicleSticker() {
             ...settingsSnap.data(),
           }));
         } else {
-          console.log(
-            "Vehicle sticker settings not found. Using default pricing."
-          );
+          console.log("Vehicle sticker settings not found. Using default pricing.");
         }
 
-        // Load applications using UID
+        // Load applications using UID and set up real-time listener
         await loadApplications(user.uid);
 
       } catch (error) {
@@ -198,7 +242,13 @@ export default function VehicleSticker() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, []);
 
   const handleStep1Submit = async (e) => {
@@ -225,23 +275,17 @@ export default function VehicleSticker() {
       return;
     }
 
-    // Check only this resident's already-loaded applications.
-    // This avoids searching other residents' vehicle records.
-    const normalizedPlateNumber = formData.plateNumber
-      .trim()
-      .toUpperCase();
+    const normalizedPlateNumber = formData.plateNumber.trim().toUpperCase();
 
     const hasPreviousApplication = applications.some(
       (application) =>
-        application.vehicleInfo?.plateNumber?.toUpperCase() ===
-        normalizedPlateNumber
+        application.vehicleInfo?.plateNumber?.toUpperCase() === normalizedPlateNumber
     );
 
     if (hasPreviousApplication) {
       const proceed = window.confirm(
         "This plate number already exists in one of your previous applications.\n\nPress OK if this is a renewal or reapplication."
       );
-
       if (!proceed) return;
     }
 
@@ -252,9 +296,8 @@ export default function VehicleSticker() {
       const uploadedOrcr = await uploadImage(orcrFile, "vehicleSticker");
 
       const applicationData = {
-        // Use UID for security
         residentUid: currentUser.uid,
-        residentId: resident.id, // Keep for reference
+        residentId: resident.id,
         residentInfo: {
           firstName: resident.firstName,
           lastName: resident.lastName,
@@ -267,7 +310,6 @@ export default function VehicleSticker() {
         },
         stickerYear: currentYear,
         applicationType: hasPreviousApplication ? "Renewal" : "New Application",
-
         stickerFee: selectedFee,
         orcrInfo: {
           fileName: orcrFile.name,
@@ -286,12 +328,7 @@ export default function VehicleSticker() {
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(
-        collection(db, "vehicleStickerApplications"),
-        applicationData
-      );
-
-      await loadApplications(currentUser.uid);
+      await addDoc(collection(db, "vehicleStickerApplications"), applicationData);
 
       setFormData({
         vehicleType: "",
@@ -349,9 +386,7 @@ export default function VehicleSticker() {
         [applicationId]: null,
       }));
 
-      if (currentUser) {
-        await loadApplications(currentUser.uid);
-      }
+      // No need to manually reload - real-time listener will update
 
       alert("GCash receipt uploaded successfully! Please proceed to the HOA office to claim your sticker.");
 
@@ -372,10 +407,6 @@ export default function VehicleSticker() {
         paymentMethod: "Cash",
         remarks: "Cash payment selected. Proceed to HOA office with your payment."
       });
-
-      if (currentUser) {
-        await loadApplications(currentUser.uid);
-      }
 
       alert("Cash payment confirmed! Please proceed to the HOA office to complete your payment and claim your sticker.");
 
@@ -406,7 +437,6 @@ export default function VehicleSticker() {
     }
   };
 
-  // Filter applications based on active tab
   const getFilteredApplications = () => {
     switch(activeTab) {
       case 'pending':
@@ -429,7 +459,6 @@ export default function VehicleSticker() {
         return applications.filter(app =>
           app.status === "Rejected"
         );
-
       default:
         return applications;
     }
@@ -437,7 +466,6 @@ export default function VehicleSticker() {
 
   const filteredApps = getFilteredApplications();
 
-  // Get status info
   const getStatusInfo = (app) => {
     if (app.status === "Rejected") {
       return { 
@@ -445,7 +473,9 @@ export default function VehicleSticker() {
         color: 'text-red-600', 
         bg: 'bg-red-100',
         label: 'Rejected',
-        message: 'Your application has been rejected. Please contact the HOA office.'
+        message: app.rejectionReason 
+          ? `Your application has been rejected. Reason: ${app.rejectionReason}`
+          : 'Your application has been rejected. Please contact the HOA office.'
       };
     }
     if (app.status === "Pending") {
@@ -513,7 +543,7 @@ export default function VehicleSticker() {
 
   return (
     <div ref={topRef} className="min-h-screen bg-gray-50 pt-20">
-      {/*HERO SECTION bg*/}
+      {/* HERO SECTION */}
       <div
         className="relative h-[400px] bg-cover bg-center"
         style={{ backgroundImage: `url(${stickerImg})` }}
@@ -687,6 +717,7 @@ export default function VehicleSticker() {
                 )}
               </div>
 
+              {/* Pricing section */}
               <div className="border rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="p-2 bg-[var(--color-secondary)] rounded-lg">
@@ -938,7 +969,7 @@ export default function VehicleSticker() {
               </span>
             </button>
           
-          <button
+            <button
               onClick={() => setActiveTab('rejected')}
               className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
                 activeTab === 'rejected'
@@ -958,7 +989,7 @@ export default function VehicleSticker() {
                 ).length}
               </span>
             </button>
-            </div>
+          </div>
 
           {loadingResident || loadingApps ? (
             <div className="bg-white rounded-xl shadow-md p-12 text-center">
@@ -994,17 +1025,15 @@ export default function VehicleSticker() {
                   </p>
                 </>
               )} 
-
-              {/*REJECTED*/}
               {activeTab === 'rejected' && (
                 <>
                   <CircleX className="mx-auto w-16 h-16 text-gray-400 mb-4"/>
                   <p className="text-lg text-gray-600">No rejected applications.</p>
                   <p className="text-sm text-gray-500 mt-2">
-                  Rejected applications will appear here.
-                </p>
+                    Rejected applications will appear here.
+                  </p>
                 </>
-                )}
+              )}
             </div>
           ) : (
             <div className="space-y-6">
@@ -1019,7 +1048,6 @@ export default function VehicleSticker() {
                     key={app.id}
                     className="bg-white rounded-2xl shadow-lg border overflow-hidden"
                   >
-                    {/* Header */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-100 px-6 py-4 gap-3">
                       <div>
                         <h3 className="text-xl font-bold">
@@ -1038,10 +1066,8 @@ export default function VehicleSticker() {
                       </div>
                     </div>
 
-                    {/* Body */}
                     <div className="p-6">
                       <div className="grid md:grid-cols-2 gap-8">
-                        {/* Left Column - Info */}
                         <div>
                           <h4 className="text-lg font-bold mb-4 text-gray-800">
                             Application Details
@@ -1079,6 +1105,13 @@ export default function VehicleSticker() {
                                 {app.remarks}
                               </p>
                             )}
+                            {/* Display rejection reason if rejected */}
+                            {app.status === "Rejected" && app.rejectionReason && (
+                              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="font-semibold text-red-700">Rejection Reason:</p>
+                                <p className="text-red-600 text-sm mt-1">{app.rejectionReason}</p>
+                              </div>
+                            )}
                           </div>
 
                           {app.orcrInfo && (
@@ -1099,7 +1132,6 @@ export default function VehicleSticker() {
                           )}
                         </div>
 
-                        {/* Right Column - Status Message */}
                         <div>
                           <div className="rounded-xl p-6 border" style={{ 
                             backgroundColor: `${statusInfo.bg}40`,
@@ -1115,7 +1147,6 @@ export default function VehicleSticker() {
                               {statusInfo.message}
                             </p>
 
-                            {/* Payment Section - Only show when unlocked */}
                             {isUnlocked && (
                               <div className="mt-6 pt-6 border-t border-gray-300">
                                 <h5 className="font-bold mb-4 text-gray-800">
@@ -1123,7 +1154,6 @@ export default function VehicleSticker() {
                                 </h5>
                                 
                                 <div className="space-y-4">
-                                  {/* Payment Method Selection */}
                                   <div className="grid grid-cols-2 gap-3">
                                     <button
                                       type="button"
@@ -1151,7 +1181,6 @@ export default function VehicleSticker() {
                                     </button>
                                   </div>
 
-                                  {/* GCash Payment Details */}
                                   {paymentMethod[app.id] === 'GCash' && (
                                     <>
                                       <div className="rounded-xl border p-4">
@@ -1214,7 +1243,6 @@ export default function VehicleSticker() {
                                     </>
                                   )}
 
-                                  {/* Cash Payment */}
                                   {paymentMethod[app.id] === 'Cash' && (
                                     <>
                                       <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
@@ -1252,7 +1280,6 @@ export default function VehicleSticker() {
                               </div>
                             )}
 
-                            {/* Show receipt if uploaded */}
                             {app.receiptInfo && (
                               <div className="mt-4 pt-4 border-t border-gray-300">
                                 <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -1270,7 +1297,6 @@ export default function VehicleSticker() {
                               </div>
                             )}
 
-                            {/* HOA Office Instructions for Paid - Pending Verification */}
                             {isPaidPending && (
                               <div className="mt-4 p-4 bg-white rounded-lg border border-blue-200">
                                 <p className="text-sm font-semibold text-blue-700 flex items-center gap-2">
@@ -1297,7 +1323,6 @@ export default function VehicleSticker() {
         </div>
       </div>
 
-      {/* Scroll to Top Button */}
       {showScrollTop && (
         <button
           onClick={scrollToTop}

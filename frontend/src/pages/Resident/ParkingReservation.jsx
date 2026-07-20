@@ -1104,9 +1104,9 @@ export default function ParkingReservation() {
                   onChange={(e) => setPaymentType(e.target.value)}
                   className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                 >
-                  <option value="cash">💵 Cash</option>
-                  <option value="gcash">📱 GCash</option>
-                  <option value="check">📝 Check</option>
+                  <option value="cash">Cash</option>
+                  <option value="gcash">GCash</option>
+                  <option value="check">Check</option>
                 </select>
               </div>
 

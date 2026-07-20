@@ -264,12 +264,14 @@ const Post = ({
         </div>
 
         {/* Content */}
-        <div className="mt-3">
-          <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
-            {post.content?.text || ''}
-          </p>
-          {renderImages()}
-        </div>
+          <div className="mt-3">
+        <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+          {/* Try content.text first, fallback to text */}
+          {post.content?.text || post.text || ''}
+        </p>
+        {/* Try content.images first, fallback to images */}
+        {renderImages(post.content?.images || post.images || [])}
+      </div>
 
         {/* Actions */}
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-start gap-6">

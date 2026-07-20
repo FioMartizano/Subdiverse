@@ -1,10 +1,17 @@
 // frontend/src/pages/Resident/ResiOffices/HOA.jsx
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../../firebase";
+import { uploadImage } from "../../../services/cloudinary";
 import HOA_bg from "../../../assets/officesMedia/HOApage_bg.jpg";
 import { useState } from "react";
 import { 
     Contact, Clock, MapPin, Phone, Mail, Building2, Users, FileText, 
     AlertTriangle, Shield, Megaphone, Home, FileCheck, MoveRight, 
-    HardHat, Lightbulb, Droplets, Trash2, Car, Plus 
+    HardHat, Lightbulb, Droplets, Trash2, Car, Plus, 
+    Globe, UserPlus, Heart, MessageSquare, 
+    Eye, MoreVertical, CloudSun, Music, Tag, Award, 
+    ChevronRight, Reply, Flag, Calendar, Newspaper, Link as LinkIcon,
+    Image as ImageIcon, Send, MoreHorizontal, Share2, Bookmark, X
 } from "lucide-react";
 
 import hoaOfficer1 from "../../../assets/hoaOfficer.jpg";
@@ -17,11 +24,11 @@ import hoaService3 from "../../../assets/hoaService3.jpg";
 
 // Components
 import Post from "../../../components/posts/Post";
-import CreatePost from "../../../components/posts/CreatePost";
 
 // Hooks
 import { useAuth } from "../../../hooks/useAuth";
 import { usePosts } from "../../../hooks/usePosts";
+import { toggleLike as toggleLikeService } from "../../../services/postService";
 
 // Data - Officers and Board (static)
 const officersData = [
@@ -67,10 +74,20 @@ const hoaPrograms = [
 
 function HOA() {
     const [hoveredTile, setHoveredTile] = useState(null);
-    const [showCreatePost, setShowCreatePost] = useState(false);
-    
+    const [isComposerOpen, setIsComposerOpen] = useState(false);
+    const [postContent, setPostContent] = useState("");
+    const [postImage, setPostImage] = useState(null);
+    const [postImagePreview, setPostImagePreview] = useState(null);
+    const [isPosting, setIsPosting] = useState(false);
+
     // Auth and Posts hooks
-    const { user, isAdmin, loading: authLoading } = useAuth();
+    const {
+        user,
+        loading: authLoading,
+        isAdmin,
+        isOfficer,
+    } = useAuth();
+
     const { 
         posts, 
         loading: postsLoading, 
@@ -81,29 +98,53 @@ function HOA() {
         setPosts 
     } = usePosts();
 
-    // Handler for like updates
-    const handleLikeUpdate = (postId, isLiked) => {
-        setPosts(prev => 
-            prev.map(post => 
-                post.id === postId 
-                    ? {
-                        ...post,
-                        engagement: {
-                            ...post.engagement,
-                            likes: isLiked 
-                                ? (post.engagement?.likes || 0) + 1 
-                                : (post.engagement?.likes || 0) - 1
-                        },
-                        isLiked: isLiked
-                    }
-                    : post
-            )
+    // Only HOA officers and admins can post
+    const canPostToHOA =
+        isAdmin ||
+        (
+            isOfficer &&
+            user?.officerProfile?.office === "HOA"
         );
-    };
 
-    // Handler for new post created
-    const handlePostCreated = (newPost) => {
-        setPosts(prev => [newPost, ...prev]);
+    console.log("HOA POST PERMISSION:", {
+        isAdmin,
+        isOfficer,
+        office: user?.officerProfile?.office,
+        officerStatus: user?.officerProfile?.status,
+        canPostToHOA,
+    });
+
+    // Handler for like updates
+    const handleLikeUpdate = async (postId, isLiked) => {
+        if (!user) {
+            alert('Please log in to like posts');
+            return;
+        }
+
+        try {
+            const result = await toggleLikeService(postId, user.uid);
+            
+            if (result.success) {
+                setPosts(prev => 
+                    prev.map(post => 
+                        post.id === postId 
+                            ? {
+                                ...post,
+                                engagement: {
+                                    ...post.engagement,
+                                    likes: result.isLiked 
+                                        ? (post.engagement?.likes || 0) + 1 
+                                        : (post.engagement?.likes || 0) - 1
+                                },
+                                isLiked: result.isLiked
+                            }
+                            : post
+                    )
+                );
+            }
+        } catch (error) {
+            console.error('Error toggling like:', error);
+        }
     };
 
     // Handler for post deletion
@@ -111,7 +152,99 @@ function HOA() {
         setPosts(prev => prev.filter(post => post.id !== postId));
     };
 
-    // Services data - updated to match Healthcare's service tile structure
+    // Handler for creating a new post with Cloudinary
+    const handleCreatePost = async () => {
+        console.log("CREATE POST CLICKED");
+        
+        if (!canPostToHOA) {
+            console.log("POST BLOCKED - User does not have permission");
+            return;
+        }
+
+        if (!postContent.trim() && !postImage) {
+            console.log("POST BLOCKED - No content or image");
+            return;
+        }
+
+        console.log("POSTING ANNOUNCEMENT...");
+        setIsPosting(true);
+
+        try {
+            let uploadedImage = null;
+
+            // Upload image to Cloudinary if exists
+            if (postImage) {
+                console.log("📤 Uploading image to Cloudinary...");
+                uploadedImage = await uploadImage(postImage, "hoa-posts");
+                console.log("✅ Cloudinary Upload Successful:", uploadedImage);
+            }
+
+            // Create post data - Author is "HOA Main Office"
+            const postData = {
+                author: {
+                    name: "HOA Main Office",
+                    avatar: "https://ui-avatars.com/api/?name=HOA&background=F98300&color=fff&size=80",
+                    headline: "Homeowners Association",
+                    postedBy: user?.uid
+                },
+                content: {
+                    text: postContent.trim(),
+                    images: uploadedImage ? [uploadedImage.secureUrl] : []
+                },
+                engagement: {
+                    likes: 0,
+                    comments: 0,
+                    views: 0
+                },
+                metadata: {
+                    isPinned: false,
+                    source: 'office',
+                    officeId: 'hoa'
+                },
+                userId: user?.uid,
+                office: "HOA",
+                officeName: "HOA Main Office",
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                imageInfo: uploadedImage ? {
+                    publicId: uploadedImage.publicId,
+                    secureUrl: uploadedImage.secureUrl,
+                    resourceType: uploadedImage.resourceType
+                } : null
+            };
+
+            console.log("SENDING POST DATA:", postData);
+
+            // Add to Firestore
+            const docRef = await addDoc(collection(db, "posts"), postData);
+            
+            // Create the post object with ID
+            const newPost = {
+                id: docRef.id,
+                ...postData,
+                createdAt: new Date().toISOString()
+            };
+
+            console.log("POST CREATED SUCCESSFULLY:", newPost);
+            
+            // Update local state
+            setPosts(prev => [newPost, ...prev]);
+            
+            // Reset form
+            setPostContent("");
+            setPostImage(null);
+            setPostImagePreview(null);
+            setIsComposerOpen(false);
+            
+        } catch (error) {
+            console.error("ERROR CREATING POST:", error);
+            alert("Failed to create post. Please try again.");
+        } finally {
+            setIsPosting(false);
+        }
+    };
+
+    // Services data
     const servicesData = [
         {
             id: 1,
@@ -168,25 +301,51 @@ function HOA() {
         }
     ];
 
-    // Services list for right sidebar
-    const servicesList = [
-        { icon: <Contact size={24} />, title: "ID Applications", desc: "Homeowner, tenant, dependent IDs" },
-        { icon: <FileText size={24} />, title: "Permits", desc: "Construction, event, moving permits" },
-        { icon: <MoveRight size={24} />, title: "Move-in/Out", desc: "Clearance and gate passes" },
-        { icon: <Car size={24} />, title: "Vehicle Sticker", desc: "Vehicle registration and stickers" },
-        { icon: <Home size={24} />, title: "Business Permit", desc: "Home-based business permits" },
-        { icon: <AlertTriangle size={24} />, title: "Report Concerns", desc: "Infrastructure and utilities issues" }
+    // Social accounts data 
+    const socialAccounts = [
+        { icon: <LinkIcon className="w-4 h-4 text-blue-400" />, text: "www.windwardhills.com" },
+        { icon: <LinkIcon className="w-4 h-4 text-blue-600" />, text: "facebook.com/windwardhills" },
+        { icon: <LinkIcon className="w-4 h-4 text-sky-400" />, text: "twitter.com/wwhills" },
+        { icon: <LinkIcon className="w-4 h-4 text-pink-600" />, text: "instagram.com/wwhills" },
+        { icon: <LinkIcon className="w-4 h-4 text-red-600" />, text: "youtube.com/windwardhills" },
     ];
 
-    // Concern categories for the bottom section
-    const concernCategories = [
-        { icon: <Lightbulb />, title: "Street Lights", description: "Broken or malfunctioning street lights" },
-        { icon: <Building2 />, title: "Road Conditions", description: "Potholes, uneven roads, road damage" },
-        { icon: <Droplets />, title: "Drainage System", description: "Clogged drains, flooding issues" },
-        { icon: <Trash2 />, title: "Garbage Collection", description: "Missed pickups, improper disposal" },
-        { icon: <Shield />, title: "Security Concerns", description: "Gate security, CCTV, safety issues" },
-        { icon: <AlertTriangle />, title: "Utilities", description: "Water, power, internet disruptions" }
+    // News items
+    const newsItems = [
+        { icon: <Calendar className="w-3.5 h-3.5 text-[var(--color-primary)]" />, title: "Annual Meeting", desc: "Join us for the annual homeowners meeting on July 25" },
+        { icon: <Award className="w-3.5 h-3.5 text-[var(--color-primary)]" />, title: "Community Award", desc: "Windward Hills recognized as Best Community 2025" },
+        { icon: <Music className="w-3.5 h-3.5 text-[var(--color-primary)]" />, title: "Summer Festival", desc: "Annual Summer Festival happening August 15-17" },
     ];
+
+    // Handle image selection
+    const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                alert('Please upload a valid image (JPEG, PNG, GIF, or WEBP).');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB.');
+                return;
+            }
+
+            setPostImage(file);
+            
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPostImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setPostImage(null);
+        setPostImagePreview(null);
+    };
 
     return (
         <div className="bg-white min-h-screen w-full flex flex-col">
@@ -204,14 +363,13 @@ function HOA() {
 
             <div className="absolute top-0 left-0 w-full h-20 bg-white z-10"></div>
             
-            {/* HERO SECTION - Matching Healthcare's hero style */}
+            {/* HERO SECTION */}
             <section
                 className="w-full h-[500px] md:h-[600px] bg-cover bg-center flex items-center relative overflow-hidden"
                 style={{ 
                     backgroundImage: `linear-gradient(rgba(25, 28, 32, 0.75), rgba(88, 88, 88, 0.65)), url(${HOA_bg})` 
                 }}
             >
-                {/* Applied fade-in-up here */}
                 <div className="ml-12 md:ml-24 max-w-2xl text-left z-10 fade-in-up" style={{ animationDelay: '0.1s' }}>
                     <p className="text-[var(--color-accent)] text-lg md:text-xl font-semibold tracking-wider block mb-1">
                         <span className="text-secondary">WWHS</span> · Homeowners Association
@@ -227,7 +385,7 @@ function HOA() {
                 </div>
             </section>
 
-            {/* OFFICE INFO - Matching Healthcare's info cards */}
+            {/* OFFICE INFO */}
             <section className="bg-white w-full py-8 px-6 md:px-24 flex justify-center -mt-8 relative z-20">
                 <div className="max-w-6xl w-full grid grid-cols-2 md:grid-cols-4 gap-4 bg-white rounded-2xl p-6 md:p-8 border border-gray-100 fade-in-up shadow-sm" style={{ animationDelay: '0.3s' }}>
                     {hoaHighlights.map((item, idx) => (
@@ -244,8 +402,319 @@ function HOA() {
                 </div>
             </section>
 
+            {/* MAIN CONTENT */}
+            <div className="max-w-7xl mx-auto px-4 md:px-6 mt-8 relative z-20 pb-12">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    
+                    {/* LEFT COLUMN */}
+                    <div className="md:col-span-3 space-y-6">
+                        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                            <h2 className="text-sm font-semibold text-gray-700 mb-4 pb-2 border-b">Social Accounts</h2>
+                            <div className="space-y-3">
+                                {socialAccounts.map((item, idx) => (
+                                    <div key={idx} className="flex items-center space-x-3 text-xs text-gray-500 hover:text-gray-800 cursor-pointer truncate">
+                                        <span>{item.icon}</span>
+                                        <span className="truncate">{item.text}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
 
-            {/* SERVICES WE OFFER - Matching Healthcare's services section */}
+                        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                            <h2 className="text-sm font-semibold text-gray-700 mb-4 pb-2 border-b">Community Programs</h2>
+                            <div className="space-y-3">
+                                {hoaPrograms.map((prog, idx) => (
+                                    <div key={idx} className="space-y-0.5">
+                                        <p className="text-xs font-semibold text-gray-800">{prog.title}</p>
+                                        <p className="text-[11px] text-gray-500">{prog.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                            <h2 className="text-sm font-semibold text-gray-700 mb-4 pb-2 border-b">Report Concerns</h2>
+                            <div className="space-y-2">
+                                {[
+                                    { icon: <Lightbulb className="w-3.5 h-3.5 text-[var(--color-primary)]" />, title: "Street Lights" },
+                                    { icon: <Building2 className="w-3.5 h-3.5 text-[var(--color-primary)]" />, title: "Road Conditions" },
+                                    { icon: <Droplets className="w-3.5 h-3.5 text-[var(--color-primary)]" />, title: "Drainage System" },
+                                    { icon: <Trash2 className="w-3.5 h-3.5 text-[var(--color-primary)]" />, title: "Garbage Collection" },
+                                    { icon: <Shield className="w-3.5 h-3.5 text-[var(--color-primary)]" />, title: "Security Concerns" },
+                                ].map((item, idx) => (
+                                    <div key={idx} className="flex items-center space-x-2 text-xs text-gray-600 hover:text-gray-800 cursor-pointer">
+                                        <span>{item.icon}</span>
+                                        <span>{item.title}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* MIDDLE COLUMN - Posts Feed */}
+                    <div className="md:col-span-6 space-y-6">
+                        
+                        {/* Create Post Area - ONLY VISIBLE TO HOA OFFICERS */}
+                        {canPostToHOA && (
+                            <>
+                                {!isComposerOpen ? (
+                                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
+                                                <img 
+                                                    src={user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName || 'User'}&background=0a66c2&color=fff&size=48`}
+                                                    alt={user?.displayName || 'User'}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                            <button
+                                                onClick={() => setIsComposerOpen(true)}
+                                                className="flex-1 text-left px-4 py-3 bg-[#f3f2ef] hover:bg-[#e8e6e4] rounded-full text-sm text-gray-600 cursor-pointer transition-colors"
+                                            >
+                                                Start a post...
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center justify-around mt-3 pt-3 border-t border-gray-100">
+                                            <button 
+                                                onClick={() => setIsComposerOpen(true)}
+                                                className="flex items-center gap-2 text-sm text-gray-500 hover:bg-gray-100 px-4 py-2 rounded-full transition-colors cursor-pointer"
+                                            >
+                                                <ImageIcon className="w-5 h-5 text-[#378fe9]" />
+                                                <span className="hidden sm:inline">Photo</span>
+                                            </button>
+                                            <button className="flex items-center gap-2 text-sm text-gray-500 hover:bg-gray-100 px-4 py-2 rounded-full transition-colors">
+                                                <Users className="w-5 h-5 text-[#5e9b4c]" />
+                                                <span className="hidden sm:inline">Tag</span>
+                                            </button>
+                                            <button className="flex items-center gap-2 text-sm text-gray-500 hover:bg-gray-100 px-4 py-2 rounded-full transition-colors">
+                                                <Clock className="w-5 h-5 text-[#e7a33e]" />
+                                                <span className="hidden sm:inline">Celebrate</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    // Expanded composer
+                                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
+                                                    <img 
+                                                        src={user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName || 'User'}&background=0a66c2&color=fff&size=40`}
+                                                        alt={user?.displayName || 'User'}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-gray-900 text-sm">
+                                                        {user?.displayName || 'HOA Officer'}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">Posting in HOA Main Office</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setIsComposerOpen(false);
+                                                    setPostContent("");
+                                                    handleRemoveImage();
+                                                }}
+                                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                            >
+                                                <X className="w-5 h-5 text-gray-500" />
+                                            </button>
+                                        </div>
+
+                                        <textarea
+                                            value={postContent}
+                                            onChange={(e) => setPostContent(e.target.value)}
+                                            placeholder="What do you want to talk about?"
+                                            className="w-full p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#0a66c2] min-h-[120px] text-sm"
+                                            autoFocus
+                                        />
+
+                                        {postImagePreview && (
+                                            <div className="mt-3 relative inline-block">
+                                                <img 
+                                                    src={postImagePreview} 
+                                                    alt="Post preview" 
+                                                    className="max-h-48 rounded-lg object-cover"
+                                                />
+                                                <button
+                                                    onClick={handleRemoveImage}
+                                                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                                            <label className="flex items-center gap-2 text-sm text-gray-500 hover:bg-gray-100 px-3 py-2 rounded-full transition-colors cursor-pointer">
+                                                <ImageIcon className="w-5 h-5 text-[#378fe9]" />
+                                                <span>Add Image</span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={handleImageSelect}
+                                                />
+                                            </label>
+                                            <button
+                                                onClick={handleCreatePost}
+                                                disabled={isPosting || (!postContent.trim() && !postImage)}
+                                                className="px-6 py-2 bg-[#0a66c2] text-white rounded-full font-medium hover:bg-[#004182] transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                            >
+                                                {isPosting ? 'Posting...' : 'Post'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* Loading State */}
+                        {postsLoading && (
+                            <div className="bg-white rounded-lg shadow-sm p-8 text-center border border-gray-100">
+                                <div className="inline-block w-8 h-8 border-4 border-[var(--color-secondary)] border-t-transparent rounded-full animate-spin"></div>
+                                <p className="text-gray-500 text-xs mt-2">Loading announcements...</p>
+                            </div>
+                        )}
+
+                        {/* Error State */}
+                        {error && (
+                            <div className="bg-white rounded-lg shadow-sm p-8 text-center border border-gray-100">
+                                <p className="text-red-500 text-sm">Error loading posts: {error}</p>
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="mt-2 text-[var(--color-secondary)] hover:underline text-sm"
+                                >
+                                    Retry
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Posts Feed */}
+                        {!postsLoading && !error && (
+                            <>
+                                {posts.length === 0 ? (
+                                    <div className="bg-white rounded-lg shadow-sm p-8 text-center border border-gray-100">
+                                        <Megaphone className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                                        <p className="text-gray-500 font-medium">No announcements yet</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {posts.map((post) => (
+                                            <Post 
+                                                key={post.id}
+                                                post={post}
+                                                source="office"
+                                                onLike={handleLikeUpdate}
+                                                onDelete={handlePostDelete}
+                                                currentUser={user}
+                                                isAdmin={isAdmin}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Load More Button */}
+                                {hasMore && posts.length > 0 && (
+                                    <div className="text-center">
+                                        <button
+                                            onClick={loadMore}
+                                            disabled={isLoadingMore}
+                                            className="px-6 py-2 text-[var(--color-secondary)] hover:bg-orange-50 rounded-full transition font-medium text-sm disabled:opacity-50"
+                                        >
+                                            {isLoadingMore ? 'Loading...' : 'Load more posts'}
+                                        </button>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                    </div>
+
+                    {/* RIGHT COLUMN */}
+                    <div className="md:col-span-3 space-y-6">
+
+                        <div className="bg-gradient-to-br from-[var(--color-secondary)] to-[var(--color-primary)] text-white rounded-lg shadow-sm p-4 relative overflow-hidden">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <h4 className="text-sm font-bold">Windward Hills</h4>
+                                    <p className="text-[11px] opacity-90">Monday</p>
+                                    <p className="text-[10px] opacity-80">{new Date().toLocaleDateString()}</p>
+                                </div>
+                                <CloudSun className="w-12 h-12 text-white/90" />
+                            </div>
+                            
+                            <div className="flex items-center justify-between my-4">
+                                <span className="text-xs bg-black/10 px-2 py-1 rounded">💧 30%</span>
+                                <span className="text-3xl font-light">28°</span>
+                            </div>
+
+                            <div className="flex justify-between text-xs border-b border-white/20 pb-2 mb-3">
+                                <span>↓ 22°</span>
+                                <span>↑ 30°</span>
+                            </div>
+
+                            <div className="grid grid-cols-7 text-center text-[10px] opacity-90 pt-1">
+                                <div>Mon</div>
+                                <div>Tue</div>
+                                <div>Wed</div>
+                                <div>Thu</div>
+                                <div>Fri</div>
+                                <div>Sat</div>
+                                <div>Sun</div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                            <h2 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">Announcements</h2>
+                            <div className="space-y-4">
+                                {newsItems.map((news, idx) => (
+                                    <div key={idx} className="space-y-1">
+                                        <div className="flex items-center space-x-1.5 text-xs font-semibold text-gray-800">
+                                            {news.icon}
+                                            <span>{news.title}</span>
+                                        </div>
+                                        <p className="text-[11px] text-gray-500 leading-normal">
+                                            {news.desc}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-4 pt-3 border-t text-center">
+                                <button className="text-xs font-medium text-gray-600 hover:text-gray-900">View All</button>
+                            </div>
+                        </div>
+
+                        <a 
+                            href="https://www.facebook.com/AnongPageNGHOANATIN" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="bg-[var(--color-primary)] text-white p-4 rounded-lg shadow-sm hover:opacity-90 transition-all duration-300 flex items-center gap-3"
+                        >
+                            <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                width="24" 
+                                height="24" 
+                                viewBox="0 0 24 24" 
+                                fill="currentColor" 
+                                className="w-5 h-5 flex-shrink-0"
+                            >
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                            <div>
+                                <p className="font-semibold text-sm">Follow Us on Facebook</p>
+                                <p className="text-xs opacity-80">Stay updated with latest events</p>
+                            </div>
+                        </a>
+
+                    </div>
+
+                </div>
+            </div>
+
+            {/* SERVICES SECTION */}
             <section className="bg-white w-full py-16 px-6 md:px-24 flex justify-center rounded-t-[40px] shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.04)] relative z-20 -mt-8">
                 <div className="max-w-6xl w-full">
                     <div className="flex items-center gap-4 mb-10 fade-in-up" style={{ animationDelay: '0.2s' }}>
@@ -304,7 +773,6 @@ function HOA() {
                             })}
                         </div>
 
-                        {/* Right side info column - Matching Healthcare's sidebar */}
                         <div className="lg:col-span-1 pt-2 space-y-6">
                             <div className="bg-[var(--color-primary)]/5 p-6 rounded-2xl border border-[var(--color-primary)]/10 hover:shadow-md transition-shadow duration-300">
                                 <p className="text-[var(--color-primary)] text-lg md:text-xl font-semibold leading-relaxed">
@@ -355,104 +823,7 @@ function HOA() {
                 </div>
             </section>
 
-            {/* ANNOUNCEMENTS SECTION - Embedded between services and bottom cards */}
-            <section className="bg-gray-50 w-full py-16 px-4 md:px-12">
-                <div className="max-w-3xl mx-auto">
-                    {/* Header with New Post Button */}
-                    <div className="flex items-center justify-between mb-8 fade-in-up" style={{ animationDelay: '0.2s' }}>
-                        <div className="flex items-center gap-4">
-                            <Megaphone className="text-[var(--color-secondary)] w-8 h-8" />
-                            <div>
-                                <h2 className="text-3xl md:text-4xl font-bold text-[var(--color-primary)]">Announcements</h2>
-                                <p className="text-gray-500 text-sm">Stay updated with the latest HOA news</p>
-                            </div>
-                        </div>
-                        
-                        {/* Only show New Post button if user is admin/officer */}
-                        {!authLoading && isAdmin && (
-                            <button
-                                onClick={() => setShowCreatePost(true)}
-                                className="px-4 py-2 bg-[var(--color-secondary)] text-white rounded-lg hover:bg-[var(--color-primary)] transition flex items-center gap-2 text-sm font-medium shadow-sm hover:shadow-md"
-                            >
-                                <Plus className="w-4 h-4" />
-                                New Post
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Loading State */}
-                    {postsLoading && (
-                        <div className="text-center py-8">
-                            <div className="inline-block w-8 h-8 border-4 border-[var(--color-secondary)] border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-gray-500 text-sm mt-2">Loading announcements...</p>
-                        </div>
-                    )}
-
-                    {/* Error State */}
-                    {error && (
-                        <div className="text-center py-8">
-                            <p className="text-red-500 text-sm">Error loading posts: {error}</p>
-                            <button 
-                                onClick={() => window.location.reload()}
-                                className="mt-2 text-[var(--color-secondary)] hover:underline"
-                            >
-                                Retry
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Posts Feed */}
-                    {!postsLoading && !error && (
-                        <>
-                            <div className="space-y-6">
-                                {posts.length === 0 ? (
-                                    <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-                                        <Megaphone className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-500 text-sm">No announcements yet.</p>
-                                        {isAdmin && (
-                                            <p className="text-gray-400 text-xs mt-1">
-                                                Click the "New Post" button to create one.
-                                            </p>
-                                        )}
-                                    </div>
-                                ) : (
-                                    posts.map((post) => (
-                                        <Post 
-                                            key={post.id}
-                                            post={post}
-                                            onLikeUpdate={handleLikeUpdate}
-                                            onPostDelete={handlePostDelete}
-                                        />
-                                    ))
-                                )}
-                            </div>
-
-                            {/* Load More Button */}
-                            {hasMore && posts.length > 0 && (
-                                <div className="text-center mt-6">
-                                    <button
-                                        onClick={loadMore}
-                                        disabled={isLoadingMore}
-                                        className="px-6 py-2 text-[var(--color-secondary)] hover:bg-orange-50 rounded-lg transition font-medium text-sm disabled:opacity-50"
-                                    >
-                                        {isLoadingMore ? 'Loading...' : 'Load More'}
-                                    </button>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            </section>
-
-            {/* CREATE POST MODAL */}
-            <CreatePost
-                isOpen={showCreatePost}
-                onClose={() => setShowCreatePost(false)}
-                onPostCreated={handlePostCreated}
-                officeName="HOA Main Office"
-            />
-
-            {/* ADDITIONAL INFO: Concern Categories & Programs - Matching Healthcare's bottom cards */}
+            {/* ADDITIONAL INFO */}
             <section className="bg-gray-50 w-full py-12 px-6 md:px-24 flex justify-center border-t border-gray-200">
                 <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 fade-in-up" style={{ animationDelay: '0.2s' }}>
@@ -478,15 +849,14 @@ function HOA() {
                             <div className="p-3 bg-[var(--color-primary)]/10 rounded-full">
                                 <Shield className="w-6 h-6 text-[var(--color-primary)]" />
                             </div>
-                            <h3 className="text-xl font-bold text-[var(--color-primary])">Security & Safety</h3>
+                            <h3 className="text-xl font-bold text-[var(--color-primary)]">Security & Safety</h3>
                         </div>
                         <p className="text-gray-600 text-sm">Gate security, CCTV monitoring, and community safety initiatives.</p>
                     </div>
                 </div>
             </section>
 
-            
-            {/* OFFICERS SECTION - Matching Healthcare's officer cards */}
+            {/* OFFICERS & BOARD SECTION - KEEP OFFICER NAMES AS IS */}
             <section className="bg-[var(--color-primary)] w-full py-16 px-4 md:px-12 flex flex-col items-center">
                 <h2 className="text-white text-5xl md:text-6xl font-bold tracking-tight mb-4 text-center fade-in-up" style={{ animationDelay: '0.2s' }}>
                     Our Officers & Board
@@ -501,7 +871,6 @@ function HOA() {
                             className="flex flex-col items-center fade-in-up group" 
                             style={{ animationDelay: `${0.4 + idx * 0.15}s` }}
                         >
-                            {/* Card Image Container with rounded corners and shadow */}
                             <div className="w-full aspect-square rounded-3xl overflow-hidden shadow-lg bg-zinc-800 transition-transform duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl">
                                 <img 
                                     src={officer.image} 
@@ -509,8 +878,6 @@ function HOA() {
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                 />
                             </div>
-
-                            {/* Info Text */}
                             <div className="mt-4 text-center transition-transform duration-500 group-hover:-translate-y-1">
                                 <h3 className="text-white text-xl font-bold leading-tight">
                                     {officer.name}
@@ -523,7 +890,6 @@ function HOA() {
                     ))}
                 </div>
 
-                {/* Board of Directors - Now inside the same section with matching style */}
                 <div className="w-full max-w-7xl mt-16">
                     <h3 className="text-white text-2xl font-semibold mb-6 text-center fade-in-up" style={{ animationDelay: '0.6s' }}>
                         Board of Directors

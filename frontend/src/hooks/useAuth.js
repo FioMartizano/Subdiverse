@@ -1,5 +1,3 @@
-// frontend/src/hooks/useAuth.js
-
 import { useState, useEffect } from "react";
 import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -24,38 +22,90 @@ export const useAuth = () => {
         }
 
         try {
+          // ==========================================
+          // GET MAIN USER PROFILE
+          // ==========================================
+
           const userDocRef = doc(
             db,
             "users",
             firebaseUser.uid
           );
 
-          const userDocSnap =
-            await getDoc(userDocRef);
+          const userDocSnap = await getDoc(userDocRef);
+
+          // ==========================================
+          // GET OFFICER PROFILE
+          // ==========================================
+
+          const officerDocRef = doc(
+            db,
+            "officerProfiles",
+            firebaseUser.uid
+          );
+
+          const officerDocSnap = await getDoc(
+            officerDocRef
+          );
+
+          const officerProfile =
+            officerDocSnap.exists()
+              ? officerDocSnap.data()
+              : null;
+
+          console.log(
+            "OFFICER CHECK:",
+            {
+              uid: firebaseUser.uid,
+              officerExists: officerDocSnap.exists(),
+              officerProfile: officerProfile,
+            }
+          );
+
+          // ==========================================
+          // USER PROFILE DOES NOT EXIST
+          // ==========================================
 
           if (!userDocSnap.exists()) {
             setUser({
               uid: firebaseUser.uid,
-              email: firebaseUser.email,
+
+              email:
+                firebaseUser.email || "",
+
               displayName:
                 firebaseUser.displayName || "",
+
               photoURL:
                 firebaseUser.photoURL || "",
+
               role: "unknown",
+
               accountStatus: "unknown",
+
+              isOfficer:
+                officerProfile?.status === "active",
+
+              officerProfile,
             });
 
+            setLoading(false);
             return;
           }
+
+          // ==========================================
+          // USER PROFILE EXISTS
+          // ==========================================
 
           const userData =
             userDocSnap.data();
 
-          const accountStatus = String(
-            userData.accountStatus ||
-            userData.status ||
-            "pending"
-          ).toLowerCase();
+          const accountStatus =
+            String(
+              userData.accountStatus ||
+              userData.status ||
+              "pending"
+            ).toLowerCase();
 
           setUser({
             ...userData,
@@ -76,12 +126,20 @@ export const useAuth = () => {
               firebaseUser.photoURL ||
               "",
 
-            role: String(
-              userData.role ||
-              "resident"
-            ).toLowerCase(),
+            // The user remains a resident/admin
+            role:
+              String(
+                userData.role ||
+                "resident"
+              ).toLowerCase(),
 
             accountStatus,
+
+            // Additional officer access
+            isOfficer:
+              officerProfile?.status === "active",
+
+            officerProfile,
           });
 
         } catch (err) {
@@ -94,13 +152,23 @@ export const useAuth = () => {
 
           setUser({
             uid: firebaseUser.uid,
-            email: firebaseUser.email,
+
+            email:
+              firebaseUser.email || "",
+
             displayName:
               firebaseUser.displayName || "",
+
             photoURL:
               firebaseUser.photoURL || "",
+
             role: "resident",
+
             accountStatus: "unknown",
+
+            isOfficer: false,
+
+            officerProfile: null,
           });
 
         } finally {
@@ -113,8 +181,10 @@ export const useAuth = () => {
   }, []);
 
   const isAdmin =
-    user?.role === "admin" ||
-    user?.role === "officer";
+    user?.role === "admin";
+
+  const isOfficer =
+    user?.isOfficer === true;
 
   const isAuthenticated =
     Boolean(user) &&
@@ -125,6 +195,7 @@ export const useAuth = () => {
     loading,
     error,
     isAdmin,
+    isOfficer,
     isAuthenticated,
   };
 };

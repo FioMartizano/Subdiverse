@@ -180,7 +180,7 @@ function AdminUsers() {
   const [residentsList, setResidentsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [previewImage, setPreviewImage] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null); //for click images
 
   const [statusFilter, setStatusFilter] = useState("all");
 

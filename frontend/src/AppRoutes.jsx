@@ -10,6 +10,7 @@ import GuestHomePage from "./pages/Guest/GuestHomePage";
 import AboutUs from "./pages/Guest/AboutUs";
 import OfficesAll from "./pages/Guest/Offices/OfficesAll";
 import Contact from "./pages/Guest/Contact";
+import GetStarted from "./components/GetStartedCards";  
 
 
 /*RESIDENT PAGES*/

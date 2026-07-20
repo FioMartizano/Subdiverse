@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
 // Assets
-import homeImage from "../../assets/home.jpg";
+import homeImage from "../../assets/wwhs2.jpg";
 import wwhsLogo from "../../assets/wwhs-logo.png";
 import filinvestLogo from "../../assets/filinvest-logo.png";
 import abHome from "../../assets/aboutUsHome.jpg";
@@ -13,6 +13,7 @@ import churchGuest from "../../assets/churchGuest.jpg";
 // Components
 import AnimatedShape from "../../components/AnimatedShape";
 import WindwardMap from "../../components/Maps/WindwardMap";
+import GetStarted from "../../components/GetStartedCards";
 
 const logos = [wwhsLogo, filinvestLogo];
 const repeated = Array(5).fill(logos).flat();
@@ -60,12 +61,20 @@ function GuestHomePage() {
 
     return (
         <>
+
             {/* Hero Section */}
             <section
-                className="min-h-screen bg-cover bg-center flex items-center"
-                style={{ backgroundImage: `url(${homeImage})` }}
+                className="relative min-h-screen bg-cover bg-center flex items-center"
+                style={{
+                    backgroundImage: `linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0.35) 0%,
+            rgba(255, 255, 255, 0.1) 20%,
+            rgba(255, 255, 255, 0) 40%
+        ), url(${homeImage})`
+                }}
             >
-                <div className="px-6 sm:px-10 md:px-16 lg:ml-20 lg:px-0 max-w-4xl">
+                <div className="relative z-10 px-6 sm:px-10 md:px-16 lg:ml-20 lg:px-0 max-w-4xl">
                     <motion.h1
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -90,45 +99,12 @@ function GuestHomePage() {
                         transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
                         className="mt-8 flex gap-4"
                     >
-
                         <Link to="/signup" className="btn-glow">
                             Sign Up
                         </Link>
                     </motion.div>
                 </div>
             </section>
-
-            {/* Logo Carousel Section */}
-            <motion.section
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8 }}
-                className="bg-white py-10 md:py-3 overflow-hidden"
-            >
-                <style>{`
-                        @keyframes logo-scroll {
-                        from {transform: translateX(0);}
-                        to {transform: translateX(-50%);}
-                        }
-                        .logo-track {
-                            animation: logo-scroll 20s linear infinite;
-                        }
-                        .logo-track:hover {
-                            animation-play-state: paused;
-                        }
-                        @media (prefers-reduced-motion: reduce) {
-                        .logo-track{animation: none;}
-                        }
-                        `}</style>
-
-                <div className="logo-track flex items-center gap-8 md:gap-12 lg:gap-16">
-                    {[...repeated, ...repeated].map((logo, i) => (
-                        <img key={i} src={logo} alt={`Logo ${i}`} className="h-8 sm:h-10 md:h-16 lg:h-45 w-auto flex-none" />
-                    ))}
-                </div>
-            </motion.section>
-
             {/* About Section */}
             <section className="min-h-fit md:min-h-screen flex items-center bg-primary py-16 md:py-0">
                 <div className="max-w-6xl mx-auto px-6 lg:px-12 flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
@@ -171,6 +147,8 @@ function GuestHomePage() {
                     </motion.div>
                 </div>
             </section>
+
+            <GetStarted />
 
             {/* CHANGED: Offices + divider + Contact are back under ONE shared
                 relative wrapper, exactly like your original — this is what lets

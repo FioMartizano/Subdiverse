@@ -4,13 +4,13 @@ import ScrollToTop from "./components/ScrollOnTop";
 /*Login and SignUp*/
 import Login from "./pages/Auth/Login";
 import SignUp from "./pages/Auth/SignUp";
+import AdminLogin from "./pages/Auth/AdminLogin"
 
 /*GUEST PAGES*/
 import GuestHomePage from "./pages/Guest/GuestHomePage";
 import AboutUs from "./pages/Guest/AboutUs";
 import OfficesAll from "./pages/Guest/Offices/OfficesAll";
-import Contact from "./pages/Guest/Contact";
-import GetStarted from "./components/GetStartedCards";  
+import Contact from "./pages/Guest/Contact"; 
 
 
 /*RESIDENT PAGES*/
@@ -83,6 +83,8 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
 
         <Route path="/signup" element={<SignUp />} />
+
+        <Route path="/admin-login" element={<AdminLogin />} />
 
         {/* GUEST ROUTING */}
 

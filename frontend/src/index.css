@@ -237,3 +237,35 @@ body {
   scrollbar-width: none;
   /* Firefox */
 }
+
+/* Status Badge Colors - Add to your global CSS */
+.status-pending {
+  background-color: #F9A825;
+  color: white;
+}
+
+.status-confirmed {
+  background-color: #43A047;  /* Green */
+  color: white;
+}
+
+.status-rejected {
+  background-color: #D32F2F;  /* Red */
+  color: white;
+}
+
+/* Or using your theme variables */
+.status-pending {
+  background-color: var(--color-pending);
+  color: white;
+}
+
+.status-confirmed {
+  background-color: var(--color-approved);
+  color: white;
+}
+
+.status-rejected {
+  background-color: var(--color-rejected);
+  color: white;
+}

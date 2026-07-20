@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+// BusinessHub.jsx
+import React, { useMemo, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import businesshub_banner from "../../assets/businesshub_banner.png";
 import {
@@ -20,17 +21,18 @@ import {
   Volleyball,
   Wrench,
   X,
+  AlertCircle,
+  Mail,
 } from "lucide-react";
 
-//business photos/logos
-import kapeCure from "../../assets/BusinessLogos/kapecure_ph.jpg";
-import yeoggiManna from "../../assets/BusinessLogos/yeoggiManna.jpg";
-import antech from "../../assets/BusinessLogos/antech.jpg";
-import jgPaper from "../../assets/BusinessLogos/jgPaperAndPrints.jpg";
-import siomaiNgInaMo from "../../assets/BusinessLogos/siomaiNgInaMo.jpg";
-import smashLab from "../../assets/BusinessLogos/smashLab.jpg";
-
-
+import { db } from "../../firebase";
+import {
+  collection,
+  query,
+  onSnapshot,
+  where,
+  orderBy,
+} from "firebase/firestore";
 
 const customIcons = [
   { id: "L1", Icon: Cherry, pos: "bottom-3 left-1 px-0 justify-between", rot: "rotate-[17deg]" },
@@ -56,86 +58,10 @@ const CATEGORIES = [
   { id: "daycare-academy", label: "Daycare & Academy", Icon: BookOpen },
 ];
 
-const BUSINESSES = [
-  {
-    id: 1,
-    name: "Kapecure PH Food and Beverage House",
-    category: "cafe-resto",
-    description:
-      "Offers coffee carts, mini pancakes, grazing tables, pasta, pastries, sweets, nachos, tacos, juice, kakanin, and inflatable party setups.",
-    phone: "0917 130 4697",
-    address: "Blk 52 Lot 2, St. Benedict, Windward Hills Subdivision",
-    hours: "2:00 AM - 12:00 AM, Monday-Saturday",
-    socialMediaLink:
-      "https://www.facebook.com/profile.php?id=100076083451154",
-    image: kapeCure
-  },
-  {
-    id: 2,
-    name: "Yeogi Manna Cafe",
-    category: "cafe-resto",
-    description:
-      "A neighborhood café serving drinks and snacks in a cozy and welcoming space.",
-    phone: "0960 841 6088",
-    address:
-      "Blk 4 Lot 7, St. Isidore, Phase E, Windward Hills Subdivision",
-    hours: "",
-    socialMediaLink: "https://www.instagram.com/yeogi.manna.cafe",
-    image: yeoggiManna,
-  },
-  {
-    id: 3,
-    name: "Antech Engineering Solutions",
-    category: "products-services",
-    description:
-      "Offers drafting, 3D modeling, product and machine design, floor and utility plans, prototype development, 3D printing, fabrication drawings, machining, and stainless steel fabrication services.",
-    phone: "0976 642 2701 (Viber)",
-    address: "Blk 4 Lot 4, Phase 1, Windward Hills Subdivision",
-    hours: "",
-    socialMediaLink: "",
-    image: antech,
-  },
-  {
-    id: 4,
-    name: "Siomai ng Ina Mo",
-    category: "cafe-resto",
-    description:
-      "Serving affordable, flavorful siomai perfect for quick snacks, cravings, and sharing with friends.",
-    phone: "0906 822 7354",
-    address: "Clubhouse, Windward Hills Subdivision",
-    hours: "",
-    socialMediaLink:
-      "https://www.facebook.com/profile.php?id=100088362385644",
-    image: siomaiNgInaMo,
-  },
-  {
-    id: 5,
-    name: "Smash Lab by Coach Justin",
-    category: "sports-fitness",
-    description:
-      "Provides badminton coaching for players of all ages and skill levels.",
-    phone: "0935 732 3644",
-    address: "Covered Court, Windward Hills Subdivision",
-    hours: "Saturday and Sunday",
-    socialMediaLink: "https://www.facebook.com/smashlabbycoachjustin",
-    image: smashLab,
-  },
-  {
-    id: 6,
-    name: "JG Paper & Prints",
-    category: "products-services",
-    description:
-      "Creates photobooks, scrapbooks, custom gifts, party prints, and other digital printing products.",
-    phone: "0968 651 7680",
-    address:
-      "Blk 54 Lot 1, Lane 55, St. Benedict Street, Phase 2, Windward Hills Subdivision",
-    hours: "9:00 AM - 9:00 PM, Monday, Tuesday, Thursday, Saturday, and Sunday",
-    socialMediaLink: "https://www.facebook.com/jgpinkpaperieandprints",
-    image: jgPaper,
-  },
-];
-
 function BusinessHub() {
+  const [businesses, setBusinesses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
@@ -174,10 +100,46 @@ function BusinessHub() {
     },
   };
 
+  // Real-time listener for businesses
+  useEffect(() => {
+    // Query only active businesses
+    const businessesQuery = query(
+      collection(db, "Businesses"),
+      where("status", "==", "active"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      businessesQuery,
+      (snapshot) => {
+        const businessesData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt),
+            updatedAt: data.updatedAt?.toDate?.() || null,
+          };
+        });
+        setBusinesses(businessesData);
+        setLoading(false);
+        setError(null);
+      },
+      (error) => {
+        console.error("Firestore businesses error:", error);
+        setError("Failed to load businesses. Please try again later.");
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // Filter businesses
   const filteredBusinesses = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    return BUSINESSES.filter((business) => {
+    return businesses.filter((business) => {
       const matchesCategory =
         selectedCategory === "all" ||
         business.category === selectedCategory;
@@ -197,11 +159,50 @@ function BusinessHub() {
 
       return matchesCategory && matchesSearch;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [businesses, searchQuery, selectedCategory]);
 
   const getCategoryLabel = (categoryId) =>
     CATEGORIES.find((category) => category.id === categoryId)?.label ||
     "Other";
+
+  const getCategoryIcon = (categoryId) => {
+    const category = CATEGORIES.find((cat) => cat.id === categoryId);
+    return category ? category.Icon : Store;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center bg-gray-50">
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent mx-auto mb-4"></div>
+            <p className="text-lg font-medium text-slate-700">Loading businesses...</p>
+            <p className="text-sm text-slate-500 mt-1">Discovering local treasures</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center bg-gray-50">
+        <div className="flex min-h-[400px] items-center justify-center px-4">
+          <div className="text-center max-w-md">
+            <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
+            <h3 className="text-lg font-semibold text-slate-800">Something went wrong</h3>
+            <p className="text-sm text-slate-600 mt-2">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-6 py-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-all"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center bg-gray-50">
@@ -366,12 +367,24 @@ function BusinessHub() {
                       src={business.image}
                       alt={business.name}
                       className="h-full w-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-110"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = `
+                          <div class="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-orange-50 to-slate-100 text-slate-400">
+                            <${getCategoryIcon(business.category).displayName || 'Store'} size={42} strokeWidth={1.5} />
+                            <span class="text-xs font-medium">No image available</span>
+                          </div>
+                        `;
+                      }}
                     />
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-orange-50 to-slate-100 text-slate-400">
-                      <Store size={42} strokeWidth={1.5} />
+                      {React.createElement(getCategoryIcon(business.category), {
+                        size: 42,
+                        strokeWidth: 1.5,
+                      })}
                       <span className="text-xs font-medium">
-                        Business photo coming soon
+                        No image available
                       </span>
                     </div>
                   )}
@@ -386,7 +399,7 @@ function BusinessHub() {
                     {business.name}
                   </h3>
 
-                  <p className="mb-6 flex-grow text-sm leading-relaxed text-slate-500">
+                  <p className="mb-6 flex-grow text-sm leading-relaxed text-slate-500 line-clamp-3">
                     {business.description}
                   </p>
 
@@ -408,6 +421,13 @@ function BusinessHub() {
                           className="shrink-0 text-orange-400"
                         />
                         <span>{business.phone}</span>
+                      </div>
+                    )}
+
+                    {business.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail size={14} className="shrink-0 text-orange-400" />
+                        <span>{business.email}</span>
                       </div>
                     )}
 
@@ -445,20 +465,24 @@ function BusinessHub() {
             animate={{ opacity: 1 }}
             className="py-16 text-center"
           >
+            <Store size={48} className="mx-auto text-slate-300 mb-4" />
             <p className="text-lg text-slate-500">
-              No businesses found matching your criteria.
+              {searchQuery || selectedCategory !== "all" 
+                ? "No businesses found matching your criteria."
+                : "No businesses available yet. Check back soon!"}
             </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("all");
-              }}
-              className="mt-4 font-semibold text-orange-500 hover:underline"
-            >
-              Clear all filters
-            </button>
+            {(searchQuery || selectedCategory !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCategory("all");
+                }}
+                className="mt-4 font-semibold text-orange-500 hover:underline"
+              >
+                Clear all filters
+              </button>
+            )}
           </motion.div>
         )}
       </section>

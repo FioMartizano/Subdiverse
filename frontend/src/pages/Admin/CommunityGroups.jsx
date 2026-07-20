@@ -25,18 +25,56 @@ import {
   suspendGroup
 } from '../../services/groupService';
 
-const REPORT_STATUS_STYLES = {
-  pending: "bg-[#F9A825] text-white",
-  resolved: "bg-[#43A047] text-white",
-  dismissed: "bg-[#D32F2F] text-white",
-};
-
+// Define status icons
 const REPORT_STATUS_ICONS = {
   pending: Clock,
-  resolved: CheckCircle2,
+  confirmed: CheckCircle2,
   dismissed: XCircle,
 };
 
+// Universal report status badge function
+function getReportStatusBadge(status) {
+  // Normalize the status string
+  const normalizedStatus = status?.toLowerCase() || "pending";
+  
+  // Get the corresponding icon
+  const IconComponent = REPORT_STATUS_ICONS[normalizedStatus] || Clock;
+  
+  // Define status styles using universal color classes
+  const STATUS_STYLES = {
+    pending: "status-pending",
+    confirmed: "status-confirmed",
+    dismissed: "status-rejected",
+  };
+  
+  const style = STATUS_STYLES[normalizedStatus] || "bg-gray-400 text-white";
+  
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-buttons text-xs capitalize ${style}`}>
+      <IconComponent size={12} />
+      {status}
+    </span>
+  );
+}
+
+// Universal group status badge function
+function getGroupStatusBadge(status) {
+  const normalizedStatus = status?.toLowerCase() || "active";
+  
+  const STATUS_STYLES = {
+    active: "bg-green-600 text-white",
+    suspended: "bg-red-600 text-white",
+    inactive: "bg-gray-400 text-white",
+  };
+  
+  const style = STATUS_STYLES[normalizedStatus] || "bg-gray-400 text-white";
+  
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-buttons text-xs capitalize ${style}`}>
+      {status || "Active"}
+    </span>
+  );
+}
 
 function formatDate(date) {
   if (!date) return "—";
@@ -138,34 +176,6 @@ function AdminCommunityGroups() {
     setCurrentPage(1);
   };
 
-  // Get report status badge
-  const getReportStatusBadge = (status) => {
-    const StatusIcon = REPORT_STATUS_ICONS[status] || Clock;
-    const style = REPORT_STATUS_STYLES[status] || "bg-gray-400 text-white";
-    return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-buttons text-xs capitalize ${style}`}>
-        <StatusIcon size={12} />
-        {status}
-      </span>
-    );
-  };
-
-  // Get group status badge
-  const getGroupStatusBadge = (status) => {
-    if (status === "active") {
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-buttons text-xs bg-[#43A047] text-white">
-          Active
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-buttons text-xs bg-gray-400 text-white">
-        {status || "Inactive"}
-      </span>
-    );
-  };
-
   // Handle dismiss report
   const dismissReport = async (groupId, reportId) => {
     setActionLoading(true);
@@ -185,7 +195,7 @@ function AdminCommunityGroups() {
 
         return {
           ...prev,
-          status: "dismissed",
+          status: "confirmed",
         };
       });
 
@@ -199,52 +209,52 @@ function AdminCommunityGroups() {
             report.id === reportId
               ? {
                   ...report,
-                  status: "dismissed",
+                  status: "confirmed",
                 }
               : report
           ),
         };
       });
 
-      setActionSuccess("Report dismissed successfully.");
+      setActionSuccess("Report confirmed successfully.");
+      setTimeout(() => setActionSuccess(""), 3000);
 
     } catch (err) {
-      console.error("Error dismissing report:", err);
-      setActionError(err.message || "Could not dismiss the report.");
+      console.error("Error confirming report:", err);
+      setActionError(err.message || "Could not confirm the report.");
     } finally {
       setActionLoading(false);
     }
   };
 
   // Handle suspend/remove group
-    // Handle suspend/remove group
-    const handleSuspendGroup = async (groupId) => {
-      setActionLoading(true);
-      setActionError("");
-      setActionSuccess("");
+  const handleSuspendGroup = async (groupId) => {
+    setActionLoading(true);
+    setActionError("");
+    setActionSuccess("");
 
-      try {
-        const result = await suspendGroup(groupId);
+    try {
+      const result = await suspendGroup(groupId);
 
-        if (!result.success) {
-          throw new Error(result.error || "Failed to suspend group");
-        }
-
-        setActionSuccess("Group suspended successfully.");
-        setTimeout(() => setActionSuccess(""), 3000);
-
-        setShowDetailModal(false);
-        setSelectedGroup(null);
-
-        if (refresh) refresh();
-
-      } catch (err) {
-        console.error("Error suspending group:", err);
-        setActionError("Could not suspend the group. Please try again.");
-      } finally {
-        setActionLoading(false);
+      if (!result.success) {
+        throw new Error(result.error || "Failed to suspend group");
       }
-    };
+
+      setActionSuccess("Group suspended successfully.");
+      setTimeout(() => setActionSuccess(""), 3000);
+
+      setShowDetailModal(false);
+      setSelectedGroup(null);
+
+      if (refresh) refresh();
+
+    } catch (err) {
+      console.error("Error suspending group:", err);
+      setActionError("Could not suspend the group. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -550,7 +560,9 @@ function AdminCommunityGroups() {
                   <DetailItem label="Created By" value={selectedGroup.createdByName} />
                   <DetailItem label="Created On" value={formatDateTime(selectedGroup.createdAt)} />
                   <DetailItem label="Members" value={selectedGroup.memberCount || 0} />
-                  <DetailItem label="Status" value={selectedGroup.status || "active"} />
+                  <DetailItem label="Status" value={
+                    <span>{getGroupStatusBadge(selectedGroup.status || "active")}</span>
+                  } />
                 </div>
               </div>
 
@@ -577,7 +589,11 @@ function AdminCommunityGroups() {
                           key={report.id || index} 
                           className="bg-muted/20 p-4 rounded-xl border border-border hover:border-orange-200 transition-colors cursor-pointer"
                           onClick={() => {
-                            setSelectedReport(report);
+                            setSelectedReport({
+                              ...report,
+                              reportData: reportData,
+                              id: report.id || index
+                            });
                             setShowReportModal(true);
                           }}
                         >
@@ -608,7 +624,7 @@ function AdminCommunityGroups() {
                                 disabled={actionLoading}
                                 className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-all disabled:opacity-50"
                               >
-                                Dismiss Report
+                                Confirm Report
                               </button>
                             </div>
                           )}
@@ -627,7 +643,7 @@ function AdminCommunityGroups() {
                 }) && (
                   <button
                     onClick={() => {
-                      if (window.confirm(`Dismiss all pending reports for "${selectedGroup.name}"?`)) {
+                      if (window.confirm(`Confirm all pending reports for "${selectedGroup.name}"?`)) {
                         selectedGroup.reports
                           .filter(r => {
                             const status = r.status || r.reportData?.status || "pending";
@@ -640,7 +656,7 @@ function AdminCommunityGroups() {
                     className="px-4 py-2 bg-green-600 text-white text-sm rounded-buttons hover:bg-green-700 transition-all disabled:opacity-50 flex items-center gap-2"
                   >
                     <CheckCircle2 size={16} />
-                    Dismiss All Pending Reports
+                    Confirm All Pending Reports
                   </button>
                 )}
                 
@@ -666,6 +682,61 @@ function AdminCommunityGroups() {
         </div>
       )}
 
+      {/* Report Detail Modal */}
+      {showReportModal && selectedReport && (
+        <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-card border border-border shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Report Details</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReportModal(false);
+                  setSelectedReport(null);
+                }}
+                className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center text-xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Status</span>
+                {getReportStatusBadge(selectedReport.status || selectedReport.reportData?.status || "pending")}
+              </div>
+
+              <DetailItem 
+                label="Reported By" 
+                value={selectedReport.reportData?.reporterName || selectedReport.reportedBy || selectedReport.userName || "Anonymous"} 
+              />
+              <DetailItem 
+                label="Reason" 
+                value={selectedReport.reportData?.reason || selectedReport.reportReason || selectedReport.reason || "No reason provided"} 
+              />
+              {selectedReport.reportData?.description && (
+                <DetailItem label="Description" value={selectedReport.reportData.description} />
+              )}
+              <DetailItem 
+                label="Reported On" 
+                value={formatDateTime(selectedReport.reportData?.createdAt || selectedReport.reportedAt || selectedReport.timestamp)} 
+              />
+
+              {selectedReport.status === "pending" && (
+                <div className="pt-4 border-t border-border flex gap-2">
+                  <button
+                    onClick={() => dismissReport(selectedGroup?.id, selectedReport.id)}
+                    disabled={actionLoading}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white text-sm rounded-buttons hover:bg-green-700 transition-all disabled:opacity-50"
+                  >
+                    Confirm Report
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AdminPageLayout>
   );
 }
